@@ -7,6 +7,7 @@ function changePanel(panel) {
 
 function register(e) {
     e.preventDefault();
+    var form = new FormData(e.target);
 
     var confirm_password = document.getElementById("register-confirm");
     if(form.get("password") != form.get("confirm")) {
@@ -24,7 +25,6 @@ function register(e) {
     progress.style.display = "inline-block";
     register_error.style.display = "none";
 
-    var form = new FormData(e.target);
     var data = {
         "cmd": "register_account",
         "user": form.get("username"),
