@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+    <title data-i18n="createTitle"></title>
+    <link rel="stylesheet" type="text/css" href="../common.css" />
+    <script src="../translate.js" defer></script>
+    <script src="../api.js" defer></script>
+    <script src="create-address.js" defer></script>
+    <style>
+        body {
+            background: #EEE;
+        }
+        button, input[type="submit"] {
+            padding: 3px 15px;
+        }
+        form div {
+            padding: 8px 0px;
+        }
+        #btn-address-manager {
+            float: right;
+        }
+    </style>
+</head>
+<body>
+    <form>
+        <div>
+            <label for="domain" data-i18n="createNewAddress"></label>
+            <input type="text" id="disposable-name" name="disposable_name" maxlength="32" required />
+            <span>@</span>
+            <select id="domain" name="domain"></select>
+        </div>
+
+        <div>
+            <label for="email" data-i18n="optionsRealAddress"></label>
+            <select id="email" name="email"></select>
+        </div>
+
+        <div>
+            <label for="forwards" data-i18n="optionsForwards"></label>
+            <select id="forwards" name="forwards">
+                <option value="1" data-i18n="#1"></option>
+                <option value="2" data-i18n="#2"></option>
+                <option value="3" data-i18n="#3"></option>
+                <option value="4" data-i18n="#4"></option>
+                <option value="5" data-i18n="#5"></option>
+                <option value="10" data-i18n="#10"></option>
+                <option value="100" data-i18n="#100*"></option>
+                <option value="1000" data-i18n="#1000*"></option>
+                <option value="-1" data-i18n="unlimited?*"></option>
+            </select>
+        </div>
+
+        <div>
+            <label for="expire" data-i18n="optionsLifespan"></label>
+            <select id="expire" name="expire">
+                <option value="1" data-i18n="1day#"></option>
+                <option value="2" data-i18n="ndays#?2"></option>
+                <option value="3" data-i18n="ndays#?3"></option>
+                <option value="4" data-i18n="ndays#?4"></option>
+                <option value="5" data-i18n="ndays#?5"></option>
+                <option value="6" data-i18n="ndays#?6"></option>
+                <option value="7" data-i18n="1week#"></option>
+                <option value="14" data-i18n="nweeks#?2"></option>
+                <option value="21" data-i18n="nweeks#?3"></option>
+                <option value="30" data-i18n="1month#"></option>
+                <option value="60" data-i18n="nmonths#?2?*"></option>
+                <option value="90" data-i18n="nmonths#?3?*"></option>
+                <option value="120" data-i18n="nmonths#?4?*"></option>
+                <option value="150" data-i18n="nmonths#?5?*"></option>
+                <option value="180" data-i18n="nmonths#?6?*"></option>
+                <option value="-1" data-i18n="never?*"></option>
+            </select>
+        </div>
+
+        <div>
+            <input type="checkbox" id="challenge" name="challenge" value="1" />
+            <label for="challenge" data-i18n="optionsChallengeResponse"></label>
+        </div>
+
+        <div>
+            <input type="checkbox" id="masq" name="masq" value="1" checked />
+            <label for="masq" data-i18n="optionsMasquerade"></label>
+        </div>
+
+        <div>
+            <input type="checkbox" id="notify" name="notify" value="1" checked />
+            <label for="notify" data-i18n="optionsNotifyExpired"></label>
+        </div>
+
+        <div>
+            <input type="checkbox" id="send" name="send" data-i18n="optionsSendURLTooltip|title" value="1" checked />
+            <label for="send" data-i18n="optionsSendURL"></label>
+        </div>
+
+        <div data-i18n="optionsPlusInfo"></div>
+
+        <div>
+            <input id="btn-create" type="submit" data-i18n="buttonCreateAddress|value" />
+            <button id="btn-close" type="button" data-i18n="buttonCancel"></button>
+            <button id="btn-address-manager" type="button" data-i18n="buttonAddressManager"></button>
+        </div>
+        <progress id="progress" style="display: none">Connecting…</progress>
+        <div id="error_msg" class="error" style="display: none"></div>
+    </form>
+</body>
+</html>

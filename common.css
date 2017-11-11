@@ -1,0 +1,27 @@
+form label:first-child {
+    display: inline-block;
+    width: 250px;
+}
+
+.success, .error {
+    margin: 10px 0px;
+    padding: 12px;
+    border-radius: .5em;
+}
+.success > p:first-child {
+    margin-top: 0;
+}
+
+.success > p:last-child {
+    margin-bottom: 0;
+}
+
+.success {
+    color: #371;
+    background-color: #EFC;
+}
+
+.error {
+    color: #B00;
+    background-color: #FCC;
+}

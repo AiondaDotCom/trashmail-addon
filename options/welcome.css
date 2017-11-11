@@ -1,0 +1,64 @@
+body {
+    background: #EEE;
+}
+
+button, input[type="submit"] {
+    padding: 3px 15px;
+}
+
+h1 {
+    font-size: 1.17em;
+}
+
+#welcome-panel {
+    padding-left: 400px;
+    padding-top: 30px;
+    background: url('../images/welcome@2x.png') no-repeat 46px 10px;
+    background-size: 298px 132px;
+}
+
+#welcome-panel button {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+#register-panel {
+    padding-left: 300px;
+    padding-top: 30px;
+    background: url('../images/register.png') no-repeat 30px 30px;
+}
+
+#login-panel {
+    padding-left: 300px;
+    padding-top: 30px;
+    background: url('../images/login.png') no-repeat 100px 20px;
+}
+
+#lost-password-panel {
+    padding-left: 300px;
+    padding-top: 30px;
+    background: url('../images/login.png') no-repeat 100px 20px;
+}
+
+form div {
+    padding: 8px 0px;
+}
+
+form label {
+    width: 190px !important;
+    font-weight: bold;
+}
+
+form div.buttons {
+    padding: 7px 0px;
+    text-align: right;
+}
+
+.important {
+    padding: 20px 20px 20px 72px;
+    margin-bottom: 15px;
+    border: 1px solid #008;
+    border-radius: 7px;
+    background: #eef url('../images/info-32.png') no-repeat 20px center;
+    color: #008;
+}

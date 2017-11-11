@@ -1,0 +1,118 @@
+{
+    "extensionName": {"message": "TrashMail.com: Wegwerf-E-Mail erstellen"},
+    "extensionDescription": {"message": "Wegwerfbare E-Mail-Adressen erstellen."},
+
+    "optionsSettingsTitle": {"message": "Einstellungen"},
+    "optionsCurrentAccount": {"message": "Jetziger Benutzer"},
+    "optionsForwards": {"message": "Anzahl an Weiterleitungen:"},
+    "optionsLifespan": {"message": "Gültigkeitsdauer:"},
+    "optionsSwitchLoginButton": {"message": "Benutzer wechseln"},
+    "optionsRealAddress": {"message": "Ihre E-Mail-Adresse:"},
+    "optionsAddressPrefix": {"message": "E-Mail-Adress-Präfix:"},
+    "optionsRandomLength": {"message": "Länge vom Zufalls-Decknamen:"},
+    "optionsDomain": {"message": ":"},
+    "optionsChallengeResponse": {"message": "CAPTCHA für eingehende Nachrichten"},
+    "optionsMasquerade": {"message": "Antwort-Maskierung"},
+    "optionsNotifyExpired": {"message": "Automatische Benachrichtigung, wenn Adresse abgelaufen ist"},
+    "optionsSendURL": {"message": "Sende URL an TrashMail Server"},
+    "optionsSendURLTooltip": {"message": "Sendet aktuelle URL zum TrashMail-Server beim erstellen einer wegwerfbaren E-Mail-Adresse."},
+    "optionsPlusInfo": {"message": "* benötigt TrashMail Plus"},
+
+    "optionsContactTitle": {"message": "Kontaktieren Sie uns"},
+    "optionsContact": {
+        "message": "Bitte senden Sie Fehler und Erweiterungswünsche an $MAILTO$",
+        "placeholders": {
+            "mailto": {"content": "<a href='mailto:support@trashmail.com?subject=TrashMail'>support@trashmail.com</a>"}
+        }
+    },
+
+    "welcomeTitle": {"message": "Willkommen zum TrashMail.com Add-On"},
+    "welcomeInfo": {"message": "Um wegwerfbare E-Mail-Adressen zu erstellen benötigen Sie eine TrashMail-Benutzerkennung. Mit dieser Benutzerkennung können Sie das Add-On auf mehreren Computern und Browsern nutzen."},
+    "welcomeLostPassword": {"message": "Passwort verloren?"},
+    "registerConfirm": {"message": "Passswort bestätigen"},
+    "registerEmail": {"message": "Echte E-Mail-Adresse"},
+    "registerNewsletter": {"message": "Mitteilungsschreiben"},
+    "registerSuccess": {
+        "message": "$PBEGIN$Eine E-Mail mit einem Bestätigungslink wurde an folgende E-Mail-Adresse geschickt: '$EMAIL$'.$PEND$$PBEGIN$Bitte bestätigen Sie den Link um die Registrierung abzuschliessen.$PEND$$PBEGIN$Sie können jetzt das Fenster schließen.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+    "lostPasswordInfo": {"message": "Wenn das Passwort verloren wurde, dann muss das Passwort erneut gesetzt werden. Bitte geben Sie Ihre echte E-Mail-Adresse ein die Ihrer Benutzerkennung zugewiesen ist."},
+    "lostPasswordSuccess": {
+        "message": "$PBEGIN$Ein Passwort-Reset Link wurde an Ihre E-Mail-Adresse '$EMAIL$' geschickt.$PEND$$PBEGIN$Bitte überprüfen Sie Ihr E-Mail-Postfach über einen erhaltenen Passwort-Reset Link.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+
+    "createTitle": {"message": "Wegwerfbare E-Mail Adresse erstellen"},
+    "createNewAddress": {"message": "Wegwerfbare E-Mail-Adresse:"},
+
+
+    "buttonCancel": {"message": "Abbruch"},
+    "buttonLogin": {"message": "Anmelden"},
+    "buttonToLogin": {"message": "Benutzerkennung und Passwort eingeben"},
+    "buttonSave": {"message": "Speichern"},
+    "buttonRegister": {"message": "Benutzerkennung registrieren"},
+    "buttonToRegister": {"message": "Neue Benutzerkennung registrieren"},
+    "buttonReset": {"message": "Standard-Einstellungen wiederherstellen"},
+    "buttonResetPassword": {"message": "Passwort zurücksetzen"},
+    "buttonAddressManager": {"message": "TrashMail-Address-Manager"},
+    "buttonAddressManagerShort": {"message": "Address Manager"},
+    "buttonSettings": {"message": "Einstellungen"},
+    "buttonCreateAddress": {"message": "Erstelle Adresse"},
+
+    "menuPasteAddress": {"message": "Wegwerfbare Adresse einfügen"},
+    "menuPastePrevious": {
+        "message": "'$EMAIL$' einfügen",
+        "placeholders": {
+            "email": {"content": "$1", "example": "foobar@trashmail.com"}
+        }
+    },
+
+    "username": {"message": "Benutzerkennung"},
+    "password": {"message": "Passwort"},
+    "email": {"message": "E-Mail"},
+    "saved": {"message": "Gespeichert"},
+    "undo": {"message": "Widerrufen"},
+
+    "1day": {"message": "1 Tag"},
+    "ndays": {
+        "message": "$NUM$ Tage",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "1week": {"message": "1 Woche"},
+    "nweeks": {
+        "message": "$NUM$ Wochen",
+        "placeholders": {
+            "num": {"content": "$1", "example": "2"}
+        }
+    },
+    "1month": {"message": "1 Monat"},
+    "nmonths": {
+        "message": "$NUM$ Monate$PLUS$",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"},
+            "plus": {"content": "$2", "example": "*"}
+        }
+    },
+    "never": {
+        "message": "nie$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    },
+    "unlimited": {
+        "message": "unendlich$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    }
+}
