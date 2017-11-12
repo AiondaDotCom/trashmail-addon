@@ -115,31 +115,31 @@ function createAddress(e) {
             }
         }
 
-        callAPI(data, json).then(function () {
-            let address = form.get("disposable_name") + "@" + form.get("domain");
+        return callAPI(data, json);
+    }).then(function () {
+        let address = form.get("disposable_name") + "@" + form.get("domain");
 
-            // Update locally stored previous addresses.
-            browser.storage.local.get("previous_addresses").then(function (storage) {
-                let addresses = storage["previous_addresses"];
-                let domain = (new URL(parent_url)).hostname;
-                if (domain in addresses)
-                    addresses[domain].push(address);
-                else
-                    addresses[domain] = [address];
+        // Update locally stored previous addresses.
+        browser.storage.local.get("previous_addresses").then(function (storage) {
+            let addresses = storage["previous_addresses"];
+            let domain = (new URL(parent_url)).hostname;
+            if (domain in addresses)
+                addresses[domain].push(address);
+            else
+                addresses[domain] = [address];
 
-                browser.storage.local.set({"previous_addresses": addresses});
-            });
-
-            // Paste address
-            return browser.tabs.sendMessage(tab_id, address);
-        }).then(function () {
-            window.close()
-        }).catch(function (msg) {
-            error.innerHTML = msg;
-            error.style.display = "block";
-            progress.style.display = "none";
-            create_button.disabled = false;
+            browser.storage.local.set({"previous_addresses": addresses});
         });
+
+        // Paste address
+        return browser.tabs.sendMessage(tab_id, address);
+    }).then(function () {
+        window.close()
+    }).catch(function (msg) {
+        error.innerHTML = msg;
+        error.style.display = "block";
+        progress.style.display = "none";
+        create_button.disabled = false;
     });
 }
 
