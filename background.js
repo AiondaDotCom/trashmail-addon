@@ -28,7 +28,7 @@ browser.menus.create({
 
 function openCreateAddress(parent_tab) {
     var options = {"url": "../create-address/create-address.html",
-                   "type": "popup", "width": 750, "height": 460};
+                   "type": "popup", "width": 750, "height": 490};
     browser.windows.create(options).then(function (window) {
         // (FF 56) Security policy blocks running code until tab has completed loading.
         browser.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
