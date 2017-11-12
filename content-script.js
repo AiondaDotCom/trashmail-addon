@@ -16,5 +16,6 @@ browser.runtime.onMessage.addListener(function (message) {
             window.getSelection().deleteFromDocument();
             window.getSelection().getRangeAt(0).insertNode(document.createTextNode(message));
         }
+        return true;  // Chrome throws an error if nothing is returned.
     }
 });

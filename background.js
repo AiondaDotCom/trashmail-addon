@@ -20,7 +20,7 @@ browser.runtime.onInstalled.addListener(function (details) {
     }
 });
 
-browser.menus.create({
+browser.contextMenus.create({
     id: "paste-email",
     contexts: ["editable"],
     title: browser.i18n.getMessage("menuPasteAddress")
@@ -40,7 +40,7 @@ function openCreateAddress(parent_tab) {
     });
 }
 
-browser.menus.onClicked.addListener(function(info, parent_tab) {
+browser.contextMenus.onClicked.addListener(function(info, parent_tab) {
     if (info.menuItemId == "paste-email") {
         openCreateAddress(parent_tab);
     } else {
@@ -86,7 +86,7 @@ browser.storage.onChanged.addListener(function (changes, area) {
 function _update_menus() {
     // Remove previous menu items.
     for (const id of previous_address_menus)
-        browser.menus.remove(id);
+        browser.contextMenus.remove(id);
     previous_address_menus = [];
 
     // Add any new ones for this domain.
@@ -94,7 +94,7 @@ function _update_menus() {
         return;
 
     for (const email of previous_addresses[current_domain]) {
-        let id = browser.menus.create({
+        let id = browser.contextMenus.create({
             id: email,
             contexts: ["editable"],
             title: browser.i18n.getMessage("menuPastePrevious", email)
