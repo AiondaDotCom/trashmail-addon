@@ -10,7 +10,7 @@
     "optionsRealAddress": {"message": "Votre adresse courriel réelle :"},
     "optionsAddressPrefix": {"message": "Préfixe de l'adresse courriel:"},
     "optionsRandomLength": {"message": "Longeuer du pseudonyme aléatoir:"},
-    "optionsDomain": {"message": ":"},
+    "optionsDomain": {"message": "Nom du domaine de l'adresse courriel:"},
     "optionsChallengeResponse": {"message": "CAPTCHA pour messages entrantes"},
     "optionsMasquerade": {"message": "Masquer la réponse"},
     "optionsNotifyExpired": {"message": "Alerter quand l'adresse sera éffacé"},
