@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+    <script src="../translate.js" defer></script>
+    <script src="../api.js" defer></script>
+    <script src="options.js" defer></script>
+    <style>
+        div {
+            padding-bottom: 10px;
+        }
+        #username {
+	        color: #46B;
+	        font-weight: bold;
+	        font-size: x-large;
+	        display: block;
+	        padding-bottom: 15px;
+        }
+        #btn-address-manager, #undo {
+            float: right;
+        }
+    </style>
+    <link rel="stylesheet" type="text/css" href="../common.css" />
+</head>
+<body>
+    <h1 data-i18n="optionsCurrentAccount"></h1>
+
+    <div>
+        <label id="username">…</label>
+        <button id="btn-switch-login" type="button" data-i18n="optionsSwitchLoginButton"></button>
+    </div>
+
+    <h1 data-i18n="optionsSettingsTitle"></h1>
+
+    <form>
+        <div id="options-default">
+            <div>
+                <label for="default_email" data-i18n="optionsRealAddress"></label>
+                <select id="default_email" name="default_email" disabled></select>
+            </div>
+
+            <div>
+                <label for="default_prefix" data-i18n="optionsAddressPrefix"></label>
+                <input id="default_prefix" type="text" name="default_prefix" inputmode="verbatim" maxlength="16" disabled />
+            </div>
+
+            <div>
+                <label for="default_random_length" data-i18n="optionsRandomLength"></label>
+                <input id="default_random_length" type="number" name="default_random_length" min="2" max="16" inputmode="verbatim" value="6" disabled />
+            </div>
+
+            <div>
+                <label for="default_domain" data-i18n="optionsDomain"></label>
+                <select id="default_domain" name="default_domain" disabled></select>
+            </div>
+
+            <div>
+                <label for="default_forwards" data-i18n="optionsForwards"></label>
+                <select id="default_forwards" name="default_forwards" disabled>
+                    <option value="1" data-i18n="#1"></option>
+                    <option value="2" data-i18n="#2"></option>
+                    <option value="3" data-i18n="#3"></option>
+                    <option value="4" data-i18n="#4"></option>
+                    <option value="5" data-i18n="#5"></option>
+                    <option value="10" data-i18n="#10"></option>
+                    <option value="100" data-i18n="#100*"></option>
+                    <option value="1000" data-i18n="#1000*"></option>
+                    <option value="-1" data-i18n="unlimited?*"></option>
+                </select>
+            </div>
+
+            <div>
+                <label for="default_expire" data-i18n="optionsLifespan"></label>
+                <select id="default_expire" name="default_expire" disabled>
+                    <option value="1" data-i18n="1day#"></option>
+                    <option value="2" data-i18n="ndays#?2"></option>
+                    <option value="3" data-i18n="ndays#?3"></option>
+                    <option value="4" data-i18n="ndays#?4"></option>
+                    <option value="5" data-i18n="ndays#?5"></option>
+                    <option value="6" data-i18n="ndays#?6"></option>
+                    <option value="7" data-i18n="1week#"></option>
+                    <option value="14" data-i18n="nweeks#?2"></option>
+                    <option value="21" data-i18n="nweeks#?3"></option>
+                    <option value="30" data-i18n="1month#"></option>
+                    <option value="60" data-i18n="nmonths#?2?*"></option>
+                    <option value="90" data-i18n="nmonths#?3?*"></option>
+                    <option value="120" data-i18n="nmonths#?4?*"></option>
+                    <option value="150" data-i18n="nmonths#?5?*"></option>
+                    <option value="180" data-i18n="nmonths#?6?*"></option>
+                    <option value="-1" data-i18n="never?*"></option>
+                </select>
+            </div>
+
+            <div data-i18n="optionsPlusInfo"></div>
+
+            <div>
+                <input type="checkbox" id="default_challenge" name="default_challenge" value="1" disabled />
+                <label for="default_challenge" data-i18n="optionsChallengeResponse"></label>
+            </div>
+
+            <div>
+                <input type="checkbox" id="default_masq" name="default_masq" value="1" checked disabled />
+                <label for="default_masq" data-i18n="optionsMasquerade"></label>
+            </div>
+
+            <div>
+                <input type="checkbox" id="default_notify" name="default_notify" value="1" checked disabled />
+                <label for="default_notify" data-i18n="optionsNotifyExpired"></label>
+            </div>
+
+            <div>
+                <input type="checkbox" id="default_send" name="default_send" data-i18n="optionsSendURLTooltip|title" value="1" checked disabled />
+                <label for="default_send" data-i18n="optionsSendURL"></label>
+            </div>
+        </div>
+
+        <div>
+            <input type="submit" data-i18n="buttonSave|value" />
+            <button id="btn-reset" type="button" data-i18n="buttonReset"></button>
+            <button id="btn-address-manager" type="button" data-i18n="buttonAddressManager"></button>
+            <progress id="progress" style="display: none">Connecting…</progress>
+        </div>
+
+        <div id="saved_msg" class="success" style="display: none">
+            <span data-i18n="saved"></span>
+            <a id="undo" href="#" data-i18n="undo"></a>
+        </div>
+
+        <div id="error_msg" class="error" style="display: none"></div>
+    </form>
+
+
+    <div>
+        <h1 data-i18n="optionsContactTitle"></h1>
+        <p data-i18n="optionsContact"></p>
+    </div>
+</body>
+</html>

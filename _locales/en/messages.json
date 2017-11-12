@@ -1,0 +1,118 @@
+{
+    "extensionName": {"message": "TrashMail.com: Create disposable address"},
+    "extensionDescription": {"message": "Create disposable email addresses."},
+
+    "optionsSettingsTitle": {"message": "Settings"},
+    "optionsCurrentAccount": {"message": "Current Account"},
+    "optionsForwards": {"message": "Number of forwards:"},
+    "optionsLifespan": {"message": "Life span:"},
+    "optionsSwitchLoginButton": {"message": "Switch login"},
+    "optionsRealAddress": {"message": "Your real email address:"},
+    "optionsAddressPrefix": {"message": "Email address prefix:"},
+    "optionsRandomLength": {"message": "Random alias length:"},
+    "optionsDomain": {"message": "Email address domain:"},
+    "optionsChallengeResponse": {"message": "Challenge-Response System"},
+    "optionsMasquerade": {"message": "Reply-Masquerading"},
+    "optionsNotifyExpired": {"message": "Notify me when my account has expired"},
+    "optionsSendURL": {"message": "Send URL to TrashMail server"},
+    "optionsSendURLTooltip": {"message": "Sends the current URL of your browser to the TrashMail server when requesting a new disposable email address"},
+    "optionsPlusInfo": {"message": "* requires TrashMail Plus"},
+
+    "optionsContactTitle": {"message": "Contact Us"},
+    "optionsContact": {
+        "message": "Send bug reports and feature requests to $MAILTO$",
+        "placeholders": {
+            "mailto": {"content": "<a href='mailto:support@trashmail.com?subject=TrashMail'>support@trashmail.com</a>"}
+        }
+    },
+
+    "welcomeTitle": {"message": "Welcome to the TrashMail.com Add-on"},
+    "welcomeInfo": {"message": "To create disposable email addresses, you will require a TrashMail account. With this account you will be able to use this add-on on multiple computers and browsers."},
+    "welcomeLostPassword": {"message": "Lost your password?"},
+    "registerConfirm": {"message": "Confirm Password"},
+    "registerEmail": {"message": "Real Email Address"},
+    "registerNewsletter": {"message": "Newsletter"},
+    "registerSuccess": {
+        "message": "$PBEGIN$An email with a confirmation link has been sent to your email address '$EMAIL$'.$PEND$$PBEGIN$Please confirm your address by clicking the link to complete the registration.$PEND$$PBEGIN$You may now close this window.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+    "lostPasswordInfo": {"message": "If your password has been lost, then a password reset will be necessary. Please enter your real email address which is associated with your username:"},
+    "lostPasswordSuccess": {
+        "message": "$PBEGIN$Password reset link sent to '$EMAIL$'.$PEND$$PBEGIN$Please check your inbox for the password reset link.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+
+    "createTitle": {"message": "Create disposable email address"},
+    "createNewAddress": {"message": "New forward email address:"},
+
+
+    "buttonCancel": {"message": "Cancel"},
+    "buttonLogin": {"message": "Login"},
+    "buttonToLogin": {"message": "Enter your username and password"},
+    "buttonSave": {"message": "Save"},
+    "buttonRegister": {"message": "Register Account"},
+    "buttonToRegister": {"message": "Register a new account"},
+    "buttonReset": {"message": "Reset To Default Settings"},
+    "buttonResetPassword": {"message": "Reset password"},
+    "buttonAddressManager": {"message": "TrashMail Address Manager"},
+    "buttonAddressManagerShort": {"message": "Address Manager"},
+    "buttonSettings": {"message": "Settings"},
+    "buttonCreateAddress": {"message": "Create address"},
+
+    "menuPasteAddress": {"message": "Paste disposable address"},
+    "menuPastePrevious": {
+        "message": "Paste '$EMAIL$'",
+        "placeholders": {
+            "email": {"content": "$1", "example": "foobar@trashmail.com"}
+        }
+    },
+
+    "username": {"message": "Username"},
+    "password": {"message": "Password"},
+    "email": {"message": "Email"},
+    "saved": {"message": "Saved"},
+    "undo": {"message": "Undo"},
+
+    "1day": {"message": "1 day"},
+    "ndays": {
+        "message": "$NUM$ days",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "1week": {"message": "1 week"},
+    "nweeks": {
+        "message": "$NUM$ weeks",
+        "placeholders": {
+            "num": {"content": "$1", "example": "2"}
+        }
+    },
+    "1month": {"message": "1 month"},
+    "nmonths": {
+        "message": "$NUM$ months$PLUS$",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"},
+            "plus": {"content": "$2", "example": "*"}
+        }
+    },
+    "never": {
+        "message": "never$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    },
+    "unlimited": {
+        "message": "unlimited$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    }
+}

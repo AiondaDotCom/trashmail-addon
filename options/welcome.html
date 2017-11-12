@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title data-i18n="welcomeTitle"></title>
+    <link rel="stylesheet" type="text/css" href="welcome.css" />
+    <link rel="stylesheet" type="text/css" href="../common.css" />
+    <script src="../translate.js" defer></script>
+    <script src="../api.js" defer></script>
+    <script src="welcome.js" defer></script>
+</head>
+<body>
+    <!-- Welcome Panel -->
+    <div id="welcome-panel" class="panel">
+        <h1 data-i18n="welcomeTitle"></h1>
+
+        <p data-i18n="welcomeInfo"></p>
+
+        <button id="btn-show-register" data-i18n="buttonToRegister"></button>
+        <button id="btn-show-login" data-i18n="buttonToLogin"></button>
+    </div>
+
+    <!-- Register Panel -->
+    <div id="register-panel" class="panel" style="display: none">
+        <form id="form-register">
+            <div>
+                <label for="register-username" data-i18n="username"></label>
+                <input id="register-username" type="text" name="username" autocomplete="username" inputmode="verbatim" required />
+            </div>
+
+            <div>
+                <label for="register-password" data-i18n="password"></label>
+                <input id="register-password" type="password" name="password" autocomplete="new-password" minlength="6" required />
+            </div>
+
+            <div>
+                <label for="register-confirm" data-i18n="registerConfirm"></label>
+                <input id="register-confirm" type="password" name="confirm" autocomplete="new-password" minlength="6" required />
+            </div>
+
+            <div>
+                <label for="register-email" data-i18n="registerEmail"></label>
+                <input id="register-email" type="email" name="email" autocomplete="email" required />
+            </div>
+
+            <div>
+                <label for="register-newsletter" data-i18n="registerNewsletter"></label>
+                <input id="register-newsletter" type="checkbox" name="newsletter" value="1" checked />
+            </div>
+
+            <div id="register-error" class="error" style="display: none"></div>
+            <div class="buttons">
+                <progress id="progress-register" style="display: none">Registering…</progress>
+                <input type="submit" id="btn-register" data-i18n="buttonRegister|value" />
+                <button type="button" id="btn-register-cancel" data-i18n="buttonCancel"></button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Login panel -->
+    <div id="login-panel" class="panel" style="display: none">
+        <form id="form-login">
+            <div>
+                <label for="login-username" data-i18n="username"></label>
+                <input id="login-username" type="text" name="username" autocomplete="username" inputmode="verbatim" required />
+            </div>
+
+            <div>
+                <label for="login-password" data-i18n="password"></label>
+                <input id="login-password" type="password" name="password" autocomplete="current-password" minlength="6" required />
+            </div>
+
+            <a id="lost-password" href="#" data-i18n="welcomeLostPassword"></a>
+
+            <div id="login-error" class="error" style="display: none"></div>
+            <div class="buttons">
+                <progress id="progress-login" style="display: none">Loading…</progress>
+                <input type="submit" id="btn-login" data-i18n="buttonLogin|value" />
+                <button type="button" id="btn-login-cancel" data-i18n="buttonCancel"></button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Lost Password Panel -->
+    <div id="lost-password-panel" class="panel" style="display: none">
+        <div class="important" data-i18n="lostPasswordInfo"></div>
+        <form id="form-lost">
+            <div>
+                <label for="lost-username" data-i18n="username"></label>
+                <input id="lost-username" type="text" name="username" autocomplete="username" inputmode="verbatim" required />
+            </div>
+
+            <div>
+                <label for="lost-email" data-i18n="email"></label>
+                <input id="lost-email" type="email" name="email" autocomplete="email" required />
+            </div>
+
+            <div id="lost-error" class="error" style="display: none"></div>
+            <div class="buttons">
+                <progress id="progress-lost" style="display: none">Loading…</progress>
+                <input type="submit" id="btn-reset-password" data-i18n="buttonResetPassword|value" />
+                <button type="button" id="btn-lost-cancel" data-i18n="buttonCancel"></button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,118 @@
+{
+    "extensionName": {"message": "TrashMail.com: Créez une adresse jetable"},
+    "extensionDescription": {"message": "Créer des adresses courriel jetable."},
+
+    "optionsSettingsTitle": {"message": "Paramètres"},
+    "optionsCurrentAccount": {"message": "Compte courrant"},
+    "optionsForwards": {"message": "Nombre de transferts :"},
+    "optionsLifespan": {"message": "Durée de validité :"},
+    "optionsSwitchLoginButton": {"message": "Changer d'utilisateur"},
+    "optionsRealAddress": {"message": "Votre adresse courriel réelle :"},
+    "optionsAddressPrefix": {"message": "Préfixe de l'adresse courriel:"},
+    "optionsRandomLength": {"message": "Longeuer du pseudonyme aléatoir:"},
+    "optionsDomain": {"message": "Nom du domaine de l'adresse courriel:"},
+    "optionsChallengeResponse": {"message": "CAPTCHA pour messages entrantes"},
+    "optionsMasquerade": {"message": "Masquer la réponse"},
+    "optionsNotifyExpired": {"message": "Alerter quand l'adresse sera éffacé"},
+    "optionsSendURL": {"message": "Envoyer l'URL à TrashMail"},
+    "optionsSendURLTooltip": {"message": "Envoi l'URL de votre navigateur au serveur TrashMail quand une adresse jetable est crée."},
+    "optionsPlusInfo": {"message": "* nécessite TrashMail Plus"},
+
+    "optionsContactTitle": {"message": "Contactez-nous"},
+    "optionsContact": {
+        "message": "Envoyez s.v.p. les erreurs et des voeux pour des nouvelles fonctionalitées à $MAILTO$",
+        "placeholders": {
+            "mailto": {"content": "<a href='mailto:support@trashmail.com?subject=TrashMail'>support@trashmail.com</a>"}
+        }
+    },
+
+    "welcomeTitle": {"message": "Bienvenue à l'extension de TrashMail.com"},
+    "welcomeInfo": {"message": "Pour créer des adresses jetables vous avez besoin d'un compte TrashMail. Avec ce compte vous pouvez utiliser cette extension sur plusieurs ordinateurs et navigateurs."},
+    "welcomeLostPassword": {"message": "Mot de passe perdu?"},
+    "registerConfirm": {"message": "Confirmez le mot de passe"},
+    "registerEmail": {"message": "Adresse courielle réele"},
+    "registerNewsletter": {"message": "Lettres d'informations"},
+    "registerSuccess": {
+        "message": "$PBEGIN$Un courielle avec un lien d'activation a été envoyé à votre adresse courielle '$EMAIL$'.$PEND$$PBEGIN$Veuillez confirmer ce lien pour completer l'enregistrement.$PEND$$PBEGIN$Vous pouvez maintenant fermer cette fenêtre.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+    "lostPasswordInfo": {"message": "Si le mot de passe a été perdu, il est nécessaire de régénérer un nouveau mot de passe. Veuillez-svp entrer l'adresse courielle réele associé avec votre nom d'utilisateur."},
+    "lostPasswordSuccess": {
+        "message": "$PBEGIN$Un lien pour régénérer un nouveau mot de passe vous a été envoyé à '$EMAIL$'.$PEND$$PBEGIN$Veuillez vérifier svp l'entrée de votre boit au lettre.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+
+    "createTitle": {"message": "Créez des redirections courriels."},
+    "createNewAddress": {"message": "Adresse courriel jetable :"},
+
+
+    "buttonCancel": {"message": "Abandonner"},
+    "buttonLogin": {"message": "Loguer"},
+    "buttonToLogin": {"message": "Entrez votre nom de login et mot de passe"},
+    "buttonSave": {"message": "Sauvegarder"},
+    "buttonRegister": {"message": "Enregistrer un nouveau compte"},
+    "buttonToRegister": {"message": "Enregistrer un nouveau compte"},
+    "buttonReset": {"message": "Réinitialiser les paramètres par défaut"},
+    "buttonResetPassword": {"message": "Nouveau mot de passe"},
+    "buttonAddressManager": {"message": "Manager d'adresses TrashMail"},
+    "buttonAddressManagerShort": {"message": "Manager d'adresses"},
+    "buttonSettings": {"message": "Paramètres"},
+    "buttonCreateAddress": {"message": "Créer d'adresse"},
+
+    "menuPasteAddress": {"message": "Coller une adresse jetable"},
+    "menuPastePrevious": {
+        "message": "Coller '$EMAIL$'",
+        "placeholders": {
+            "email": {"content": "$1", "example": "foobar@trashmail.com"}
+        }
+    },
+
+    "username": {"message": "Nom d'utilisateur"},
+    "password": {"message": "Mot de passe"},
+    "email": {"message": "Adresse courielle"},
+    "saved": {"message": "Sauvegardée"},
+    "undo": {"message": "Annuler"},
+
+    "1day": {"message": "1 jour"},
+    "ndays": {
+        "message": "$NUM$ jours",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "1week": {"message": "1 semaine"},
+    "nweeks": {
+        "message": "$NUM$ semaines",
+        "placeholders": {
+            "num": {"content": "$1", "example": "2"}
+        }
+    },
+    "1month": {"message": "1 mois"},
+    "nmonths": {
+        "message": "$NUM$ mois$PLUS$",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"},
+            "plus": {"content": "$2", "example": "*"}
+        }
+    },
+    "never": {
+        "message": "jamais$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    },
+    "unlimited": {
+        "message": "illimité$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    }
+}

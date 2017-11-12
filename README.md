@@ -1,3 +1,5 @@
-# trashmail-addon
-TrashMail.com Browser Add-Ons using Web extension technology.
-Currently Firefox and Chrome are supported.
+# TrashMail Add-Ons
+TrashMail.com browser add-ons using web extension technology.
+
+### Currently supported browsers
+- Firefox Quantum

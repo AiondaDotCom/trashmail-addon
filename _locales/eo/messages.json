@@ -1,0 +1,118 @@
+{
+    "extensionName": {"message": "TrashMail.com: Krei forĵeteblajn retadresojn."},
+    "extensionDescription": {"message": "Krei forĵeteblajn retpoŝtajn adresojn."},
+
+    "optionsSettingsTitle": {"message": "Agordoj"},
+    "optionsCurrentAccount": {"message": "Nuntempa Konto"},
+    "optionsForwards": {"message": "Numeroj de plusendoj:"},
+    "optionsLifespan": {"message": "Vivodaŭro:"},
+    "optionsSwitchLoginButton": {"message": "Ŝangi konton"},
+    "optionsRealAddress": {"message": "Via efektiva retadreso:"},
+    "optionsAddressPrefix": {"message": "Retpoŝtadresa prefikso:"},
+    "optionsRandomLength": {"message": "Hazarda alinoma longo:"},
+    "optionsDomain": {"message": "Retpoŝtadresa domajno:"},
+    "optionsChallengeResponse": {"message": "Defio-Responda Sistemo"},
+    "optionsMasquerade": {"message": "Respondo-Maskado"},
+    "optionsNotifyExpired": {"message": "Sciigi min kiam mia konto senvalidiĝas"},
+    "optionsSendURL": {"message": "Sendu URL-on al TrashMail servilo"},
+    "optionsSendURLTooltip": {"message": "Sendas la nunan URL-on de via retumilo dum peto de nova forĵetebla retadreso"},
+    "optionsPlusInfo": {"message": "* bezonas TrashMail Pluso"},
+
+    "optionsContactTitle": {"message": "Kontakti Nin"},
+    "optionsContact": {
+        "message": "Sendu cimajn raportojn kaj funkciajn petojn al $MAILTO$",
+        "placeholders": {
+            "mailto": {"content": "<a href='mailto:support@trashmail.com?subject=TrashMail'>support@trashmail.com</a>"}
+        }
+    },
+
+    "welcomeTitle": {"message": "Bonvenon al la TrashMail.com aldonaĵo"},
+    "welcomeInfo": {"message": "Por krei forĵeteblajn retadresojn, vi bezonas TrashMail konton. Kun ĉi tiu konto vi povos uzi ĉi tiun aldonaĵon sur multaj komputiloj kaj retumiloj."},
+    "welcomeLostPassword": {"message": "Perdis vian pasvorton?"},
+    "registerConfirm": {"message": "Konfirmi Pasvorton"},
+    "registerEmail": {"message": "Efektiva Retadreso"},
+    "registerNewsletter": {"message": "Informilo"},
+    "registerSuccess": {
+        "message": "$PBEGIN$Retpoŝto kun konfirma ligilo estas sendita al via retpoŝtadreso '$EMAIL$'.$PEND$$PBEGIN$Bonvolu konfirmi vian adreson per klako de la ligilo por fini la registradon.$PEND$$PBEGIN$Vi nun rajtas fermi ĉi tiun fenestron.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+    "lostPasswordInfo": {"message": "Se via pasvorto estas perdita, tiam restarigo de pasvorto estas bezonata. Bonvolu entajpi vian efetivan retpoŝtadreson kiu estas ligita al via uzantonomo:"},
+    "lostPasswordSuccess": {
+        "message": "$PBEGIN$Sendis pasvorto-restarigan ligilon al '$email$'.$PEND$$PBEGIN$Bonvolu kontroli vian enirkesto por la pasvorto-restariga ligilo.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+
+    "createTitle": {"message": "Krei forĵeteblan retadreson"},
+    "createNewAddress": {"message": "Nova plusenda retpoŝtadreso:"},
+
+
+    "buttonCancel": {"message": "Nuligi"},
+    "buttonLogin": {"message": "Ensaluti"},
+    "buttonToLogin": {"message": "Entajpi vian uzantonomon kaj pasvorton"},
+    "buttonSave": {"message": "Konservi"},
+    "buttonRegister": {"message": "Registri Konton"},
+    "buttonToRegister": {"message": "Registri novan konton"},
+    "buttonReset": {"message": "Remeti la normajn agordojn"},
+    "buttonResetPassword": {"message": "Restarigi pasvorton"},
+    "buttonAddressManager": {"message": "TrashMail Adresa Administrilo"},
+    "buttonAddressManagerShort": {"message": "Adresa Administrilo"},
+    "buttonSettings": {"message": "Agordoj"},
+    "buttonCreateAddress": {"message": "Krei adreson"},
+
+    "menuPasteAddress": {"message": "Alglui forĵeteblan adreson"},
+    "menuPastePrevious": {
+        "message": "Alglui '$EMAIL$'",
+        "placeholders": {
+            "email": {"content": "$1", "example": "foobar@trashmail.com"}
+        }
+    },
+
+    "username": {"message": "Uzantonomo"},
+    "password": {"message": "Pasvorto"},
+    "email": {"message": "Retpoŝtadreso"},
+    "saved": {"message": "Konservita"},
+    "undo": {"message": "Malfari"},
+
+    "1day": {"message": "1 tago"},
+    "ndays": {
+        "message": "$NUM$ tagoj",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "1week": {"message": "1 semajno"},
+    "nweeks": {
+        "message": "$NUM$ semajnoj",
+        "placeholders": {
+            "num": {"content": "$1", "example": "2"}
+        }
+    },
+    "1month": {"message": "1 monato"},
+    "nmonths": {
+        "message": "$NUM$ monatoj$PLUS$",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"},
+            "plus": {"content": "$2", "example": "*"}
+        }
+    },
+    "never": {
+        "message": "neniam$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    },
+    "unlimited": {
+        "message": "mallimigita$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    }
+}
