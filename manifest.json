@@ -9,7 +9,7 @@
 
     "applications": {
         "gecko": {
-            "id": "trashmailaddon@trashmail.com",
+            "id": "spam@trashmail.net",
             "strict_min_version": "56.0"
         }
     },
