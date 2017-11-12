@@ -10,7 +10,7 @@
     "optionsRealAddress": {"message": "Ihre E-Mail-Adresse:"},
     "optionsAddressPrefix": {"message": "E-Mail-Adress-Präfix:"},
     "optionsRandomLength": {"message": "Länge vom Zufalls-Decknamen:"},
-    "optionsDomain": {"message": ":"},
+    "optionsDomain": {"message": "E-Mail-Adress-Domainname:"},
     "optionsChallengeResponse": {"message": "CAPTCHA für eingehende Nachrichten"},
     "optionsMasquerade": {"message": "Antwort-Maskierung"},
     "optionsNotifyExpired": {"message": "Automatische Benachrichtigung, wenn Adresse abgelaufen ist"},
@@ -63,7 +63,7 @@
     "buttonReset": {"message": "Standard-Einstellungen wiederherstellen"},
     "buttonResetPassword": {"message": "Passwort zurücksetzen"},
     "buttonAddressManager": {"message": "TrashMail-Address-Manager"},
-    "buttonAddressManagerShort": {"message": "Address Manager"},
+    "buttonAddressManagerShort": {"message": "Address-Manager"},
     "buttonSettings": {"message": "Einstellungen"},
     "buttonCreateAddress": {"message": "Erstelle Adresse"},
 
