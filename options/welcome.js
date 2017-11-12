@@ -36,7 +36,8 @@ function register(e) {
 
     callAPI(data).then(function () {
         browser.storage.local.set({
-            "real_emails": [form.get("email")]
+            "real_emails": [form.get("email")],
+            "previous_addresses": {}  // Reset previous addresses for new account
         });
         browser.storage.sync.set({
             "username": form.get("username"),
