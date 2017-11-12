@@ -91,13 +91,13 @@ function createAddress(e) {
     var create_button = document.getElementById("btn-create");
     var progress = document.getElementById("progress");
     var error = document.getElementById("error_msg");
+    var form = new FormData(e.target);
 
     create_button.disabled = true;
     progress.style.display = "block";
     error.style.display = "none";
 
     login_details.then(function (login) {
-        var form = new FormData(e.target);
         var data = {
             "cmd": "create_dea",
             "session_id": login["session_id"]
