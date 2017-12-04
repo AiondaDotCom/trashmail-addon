@@ -15,7 +15,9 @@ function callAPI(data, json=null) {
 
         throw new Error(response.status + " " + response.statusText + " Error occurred.");
     }).then(function (response) {
-        let msg = json ? response["message"] : response["msg"];
+        let msg = response["message"];
+        if (msg === undefined)
+            msg = response["msg"];
         if (msg === undefined)
             msg = response["data"];
 
