@@ -1,2 +1,5 @@
-# trashmail-firefox-addon
-TrashMail.com Firefox Add-On ready for Firefox Quantum.
+# TrashMail Add-Ons
+TrashMail.com browser add-ons using WebExtensions technology.
+
+### Current supported browsers
+- Firefox Quantum

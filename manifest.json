@@ -5,11 +5,11 @@
     "homepage_url": "https://trashmail.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
-    "version": "4.0.0",
+    "version": "4.0.3",
 
     "applications": {
         "gecko": {
-            "id": "trashmailaddon@trashmail.com",
+            "id": "spam@trashmail.net",
             "strict_min_version": "56.0"
         }
     },
@@ -56,6 +56,7 @@
     },
     "content_scripts": [
         {
+            "all_frames": true,
             "matches": ["<all_urls>"],
             "js": ["browser-polyfill.js", "content-script.js"],
             "run_at": "document_start"
