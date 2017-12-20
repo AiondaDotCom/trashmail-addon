@@ -45,7 +45,8 @@ browser.menus.onClicked.addListener(function(info, parent_tab) {
         openCreateAddress(parent_tab);
     } else {
         // Paste previous email.
-        browser.tabs.sendMessage(parent_tab.id, info.menuItemId)
+        browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
+                                 {"frameId": info.frameId});
     }
 });
 
