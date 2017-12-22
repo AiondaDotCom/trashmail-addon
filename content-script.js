@@ -13,8 +13,13 @@ browser.runtime.onMessage.addListener(function (message) {
             e.value = e.value.substr(0, e.selectionStart) + message + e.value.substr(e.selectionEnd);
         } else {
             // editableContent elements
-            window.getSelection().deleteFromDocument();
-            window.getSelection().getRangeAt(0).insertNode(document.createTextNode(message));
+            try {
+                window.getSelection().deleteFromDocument();
+                window.getSelection().getRangeAt(0).insertNode(document.createTextNode(message));
+            } catch (e) {
+                // Ignore errors. There seems to be errors occurring due to
+                // receiving the same message 4 times from create-address.js.
+            }
         }
         return true;  // Chrome throws an error if nothing is returned.
     }
