@@ -134,7 +134,9 @@ function createAddress(e) {
         // Paste address
         return browser.tabs.sendMessage(tab_id, address);
     }).then(function () {
-        window.close()
+        return browser.windows.getCurrent();
+    }).then(function (window) {
+        browser.windows.remove(window.id);
     }).catch(function (msg) {
         error.innerHTML = msg;
         error.style.display = "block";
