@@ -16,6 +16,14 @@ var p2 = browser.storage.local.get(["domains", "real_emails"]);
 browser.runtime.onMessage.addListener(function (message) {
     if (Array.isArray(message))
         [parent_url, parent_id, tab_id] = message;
+
+    // Close window if parent tab is closed.
+    browser.tabs.onRemoved.addListener(function (id) {
+        if (id == tab_id)
+            browser.windows.getCurrent().then(function (window) {
+                browser.windows.remove(window.id);
+            });
+    });
 });
 
 var login_details = Promise.all([p1, p2]).then(function (result) {
