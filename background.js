@@ -1,12 +1,14 @@
 "use strict";
 
+Raven.config('https://f70e8fb95ab7485884ca24a4623dd57d@sentry.io/265192').install();
+
 // Open welcome screen when installing addon.
 browser.runtime.onInstalled.addListener(function (details) {
     if (details.reason == "install" || details.reason == "update") {
         browser.storage.sync.get("username").then(function (storage) {
             if (!("username" in storage) || !storage["username"]) {
                 var options = {"url": "options/welcome.html",
-                               "width": 750, "height": 360, "type": "popup"};
+                    "width": 750, "height": 360, "type": "popup"};
                 browser.windows.create(options).then(function (welcomeWindow) {
                     browser.windows.onRemoved.addListener(function handler(id) {
                         if (id == welcomeWindow.id) {
@@ -28,7 +30,7 @@ browser.menus.create({
 
 function openCreateAddress(parent_tab) {
     var options = {"url": "../create-address/create-address.html",
-                   "type": "popup", "width": 750, "height": 490};
+        "type": "popup", "width": 750, "height": 490};
     browser.windows.create(options).then(function (window) {
         // (FF 56) Security policy blocks running code until tab has completed loading.
         browser.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
@@ -46,7 +48,7 @@ browser.menus.onClicked.addListener(function(info, parent_tab) {
     } else {
         // Paste previous email.
         browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
-                                 {"frameId": info.frameId});
+            {"frameId": info.frameId});
     }
 });
 
