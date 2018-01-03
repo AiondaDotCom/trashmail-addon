@@ -3,7 +3,7 @@
 Raven.config('https://f70e8fb95ab7485884ca24a4623dd57d@sentry.io/265192').install();
 
 Raven.context(function () {
-// Open welcome screen on switch login button.
+    // Open welcome screen on switch login button.
     document.getElementById("btn-switch-login").onclick = function () {
         var options = {"url": "welcome.html", "width": 750, "height": 420, "type": "popup"};
         browser.windows.create(options).then(function (welcomeWindow) {
@@ -67,7 +67,7 @@ Raven.context(function () {
         Promise.all([p1, p2]).then(setCurrentOptions);
 
         // Display the saved message after a page reload.
-        if (sessionStorage.getItem("reset")) {
+        if (sessionStorage !== null && sessionStorage.getItem("reset")) {
             var msg = document.getElementById("saved_msg");
             msg.style.display = "block";
             sessionStorage.removeItem("reset");
@@ -98,11 +98,16 @@ Raven.context(function () {
 
         getter.then(function (storage) {
             // Save current options, in case user wants to undo this action.
-            sessionStorage.setItem("undo", JSON.stringify(storage));
+            if (sessionStorage !== null)
+                sessionStorage.setItem("undo", JSON.stringify(storage));
 
             browser.storage.sync.set(form_obj).then(function () {
                 var msg = document.getElementById("saved_msg");
                 msg.style.display = "block";
+
+                // If no sessionStorage, we are unable to undo, so remove option.
+                if (sessionStorage === null)
+                    msg.querySelector("#undo").remove();
             });
         });
     }
@@ -122,11 +127,13 @@ Raven.context(function () {
             "default_challenge", "default_masq", "default_notify", "default_send",
             "default_domain", "default_prefix", "default_random_length"];
         browser.storage.sync.get().then(function (storage) {
-            // Save current options, in case user wants to undo this action.
-            sessionStorage.setItem("undo", JSON.stringify(storage));
+            if (sessionStorage !== null) {
+                // Save current options, in case user wants to undo this action.
+                sessionStorage.setItem("undo", JSON.stringify(storage));
 
-            // When page is reloaded, restoreOptions() will display success/undo.
-            sessionStorage.setItem("reset", true);
+                // When page is reloaded, restoreOptions() will display success/undo.
+                sessionStorage.setItem("reset", true);
+            }
             browser.storage.sync.remove(options).then(function () {
                 window.location.reload(true);
             });
