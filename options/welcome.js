@@ -94,40 +94,49 @@ Raven.context(function () {
                 "password": data["fe-login-pass"]
             });
 
-            Promise.all([p1, p2]).then(function () {
-                var data = {
-                    "cmd": "read_dea",
-                    "session_id": login_details["session_id"]
-                };
+            return Promise.all([login_details, p1, p2]);
+        }).then(function (values) {
+            let login_details = values[0];
+            var data = {
+                "cmd": "read_dea",
+                "session_id": login_details["session_id"]
+            };
 
-                return callAPI(data);
-            }).then(function (addresses) {
-                // Update local storage of existing disposable addresses.
-                var current_prev_addresses = {};
-                for (const address of addresses) {
-                    if (address["website"]) {
-                        try {
-                            var domain = (new URL(address["website"])).hostname;
-                        } catch (e) {
-                            if (e instanceof TypeError)
-                                continue;  // Not a valid URL.
-                            throw e;
-                        }
-                        let email = address["disposable_name"] + "@" + address["disposable_domain"];
+            // Load public suffix data from file.
+            var suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
+                if (response.ok)
+                    return response.json();
+            });
 
-                        if (domain in current_prev_addresses)
-                            current_prev_addresses[domain].push(email);
-                        else
-                            current_prev_addresses[domain] = [email];
+            return Promise.all([callAPI(data), suffixes]);
+        }).then(function (values) {
+            var [addresses, [rules, exceptions]] = values;
+            // Update local storage of existing disposable addresses.
+            var current_prev_addresses = {};
+            for (const address of addresses) {
+                if (address["website"]) {
+                    try {
+                        var domain = new URL(address["website"]);
+                    } catch (e) {
+                        if (e instanceof TypeError)
+                            continue;  // Not a valid URL.
+                        throw e;
                     }
-                }
+                    domain = org_domain(domain, rules, exceptions);
+                    let email = address["disposable_name"] + "@" + address["disposable_domain"];
 
-                browser.storage.local.set({"previous_addresses": current_prev_addresses}).then(function () {
-                    browser.windows.getCurrent().then(function (w) {
-                        browser.windows.remove(w.id);
-                    });
+                    if (domain in current_prev_addresses)
+                        current_prev_addresses[domain].push(email);
+                    else
+                        current_prev_addresses[domain] = [email];
+                }
+            }
+
+            browser.storage.local.set({"previous_addresses": current_prev_addresses}).then(function () {
+                browser.windows.getCurrent().then(function (w) {
+                    browser.windows.remove(w.id);
                 });
-            })
+            });
         }).catch(function (error) {
             login_error.textContent = error;
             login_error.style.display = "block";

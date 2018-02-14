@@ -15,7 +15,7 @@ Raven.context(function () {
     var p1 = browser.storage.sync.get();
     var p2 = browser.storage.local.get(["domains", "real_emails"]);
 
-// Set variables passed from background script.
+    // Set variables passed from background script.
     browser.runtime.onMessage.addListener(function (message) {
         if (Array.isArray(message))
             [parent_url, parent_id, tab_id] = message;
@@ -123,17 +123,22 @@ Raven.context(function () {
                 "masq": form.get("masq") || false,
                 "notify": form.get("notify") || false,
                 "website": form.get("send") ? parent_url : ""
-            }
-            }
+            }}
 
             return callAPI(data, json);
         }).then(function () {
             let address = form.get("disposable_name") + "@" + form.get("domain");
 
             // Update locally stored previous addresses.
-            browser.storage.local.get("previous_addresses").then(function (storage) {
+            let suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
+                if (response.ok)
+                    return response.json();
+            });
+            let storage = browser.storage.local.get("previous_addresses");
+            Promise.all([storage, suffixes]).then(function (values) {
+                let [storage, [rules, exceptions]] = values;
                 let addresses = storage["previous_addresses"];
-                let domain = (new URL(parent_url)).hostname;
+                let domain = org_domain(new URL(parent_url), rules, exceptions);
                 if (domain in addresses)
                     addresses[domain].push(address);
                 else
