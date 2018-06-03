@@ -81,19 +81,32 @@ browser.storage.local.get("previous_addresses").then(function (addresses) {
 browser.storage.onChanged.addListener(function (changes, area) {
     if ("previous_addresses" in changes) {
         previous_addresses = changes["previous_addresses"].newValue;
-        _update_menus();
+        current_domain = "*invalid*";  // Force context menu to reload.
     }
 });
 
-/** Update the currently displayed previous addresses context menu items. */
-function _update_menus() {
+// Update the currently displayed previous addresses context menu items.
+browser.menus.onShown.addListener(function (info, tab) {
+    if (!info.editable)
+        return;
+
+    let domain = (new URL(tab.url)).hostname;
+
+    if (domain == current_domain)
+        return;
+
+    current_domain = domain;
+
     // Remove previous menu items.
     for (const id of previous_address_menus)
         browser.menus.remove(id);
     previous_address_menus = [];
 
-    if (!current_domain)
+    if (!current_domain) {
+        // Refresh in case any menu items have been removed.
+        browser.menus.refresh();
         return;
+    }
 
     // Add any new ones for this domain.
     let addresses = [];
@@ -115,40 +128,8 @@ function _update_menus() {
         });
         previous_address_menus.push(id);
     }
-}
 
-/** Check for current domain and update previous address menus if needed. */
-function update_previous_address_menu() {
-    browser.tabs.query({
-        currentWindow: true,
-        active: true
-    }).then(function (tabs) {
-        return browser.tabs.sendMessage(tabs[0].id, "get_domain");
-    }).catch(function () {
-        // e.g. when on non-content tabs, so no content-script loaded.
-        current_domain = null;
-        _update_menus();
-    }).then(function (domain) {
-        if (domain != current_domain) {
-            current_domain = domain;
-            _update_menus();
-        }
-    });
-}
-
-// Update menu when URL is changed.
-browser.tabs.onUpdated.addListener(function (tabId, changeInfo, tabInfo) {
-    if (changeInfo.status == "loading")
-        update_previous_address_menu();
-});
-
-// Update menu when focused tab is changed.
-browser.tabs.onActivated.addListener(update_previous_address_menu);
-
-// Update menu when focused window is changed.
-browser.windows.onFocusChanged.addListener(function (windowId) {
-    if (windowId >= 0)
-        update_previous_address_menu();
+    browser.menus.refresh();
 });
 
 
