@@ -9,7 +9,7 @@
     "optionsSwitchLoginButton": {"message": "Changer d'utilisateur"},
     "optionsRealAddress": {"message": "Votre adresse courriel réelle :"},
     "optionsAddressPrefix": {"message": "Préfixe de l'adresse courriel:"},
-    "optionsRandomLength": {"message": "Longeuer du pseudonyme aléatoir:"},
+    "optionsRandomLength": {"message": "Longueur du pseudonyme aléatoir:"},
     "optionsDomain": {"message": "Nom du domaine de l'adresse courriel:"},
     "optionsChallengeResponse": {"message": "CAPTCHA pour messages entrantes"},
     "optionsMasquerade": {"message": "Masquer la réponse"},
