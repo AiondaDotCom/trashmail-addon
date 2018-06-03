@@ -1,5 +1,7 @@
 "use strict";
 
+Raven.config('https://f70e8fb95ab7485884ca24a4623dd57d@sentry.io/265192').install();
+
 // Open welcome screen when installing addon.
 browser.runtime.onInstalled.addListener(function (details) {
     if (details.reason == "install" || details.reason == "update") {
@@ -90,11 +92,22 @@ function _update_menus() {
         browser.contextMenus.remove(id);
     previous_address_menus = [];
 
-    // Add any new ones for this domain.
-    if (!(current_domain in previous_addresses))
+    if (!current_domain)
         return;
 
-    for (const email of previous_addresses[current_domain]) {
+    // Add any new ones for this domain.
+    let addresses = [];
+    let p = current_domain.length;
+    while (p >= 0) {
+        p = current_domain.lastIndexOf(".", p - 1);
+        let domain = current_domain.slice(p + 1);
+        if (domain in previous_addresses) {
+            addresses = previous_addresses[domain];
+            break;
+        }
+    }
+
+    for (const email of addresses) {
         let id = browser.contextMenus.create({
             id: email,
             contexts: ["editable"],
@@ -141,7 +154,7 @@ browser.windows.onFocusChanged.addListener(function (windowId) {
 
 // Update some settings each time the addon is loaded.
 browser.storage.sync.get(["username", "password"]).then(function (storage) {
-    var data = {
+    let data = {
         "cmd": "login",
         "fe-login-user": storage["username"],
         "fe-login-pass": storage["password"]
@@ -155,24 +168,32 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
         "real_emails": Object.keys(login["real_email_list"])
     });
 
-    var data = {
+    let data = {
         "cmd": "read_dea",
         "session_id": login["session_id"]
     };
 
-    return callAPI(data);
-}).then(function (addresses) {
+    // Load public suffix data from file as needed.
+    let suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
+        if (response.ok)
+            return response.json();
+    });
+
+    return Promise.all([callAPI(data), suffixes]);
+}).then(function (values) {
     // Update local storage of existing disposable addresses.
-    var current_prev_addresses = {};
+    let current_prev_addresses = {};
+    let [addresses, [rules, exceptions]] = values;
     for (const address of addresses) {
         if (address["website"]) {
             try {
-                var domain = (new URL(address["website"])).hostname;
+                var domain = new URL(address["website"]);
             } catch (e) {
                 if (e instanceof TypeError)
                     continue;  // Not a valid URL.
                 throw e;
             }
+            domain = org_domain(domain, rules, exceptions);
             let email = address["disposable_name"] + "@" + address["disposable_domain"];
 
             if (domain in current_prev_addresses)
