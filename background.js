@@ -33,8 +33,9 @@ function openCreateAddress(parent_tab) {
                    "type": "popup", "width": 750, "height": 490};
     browser.windows.create(options).then(function (window) {
         // (FF 56) Security policy blocks running code until tab has completed loading.
-        browser.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+        browser.tabs.onUpdated.addListener(function handler(tabId, changeInfo, tab) {
             if (tabId == window.tabs[0].id && changeInfo.status == "complete") {
+                browser.tabs.onUpdated.removeListener(handler);
                 // Send the parent url and window ID through to the new window.
                 browser.tabs.sendMessage(tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id]);
             }
