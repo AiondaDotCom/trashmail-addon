@@ -1,21 +1,21 @@
 {
     "extensionName": {"message": "TrashMail.com: Créez une adresse jetable"},
-    "extensionDescription": {"message": "Créer des adresses courriel jetable."},
+    "extensionDescription": {"message": "Créez des adresses courriel jetable."},
 
     "optionsSettingsTitle": {"message": "Paramètres"},
-    "optionsCurrentAccount": {"message": "Compte courrant"},
+    "optionsCurrentAccount": {"message": "Compte courant"},
     "optionsForwards": {"message": "Nombre de transferts :"},
     "optionsLifespan": {"message": "Durée de validité :"},
     "optionsSwitchLoginButton": {"message": "Changer d'utilisateur"},
-    "optionsRealAddress": {"message": "Votre adresse courriel réelle :"},
-    "optionsAddressPrefix": {"message": "Préfixe de l'adresse courriel:"},
-    "optionsRandomLength": {"message": "Longueur du pseudonyme aléatoir:"},
-    "optionsDomain": {"message": "Nom du domaine de l'adresse courriel:"},
-    "optionsChallengeResponse": {"message": "CAPTCHA pour messages entrantes"},
+    "optionsRealAddress": {"message": "Votre adresse courrielle réelle :"},
+    "optionsAddressPrefix": {"message": "Préfixe de l'adresse courrielle :"},
+    "optionsRandomLength": {"message": "Longueur du pseudonyme aléatoire :"},
+    "optionsDomain": {"message": "Nom du domaine de l'adresse courrielle :"},
+    "optionsChallengeResponse": {"message": "CAPTCHA pour messages entrants"},
     "optionsMasquerade": {"message": "Masquer la réponse"},
-    "optionsNotifyExpired": {"message": "Alerter quand l'adresse sera éffacé"},
+    "optionsNotifyExpired": {"message": "Alerter quand l'adresse sera effacée"},
     "optionsSendURL": {"message": "Envoyer l'URL à TrashMail"},
-    "optionsSendURLTooltip": {"message": "Envoi l'URL de votre navigateur au serveur TrashMail quand une adresse jetable est crée."},
+    "optionsSendURLTooltip": {"message": "Envoi l'URL de votre navigateur au serveur TrashMail quand une adresse jetable est créée."},
     "optionsPlusInfo": {"message": "* nécessite TrashMail Plus"},
 
     "optionsContactTitle": {"message": "Contactez-nous"},
@@ -26,23 +26,23 @@
         }
     },
 
-    "welcomeTitle": {"message": "Bienvenue à l'extension de TrashMail.com"},
+    "welcomeTitle": {"message": "Bienvenu à l'extension de TrashMail.com"},
     "welcomeInfo": {"message": "Pour créer des adresses jetables vous avez besoin d'un compte TrashMail. Avec ce compte vous pouvez utiliser cette extension sur plusieurs ordinateurs et navigateurs."},
-    "welcomeLostPassword": {"message": "Mot de passe perdu?"},
+    "welcomeLostPassword": {"message": "Mot de passe perdu ?"},
     "registerConfirm": {"message": "Confirmez le mot de passe"},
-    "registerEmail": {"message": "Adresse courielle réele"},
+    "registerEmail": {"message": "Adresse courielle réelle"},
     "registerNewsletter": {"message": "Lettres d'informations"},
     "registerSuccess": {
-        "message": "$PBEGIN$Un courielle avec un lien d'activation a été envoyé à votre adresse courielle '$EMAIL$'.$PEND$$PBEGIN$Veuillez confirmer ce lien pour completer l'enregistrement.$PEND$$PBEGIN$Vous pouvez maintenant fermer cette fenêtre.$PEND$",
+        "message": "$PBEGIN$Un couriel avec un lien d'activation a été envoyé à votre adresse courielle '$EMAIL$'.$PEND$$PBEGIN$Veuillez confirmer ce lien pour compléter l'enregistrement.$PEND$$PBEGIN$Vous pouvez maintenant fermer cette fenêtre.$PEND$",
         "placeholders": {
             "email": {"content": "$1"},
             "pbegin": {"content": "<p>"},
             "pend": {"content": "</p>"}
         }
     },
-    "lostPasswordInfo": {"message": "Si le mot de passe a été perdu, il est nécessaire de régénérer un nouveau mot de passe. Veuillez-svp entrer l'adresse courielle réele associé avec votre nom d'utilisateur."},
+    "lostPasswordInfo": {"message": "Si le mot de passe a été perdu, il est nécessaire de générer un nouveau mot de passe. Veuillez svp entrer l'adresse courielle réelle associée avec votre nom d'utilisateur."},
     "lostPasswordSuccess": {
-        "message": "$PBEGIN$Un lien pour régénérer un nouveau mot de passe vous a été envoyé à '$EMAIL$'.$PEND$$PBEGIN$Veuillez vérifier svp l'entrée de votre boit au lettre.$PEND$",
+        "message": "$PBEGIN$Un lien pour générer un nouveau mot de passe vous a été envoyé à '$EMAIL$'.$PEND$$PBEGIN$Veuillez vérifier svp votre boîte à lettres.$PEND$",
         "placeholders": {
             "email": {"content": "$1"},
             "pbegin": {"content": "<p>"},
@@ -50,13 +50,13 @@
         }
     },
 
-    "createTitle": {"message": "Créez des redirections courriels."},
-    "createNewAddress": {"message": "Adresse courriel jetable :"},
+    "createTitle": {"message": "Créez des redirections courrielles."},
+    "createNewAddress": {"message": "Adresse courrielle jetable :"},
 
 
     "buttonCancel": {"message": "Abandonner"},
     "buttonLogin": {"message": "Loguer"},
-    "buttonToLogin": {"message": "Entrez votre nom de login et mot de passe"},
+    "buttonToLogin": {"message": "Entrez votre nom de login et votre mot de passe"},
     "buttonSave": {"message": "Sauvegarder"},
     "buttonRegister": {"message": "Enregistrer un nouveau compte"},
     "buttonToRegister": {"message": "Enregistrer un nouveau compte"},
@@ -85,34 +85,34 @@
     "ndays": {
         "message": "$NUM$ jours",
         "placeholders": {
-            "num": {"content": "$1", "example": "5"}
+            "num": {"content": "$1", "exemple": "5"}
         }
     },
     "1week": {"message": "1 semaine"},
     "nweeks": {
         "message": "$NUM$ semaines",
         "placeholders": {
-            "num": {"content": "$1", "example": "2"}
+            "num": {"content": "$1", "exemple": "2"}
         }
     },
     "1month": {"message": "1 mois"},
     "nmonths": {
         "message": "$NUM$ mois$PLUS$",
         "placeholders": {
-            "num": {"content": "$1", "example": "3"},
-            "plus": {"content": "$2", "example": "*"}
+            "num": {"content": "$1", "exemple": "3"},
+            "plus": {"content": "$2", "exemple": "*"}
         }
     },
     "never": {
         "message": "jamais$PLUS$",
         "placeholders": {
-            "plus": {"content": "$1", "example": "*"}
+            "plus": {"content": "$1", "exemple": "*"}
         }
     },
     "unlimited": {
         "message": "illimité$PLUS$",
         "placeholders": {
-            "plus": {"content": "$1", "example": "*"}
+            "plus": {"content": "$1", "exemple": "*"}
         }
     }
 }
