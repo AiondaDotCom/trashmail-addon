@@ -1,7 +1,5 @@
 "use strict";
 
-Raven.config('https://f70e8fb95ab7485884ca24a4623dd57d@sentry.io/265192').install();
-
 // Open welcome screen when installing addon.
 browser.runtime.onInstalled.addListener(function (details) {
     if (details.reason == "install" || details.reason == "update") {

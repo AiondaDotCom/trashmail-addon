@@ -30,7 +30,7 @@
     ],
 
     "background": {
-        "scripts": ["libs/raven_3.21.0.min.js", "api.js", "publicsuffixlist.js", "background.js"]
+        "scripts": ["api.js", "publicsuffixlist.js", "background.js"]
     },
     "browser_action": {
         "browser_style": true,
@@ -54,7 +54,6 @@
             "description": "Paste a disposable email address."
         }
     },
-    "content_security_policy": "script-src 'self' https://sentry.io; object-src 'self'",
     "content_scripts": [
         {
             "all_frames": true,
