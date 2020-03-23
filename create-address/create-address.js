@@ -124,7 +124,7 @@ function createAddress(e) {
 
         return callAPI(data, json);
     }).then(function () {
-        let address = form.get("disposable_name") + "@" + form.get("domain");
+        let address = [form.get("disposable_name") + "@" + form.get("domain"), parent_url];
 
         // Update locally stored previous addresses.
         let suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
@@ -145,7 +145,7 @@ function createAddress(e) {
         });
 
         // Paste address
-        return browser.tabs.sendMessage(tab_id, address);
+        return browser.tabs.sendMessage(tab_id, address[0]);
     }).then(function () {
         return browser.windows.getCurrent();
     }).then(function (window) {

@@ -120,7 +120,8 @@ function login(e) {
                     throw e;
                 }
                 domain = org_domain(domain, rules, exceptions);
-                let email = address["disposable_name"] + "@" + address["disposable_domain"];
+                let email = [address["disposable_name"] + "@" + address["disposable_domain"],
+                             address["website"]];
 
                 if (domain in current_prev_addresses)
                     current_prev_addresses[domain].push(email);

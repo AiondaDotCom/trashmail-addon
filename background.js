@@ -119,11 +119,13 @@ browser.menus.onShown.addListener(function (info, tab) {
         }
     }
 
-    for (const email of addresses) {
+    for (let [email, url] of addresses) {
+        url = new URL(url);
+        let url_detail = current_domain == url.hostname ? url.pathname : url.hostname;
         let id = browser.menus.create({
             id: email,
             contexts: ["editable"],
-            title: browser.i18n.getMessage("menuPastePrevious", email)
+            title: browser.i18n.getMessage("menuPastePrevious", email) + " (" + url_detail + ")"
         });
         previous_address_menus.push(id);
     }
@@ -174,7 +176,8 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
                 throw e;
             }
             domain = org_domain(domain, rules, exceptions);
-            let email = address["disposable_name"] + "@" + address["disposable_domain"];
+            let email = [address["disposable_name"] + "@" + address["disposable_domain"],
+                         address["website"]];
 
             if (domain in current_prev_addresses)
                 current_prev_addresses[domain].push(email);
