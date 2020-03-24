@@ -8,14 +8,14 @@ function generate_name(prefix, length) {
     return name;
 }
 
-var parent_url, parent_id, tab_id;
+var parent_url, parent_id, tab_id, frame_id;
 var p1 = browser.storage.sync.get();
 var p2 = browser.storage.local.get(["domains", "real_emails"]);
 
 // Set variables passed from background script.
 browser.runtime.onMessage.addListener(function (message) {
     if (Array.isArray(message))
-        [parent_url, parent_id, tab_id] = message;
+        [parent_url, parent_id, tab_id, frame_id] = message;
 
     // Close window if parent tab is closed.
     browser.tabs.onRemoved.addListener(function (id) {
@@ -145,7 +145,7 @@ function createAddress(e) {
         });
 
         // Paste address
-        return browser.tabs.sendMessage(tab_id, address[0]);
+        return browser.tabs.sendMessage(tab_id, address[0], {"frameId": frame_id});
     }).then(function () {
         return browser.windows.getCurrent();
     }).then(function (window) {

@@ -26,7 +26,7 @@ browser.menus.create({
     title: browser.i18n.getMessage("menuPasteAddress")
 });
 
-function openCreateAddress(parent_tab) {
+function openCreateAddress(parent_tab, frameId) {
     var options = {"url": "../create-address/create-address.html",
                    "type": "popup", "width": 750, "height": 490};
     browser.windows.create(options).then(function (window) {
@@ -35,7 +35,8 @@ function openCreateAddress(parent_tab) {
             if (tabId == window.tabs[0].id && changeInfo.status == "complete") {
                 browser.tabs.onUpdated.removeListener(handler);
                 // Send the parent url and window ID through to the new window.
-                browser.tabs.sendMessage(tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id]);
+                browser.tabs.sendMessage(
+                    tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id, frameId]);
             }
         });
     });
@@ -43,7 +44,7 @@ function openCreateAddress(parent_tab) {
 
 browser.menus.onClicked.addListener(function(info, parent_tab) {
     if (info.menuItemId == "paste-email") {
-        openCreateAddress(parent_tab);
+        openCreateAddress(parent_tab, info.frameId);
     } else {
         // Paste previous email.
         browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
@@ -57,9 +58,10 @@ browser.commands.onCommand.addListener(function (command) {
         currentWindow: true,
         active: true
     }).then(function (tabs) {
+        // This won't work if user is inside an iframe (as we don't have the frame ID).
         browser.tabs.sendMessage(tabs[0].id, "check_editable").then(function (is_editable) {
             if (is_editable)
-                openCreateAddress(tabs[0]);
+                openCreateAddress(tabs[0], 0);
         });
     });
 });
