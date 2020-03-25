@@ -151,7 +151,7 @@ function createAddress(e) {
     }).then(function (window) {
         browser.windows.remove(window.id);
     }).catch(function (msg) {
-        error.innerHTML = msg;
+        error.innerText = msg;
         error.style.display = "block";
         progress.style.display = "none";
         create_button.disabled = false;
