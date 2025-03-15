@@ -1,5 +1,10 @@
 "use strict";
 
+// Compatibility layer for browser and chrome
+if (typeof browser === "undefined") {
+    var browser = chrome;
+}
+
 function changePanel(panel) {
     for (let p of document.querySelectorAll(".panel"))
         p.style.display = p.id == panel ? "block" : "none";

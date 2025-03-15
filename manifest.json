@@ -1,18 +1,11 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "author": "Aionda GmbH",
     "description": "__MSG_extensionDescription__",
     "homepage_url": "https://trashmail.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
     "version": "4.1.0",
-
-    "applications": {
-        "gecko": {
-            "id": "spam@trashmail.net",
-            "strict_min_version": "60.0"
-        }
-    },
     "default_locale": "en",
     "icons": {
         "16": "images/Icon-16.png",
@@ -25,15 +18,16 @@
     },
     "permissions": [
         "tabs",
-        "menus",
-        "storage"
+        "storage",
+        "contextMenus"
     ],
-
+    "host_permissions": [
+        "<all_urls>"
+    ],
     "background": {
-        "scripts": ["api.js", "publicsuffixlist.js", "background.js"]
+        "service_worker": "background.js"
     },
-    "browser_action": {
-        "browser_style": true,
+    "action": {
         "default_icon": {
             "16": "images/Icon-16.png",
             "18": "images/Icon-18.png",
@@ -65,5 +59,11 @@
     "options_ui": {
         "browser_style": true,
         "page": "options/options.html"
-    }
+    },
+    "web_accessible_resources": [
+        {
+            "resources": ["public_suffix.js", "api.js"],
+            "matches": ["<all_urls>"]
+        }
+    ]
 }

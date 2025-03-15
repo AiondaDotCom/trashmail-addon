@@ -1,71 +1,63 @@
 "use strict";
 
+// Compatibility layer for browser and chrome
+if (typeof browser === "undefined") {
+    var browser = chrome;
+}
+
+// Import additional scripts
+importScripts("api.js", "publicsuffixlist.js");
+
 // Open welcome screen when installing addon.
-browser.runtime.onInstalled.addListener(function (details) {
-    if (details.reason == "install" || details.reason == "update") {
+self.addEventListener("install", function (event) {
+    event.waitUntil(
         browser.storage.sync.get("username").then(function (storage) {
             if (!("username" in storage) || !storage["username"]) {
-                var options = {"url": "options/welcome.html",
-                               "width": 750, "height": 360, "type": "popup"};
-                browser.windows.create(options).then(function (welcomeWindow) {
-                    browser.windows.onRemoved.addListener(function handler(id) {
-                        if (id == welcomeWindow.id) {
-                            browser.windows.onRemoved.removeListener(handler);
-                            browser.runtime.openOptionsPage();
-                        }
-                    });
-                });
+                browser.runtime.openOptionsPage();
             }
-        });
-    }
+        })
+    );
 });
 
-browser.menus.create({
-    id: "paste-email",
-    contexts: ["editable"],
-    title: browser.i18n.getMessage("menuPasteAddress")
+// Check if the context menu item already exists before creating it
+browser.contextMenus.removeAll(function() {
+    browser.contextMenus.create({
+        id: "paste-email",
+        contexts: ["editable"],
+        title: browser.i18n.getMessage("menuPasteAddress")
+    });
 });
 
 function openCreateAddress(parent_tab, frameId) {
-    var options = {"url": "../create-address/create-address.html",
-                   "type": "popup", "width": 750, "height": 490};
+    var options = {
+        url: "create-address/create-address.html",
+        type: "popup",
+        width: 600,
+        height: 500
+    };
+
     browser.windows.create(options).then(function (window) {
-        // (FF 56) Security policy blocks running code until tab has completed loading.
-        browser.tabs.onUpdated.addListener(function handler(tabId, changeInfo, tab) {
-            if (tabId == window.tabs[0].id && changeInfo.status == "complete") {
+        function handler(tabId, changeInfo, tab) {
+            if (tab.windowId == window.id && changeInfo.status == "complete") {
                 browser.tabs.onUpdated.removeListener(handler);
-                // Send the parent url and window ID through to the new window.
                 browser.tabs.sendMessage(
-                    tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id, frameId]);
+                    tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id, frameId]
+                );
             }
-        });
+        }
+        browser.tabs.onUpdated.addListener(handler);
+    }).catch(function (error) {
+        console.error("Error creating window:", error);
     });
 }
 
-browser.menus.onClicked.addListener(function(info, parent_tab) {
-    if (info.menuItemId == "paste-email") {
-        openCreateAddress(parent_tab, info.frameId);
+browser.contextMenus.onClicked.addListener(function (event) {
+    if (event.menuItemId == "paste-email") {
+        openCreateAddress(null, event.frameId);
     } else {
-        // Paste previous email.
-        browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
-                                 {"frameId": info.frameId});
+        console.error("Invalid menuItemId:", event.menuItemId);
     }
 });
-
-// Open create address window on keyboard shortcut.
-browser.commands.onCommand.addListener(function (command) {
-    browser.tabs.query({
-        currentWindow: true,
-        active: true
-    }).then(function (tabs) {
-        // This won't work if user is inside an iframe (as we don't have the frame ID).
-        browser.tabs.sendMessage(tabs[0].id, "check_editable").then(function (is_editable) {
-            if (is_editable)
-                openCreateAddress(tabs[0], 0);
-        });
-    });
-});
-
 
 
 /**
@@ -87,11 +79,11 @@ browser.storage.onChanged.addListener(function (changes, area) {
 });
 
 // Update the currently displayed previous addresses context menu items.
-browser.menus.onShown.addListener(function (info, tab) {
-    if (!info.editable)
+self.addEventListener("shown", function (event) {
+    if (!event.editable)
         return;
 
-    let domain = (new URL(tab.url)).hostname;
+    let domain = (new URL(event.tab.url)).hostname;
 
     if (domain == current_domain)
         return;
@@ -134,7 +126,6 @@ browser.menus.onShown.addListener(function (info, tab) {
 
     browser.menus.refresh();
 });
-
 
 // Update some settings each time the addon is loaded.
 browser.storage.sync.get(["username", "password"]).then(function (storage) {
@@ -179,7 +170,7 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
             }
             domain = org_domain(domain, rules, exceptions);
             let email = [address["disposable_name"] + "@" + address["disposable_domain"],
-                         address["website"]];
+                address["website"]];
 
             if (domain in current_prev_addresses)
                 current_prev_addresses[domain].push(email);

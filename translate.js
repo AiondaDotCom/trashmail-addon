@@ -1,5 +1,10 @@
 "use strict";
 
+// Compatibility layer for browser and chrome
+if (typeof browser === "undefined") {
+    var browser = chrome;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     var num_format = new Intl.NumberFormat();
     for (const elem of document.querySelectorAll("[data-i18n]")) {

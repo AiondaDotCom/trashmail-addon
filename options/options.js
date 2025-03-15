@@ -1,8 +1,13 @@
 "use strict";
 
+// Compatibility layer for browser and chrome
+if (typeof browser === "undefined") {
+    var browser = chrome;
+}
+
 // Open welcome screen on switch login button.
 document.getElementById("btn-switch-login").onclick = function () {
-    var options = {"url": "welcome.html", "width": 750, "height": 420, "type": "popup"};
+    var options = {"url": "options/welcome.html", "width": 950, "height": 420, "type": "popup"};
     browser.windows.create(options).then(function (welcomeWindow) {
         browser.windows.onRemoved.addListener(function (id) {
             if (id == welcomeWindow.id)

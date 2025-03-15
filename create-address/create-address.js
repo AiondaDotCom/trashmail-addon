@@ -1,5 +1,10 @@
 "use strict";
 
+// Compatibility layer for browser and chrome
+if (typeof browser === "undefined") {
+    var browser = chrome;
+}
+
 function generate_name(prefix, length) {
     var name = prefix;
     for (let i=0; i < length; ++i)
@@ -111,16 +116,16 @@ function createAddress(e) {
             "session_id": login["session_id"]
         };
         var json = {"data": {
-            "disposable_name": form.get("disposable_name"),
-            "disposable_domain": form.get("domain"),
-            "destination": form.get("email"),
-            "forwards": form.get("forwards"),
-            "expire": form.get("expire"),
-            "cs": form.get("challenge") || false,
-            "masq": form.get("masq") || false,
-            "notify": form.get("notify") || false,
-            "website": form.get("send") ? parent_url : ""
-        }}
+                "disposable_name": form.get("disposable_name"),
+                "disposable_domain": form.get("domain"),
+                "destination": form.get("email"),
+                "forwards": form.get("forwards"),
+                "expire": form.get("expire"),
+                "cs": form.get("challenge") || false,
+                "masq": form.get("masq") || false,
+                "notify": form.get("notify") || false,
+                "website": form.get("send") ? parent_url : ""
+            }}
 
         return callAPI(data, json);
     }).then(function () {

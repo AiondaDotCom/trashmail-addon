@@ -1,5 +1,10 @@
 "use strict";
 
+// Compatibility layer for browser and chrome
+if (typeof browser === "undefined") {
+    var browser = chrome;
+}
+
 browser.runtime.onMessage.addListener(function (message) {
     if (message == "check_editable") {
         let is_input = "selectionStart" in document.activeElement && !document.activeElement.readOnly;
