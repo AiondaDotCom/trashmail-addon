@@ -20,7 +20,7 @@ self.addEventListener("install", function (event) {
 });
 
 // Check if the context menu item already exists before creating it
-browser.contextMenus.removeAll(function() {
+browser.contextMenus.removeAll(function () {
     browser.contextMenus.create({
         id: "paste-email",
         contexts: ["editable"],
@@ -28,49 +28,57 @@ browser.contextMenus.removeAll(function() {
     });
 });
 
-function openCreateAddress(parent_tab, frameId) {
+function openCreateAddress(tabId, frameId = 0) {
+    console.log(`openCreateAddress() mit tabId=${tabId}, frameId=${frameId}`);
+
     var options = {
-        url: "create-address/create-address.html",
+        url: browser.runtime.getURL("create-address/create-address.html"),
         type: "popup",
-        width: 600,
-        height: 500
+        width: 500,
+        height: 600
     };
 
     browser.windows.create(options).then(function (window) {
-        function handler(tabId, changeInfo, tab) {
+        function handler(updatedTabId, changeInfo, tab) {
             if (tab.windowId == window.id && changeInfo.status == "complete") {
-                browser.tabs.onUpdated.removeListener(handler);
-                browser.tabs.sendMessage(
-                    tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id, frameId]
-                );
+                console.log("Tab fertig geladen:", tab);
             }
         }
         browser.tabs.onUpdated.addListener(handler);
-    }).catch(function (error) {
-        console.error("Error creating window:", error);
-    });
+    }).catch(console.error);
 }
 
 browser.contextMenus.onClicked.addListener(function (event) {
-    if (event.menuItemId == "paste-email") {
-        openCreateAddress(null, event.frameId);
+    if (event.menuItemId === "paste-email") {
+        if (!event.tabId) {
+            console.warn("tabId ist undefined. Versuche, die aktuelle Tab-ID zu ermitteln...");
+            browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+                if (tabs.length > 0) {
+                    openCreateAddress(tabs[0].id, event.frameId || 0);
+                } else {
+                    console.error("Konnte keinen aktiven Tab finden!");
+                }
+            }).catch(console.error);
+        } else {
+            openCreateAddress(event.tabId, event.frameId || 0);
+        }
     } else {
         console.error("Invalid menuItemId:", event.menuItemId);
     }
 });
 
-
 /**
  * Paste previous address context menus.
  */
 
-// Track current status of previous address menus.
 var current_domain = "";
 var previous_address_menus = [];
 var previous_addresses = {};
+
 browser.storage.local.get("previous_addresses").then(function (addresses) {
     previous_addresses = addresses;
 });
+
 browser.storage.onChanged.addListener(function (changes, area) {
     if ("previous_addresses" in changes) {
         previous_addresses = changes["previous_addresses"].newValue;
@@ -80,47 +88,56 @@ browser.storage.onChanged.addListener(function (changes, area) {
 
 // Update the currently displayed previous addresses context menu items.
 self.addEventListener("shown", function (event) {
-    if (!event.editable)
-        return;
+    if (!event.editable) return;
 
-    let domain = (new URL(event.tab.url)).hostname;
-
-    if (domain == current_domain)
+    let domain;
+    try {
+        domain = new URL(event.tab.url).hostname;
+    } catch (e) {
+        console.error("Fehler beim Parsen der URL:", event.tab.url, e);
         return;
+    }
+
+    if (domain === current_domain) return;
 
     current_domain = domain;
 
     // Remove previous menu items.
-    for (const id of previous_address_menus)
-        browser.menus.remove(id);
+    for (const id of previous_address_menus) browser.menus.remove(id);
     previous_address_menus = [];
 
     if (!current_domain) {
-        // Refresh in case any menu items have been removed.
         browser.menus.refresh();
         return;
     }
 
-    // Add any new ones for this domain.
     let addresses = [];
     let p = current_domain.length;
     while (p >= 0) {
         p = current_domain.lastIndexOf(".", p - 1);
-        let domain = current_domain.slice(p + 1);
-        if (domain in previous_addresses) {
-            addresses = previous_addresses[domain];
+        let domainPart = current_domain.slice(p + 1);
+        if (domainPart in previous_addresses) {
+            addresses = previous_addresses[domainPart];
             break;
         }
     }
 
     for (let [email, url] of addresses) {
-        url = new URL(url);
-        let url_detail = current_domain == url.hostname ? url.pathname : url.hostname;
+        let url_detail;
+        try {
+            url = new URL(url);
+            url_detail = current_domain == url.hostname ? url.pathname : url.hostname;
+        } catch (e) {
+            console.error("Fehlerhafte URL:", url, e);
+            continue;
+        }
+
         let id = browser.menus.create({
             id: email,
             contexts: ["editable"],
             title: browser.i18n.getMessage("menuPastePrevious", email) + " (" + url_detail + ")"
         });
+
         previous_address_menus.push(id);
     }
 
@@ -137,7 +154,6 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
 
     return callAPI(data);
 }).then(function (login) {
-    // Update list of domains and real emails.
     browser.storage.local.set({
         "domains": login["domain_name_list"],
         "real_emails": Object.keys(login["real_email_list"])
@@ -148,37 +164,36 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
         "session_id": login["session_id"]
     };
 
-    // Load public suffix data from file as needed.
-    let suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
-        if (response.ok)
-            return response.json();
-    });
+    let suffixes = fetch(browser.runtime.getURL("public_suffix.json"))
+        .then(response => response.ok ? response.json() : Promise.reject("Fehler beim Laden der Public Suffix List"))
+        .catch(console.error);
 
     return Promise.all([callAPI(data), suffixes]);
 }).then(function (values) {
-    // Update local storage of existing disposable addresses.
     let current_prev_addresses = {};
     let [addresses, [rules, exceptions]] = values;
+
     for (const address of addresses) {
         if (address["website"]) {
+            let domain;
             try {
-                var domain = new URL(address["website"]);
+                domain = new URL(address["website"]);
             } catch (e) {
-                if (e instanceof TypeError)
-                    continue;  // Not a valid URL.
-                throw e;
+                console.warn("Ungültige URL:", address["website"], e);
+                continue;
             }
-            domain = org_domain(domain, rules, exceptions);
-            let email = [address["disposable_name"] + "@" + address["disposable_domain"],
-                address["website"]];
 
-            if (domain in current_prev_addresses)
+            domain = org_domain(domain, rules, exceptions);
+            let email = [address["disposable_name"] + "@" + address["disposable_domain"], address["website"]];
+
+            if (domain in current_prev_addresses) {
                 current_prev_addresses[domain].push(email);
-            else
+            } else {
                 current_prev_addresses[domain] = [email];
+            }
         }
     }
 
     previous_addresses = current_prev_addresses;
-    browser.storage.local.set({"previous_addresses": current_prev_addresses});
+    browser.storage.local.set({ "previous_addresses": current_prev_addresses });
 });

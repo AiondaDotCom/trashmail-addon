@@ -19,17 +19,27 @@ var p2 = browser.storage.local.get(["domains", "real_emails"]);
 
 // Set variables passed from background script.
 browser.runtime.onMessage.addListener(function (message) {
-    if (Array.isArray(message))
+    if (Array.isArray(message) && message.length >= 4) {
         [parent_url, parent_id, tab_id, frame_id] = message;
+    } else {
+        console.error("Unerwartetes Nachrichtenformat:", message);
+        return;
+    }
 
-    // Close window if parent tab is closed.
-    browser.tabs.onRemoved.addListener(function (id) {
-        if (id == tab_id)
-            browser.windows.getCurrent().then(function (window) {
+    // Event-Listener nur einmal registrieren
+    function closeOnParentTabRemoved(id) {
+        if (id === tab_id) {
+            browser.windows.getCurrent().then((window) => {
                 browser.windows.remove(window.id);
-            });
-    });
+            }).catch((error) => console.error("Fenster konnte nicht geschlossen werden:", error));
+        }
+    }
+
+    if (!browser.tabs.onRemoved.hasListener(closeOnParentTabRemoved)) {
+        browser.tabs.onRemoved.addListener(closeOnParentTabRemoved);
+    }
 });
+
 
 var login_details = Promise.all([p1, p2]).then(function (result) {
     var [sync, local] = result;
@@ -140,7 +150,13 @@ function createAddress(e) {
         Promise.all([storage, suffixes]).then(function (values) {
             let [storage, [rules, exceptions]] = values;
             let addresses = storage["previous_addresses"];
-            let domain = org_domain(new URL(parent_url), rules, exceptions);
+            let domain;
+            try {
+                domain = org_domain(new URL(parent_url), rules, exceptions);
+            } catch (e) {
+                console.error("Ungültige URL:", parent_url, e);
+                domain = "trashmail.com"; // Standardwert setzen
+            }
             if (domain in addresses)
                 addresses[domain].push(address);
             else
@@ -149,6 +165,9 @@ function createAddress(e) {
             browser.storage.local.set({"previous_addresses": addresses});
         });
 
+        console.error(tab_id)
+        console.error(address);
+        console.error(frame_id);
         // Paste address
         return browser.tabs.sendMessage(tab_id, address[0], {"frameId": frame_id});
     }).then(function () {
