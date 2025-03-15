@@ -34,8 +34,8 @@ function openCreateAddress(tabId, frameId = 0) {
     var options = {
         url: browser.runtime.getURL("create-address/create-address.html"),
         type: "popup",
-        width: 500,
-        height: 600
+        width: 650,
+        height: 500
     };
 
     browser.windows.create(options).then(function (window) {
