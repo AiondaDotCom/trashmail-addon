@@ -29,8 +29,6 @@ browser.contextMenus.removeAll(function () {
 });
 
 function openCreateAddress(tabId, frameId = 0) {
-    console.log(`openCreateAddress() mit tabId=${tabId}, frameId=${frameId}`);
-
     var options = {
         url: browser.runtime.getURL("create-address/create-address.html"),
         type: "popup",
@@ -48,29 +46,19 @@ function openCreateAddress(tabId, frameId = 0) {
     }).catch(console.error);
 }
 
-browser.contextMenus.onClicked.addListener(function (event) {
+browser.contextMenus.onClicked.addListener(function (event, parent_tab) {
     if (event.menuItemId === "paste-email") {
-        if (!event.tabId) {
-            console.warn("tabId ist undefined. Versuche, die aktuelle Tab-ID zu ermitteln...");
-            browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-                if (tabs.length > 0) {
-                    openCreateAddress(tabs[0].id, event.frameId || 0);
-                } else {
-                    console.error("Konnte keinen aktiven Tab finden!");
-                }
-            }).catch(console.error);
-        } else {
-            openCreateAddress(event.tabId, event.frameId || 0);
-        }
+        openCreateAddress(parent_tab.id, event.frameId || 0);
     } else {
-        console.error("Invalid menuItemId:", event.menuItemId);
+        // Paste previous email.
+        browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
+            {"frameId": info.frameId});
     }
 });
 
 /**
  * Paste previous address context menus.
  */
-
 var current_domain = "";
 var previous_address_menus = [];
 var previous_addresses = {};
