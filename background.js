@@ -28,27 +28,25 @@ browser.contextMenus.removeAll(function () {
     });
 });
 
-function openCreateAddress(tabId, frameId = 0) {
-    var options = {
-        url: browser.runtime.getURL("create-address/create-address.html"),
-        type: "popup",
-        width: 650,
-        height: 500
-    };
-
+function openCreateAddress(parent_tab, frameId) {
+    var options = {"url": "../create-address/create-address.html",
+        "type": "popup", "width": 750, "height": 490};
     browser.windows.create(options).then(function (window) {
-        function handler(updatedTabId, changeInfo, tab) {
-            if (tab.windowId == window.id && changeInfo.status == "complete") {
-                console.log("Tab fertig geladen:", tab);
+        // (FF 56) Security policy blocks running code until tab has completed loading.
+        browser.tabs.onUpdated.addListener(function handler(tabId, changeInfo, tab) {
+            if (tabId == window.tabs[0].id && changeInfo.status == "complete") {
+                browser.tabs.onUpdated.removeListener(handler);
+                // Send the parent url and window ID through to the new window.
+                browser.tabs.sendMessage(
+                    tab.id, [parent_tab.url, parent_tab.windowId, parent_tab.id, frameId]);
             }
-        }
-        browser.tabs.onUpdated.addListener(handler);
-    }).catch(console.error);
+        });
+    });
 }
 
 browser.contextMenus.onClicked.addListener(function (event, parent_tab) {
     if (event.menuItemId === "paste-email") {
-        openCreateAddress(parent_tab.id, event.frameId || 0);
+        openCreateAddress(parent_tab, event.frameId || 0);
     } else {
         // Paste previous email.
         browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
