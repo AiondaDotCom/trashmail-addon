@@ -185,9 +185,9 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
         if (address["website"]) {
             let domain;
             try {
-                let urlString = address["website"].trim(); // Entferne Leerzeichen
+                let urlString = address["website"].trim(); // Remove whitespace
 
-                // Falls kein Protokoll vorhanden ist, "https://" hinzufügen
+                // If no protocol is present, add "https://"
                 if (!/^https?:\/\//i.test(urlString)) {
                     urlString = "https://" + urlString;
                 }
@@ -213,3 +213,32 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
     browser.storage.local.set({ "previous_addresses": current_prev_addresses });
 });
 
+browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.action === "update_menu") {
+        try {
+            // If `tabId` is provided, use it directly
+            if (message.tabId) {
+                let tab = await browser.tabs.get(message.tabId);
+                console.log("✅ Tab aus Nachricht erhalten:", tab.url);
+
+                // Update context menu with the correct tab
+                await updateContextMenu(message.tabId, {}, tab);
+                sendResponse({ status: "success" });
+                return true;
+            }
+
+            // Fallback: If `tabId` is missing, get the active tab (rather unlikely)
+            let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+            if (activeTab) {
+                await updateContextMenu(activeTab.id, {}, activeTab);
+                sendResponse({ status: "success" });
+            } else {
+                sendResponse({ status: "error", message: "No active tab available." });
+            }
+        } catch (error) {
+            sendResponse({ status: "error", message: error.toString() });
+        }
+
+        return true; // `sendResponse` is used asynchronously
+    }
+});

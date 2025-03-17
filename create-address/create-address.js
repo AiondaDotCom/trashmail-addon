@@ -173,8 +173,13 @@ async function createAddress(e) {
 
         await browser.storage.local.set({ "previous_addresses": addresses });
 
-        // **Adresse in aktiven Tab einfügen**
+        // ** Add address into active tab **
         await browser.tabs.sendMessage(tab_id, address[0], { "frameId": frame_id });
+        // Send message to the background service to update the menu
+        await browser.runtime.sendMessage({
+            action: "update_menu",
+            tabId: tab_id
+        });
 
         // **Popup schließen**
         let currentWindow = await browser.windows.getCurrent();
