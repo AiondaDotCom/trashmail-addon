@@ -165,9 +165,6 @@ function createAddress(e) {
             browser.storage.local.set({"previous_addresses": addresses});
         });
 
-        console.error(tab_id)
-        console.error(address);
-        console.error(frame_id);
         // Paste address
         return browser.tabs.sendMessage(tab_id, address[0], {"frameId": frame_id});
     }).then(function () {
