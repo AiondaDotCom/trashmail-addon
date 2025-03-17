@@ -60,7 +60,7 @@ browser.contextMenus.onClicked.addListener(function (event, parent_tab) {
     } else {
         // Paste previous email.
         browser.tabs.sendMessage(parent_tab.id, event.menuItemId,
-            {"frameId": info.frameId});
+            {"frameId": event.frameId});
     }
 });
 
@@ -98,8 +98,8 @@ async function updateContextMenu(tabId, changeInfo, tab) {
         if (domain === current_domain) return;
         current_domain = domain;
 
-        // Entferne vorherige Menüeinträge
-        await browser.contextMenus.removeAll();
+        // Entferne vorherige Menüeinträge, und füge das initiale Hinzu
+        await createContextMenu();
         previous_address_menus = [];
 
         // Falls die Domain leer ist, beende das Update
