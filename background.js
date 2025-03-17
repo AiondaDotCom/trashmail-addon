@@ -20,13 +20,23 @@ self.addEventListener("install", function (event) {
 });
 
 // Check if the context menu item already exists before creating it
-browser.contextMenus.removeAll(function () {
-    browser.contextMenus.create({
-        id: "paste-email",
-        contexts: ["editable"],
-        title: browser.i18n.getMessage("menuPasteAddress")
-    });
-});
+async function createContextMenu() {
+    try {
+        await browser.contextMenus.removeAll();
+
+        await browser.contextMenus.create({
+            id: "paste-email",
+            contexts: ["editable"],
+            title: browser.i18n.getMessage("menuPasteAddress")
+        });
+    } catch (error) {
+        console.error("Error while creating context menu:", error);
+    }
+}
+
+// Beim Start der Erweiterung ausführen
+createContextMenu();
+
 
 function openCreateAddress(parent_tab, frameId) {
     var options = {"url": "../create-address/create-address.html",
@@ -49,7 +59,7 @@ browser.contextMenus.onClicked.addListener(function (event, parent_tab) {
         openCreateAddress(parent_tab, event.frameId || 0);
     } else {
         // Paste previous email.
-        browser.tabs.sendMessage(parent_tab.id, info.menuItemId,
+        browser.tabs.sendMessage(parent_tab.id, event.menuItemId,
             {"frameId": info.frameId});
     }
 });
@@ -57,9 +67,9 @@ browser.contextMenus.onClicked.addListener(function (event, parent_tab) {
 /**
  * Paste previous address context menus.
  */
-var current_domain = "";
-var previous_address_menus = [];
-var previous_addresses = {};
+let current_domain = "";
+let previous_address_menus = [];
+let previous_addresses = {};
 
 browser.storage.local.get("previous_addresses").then(function (addresses) {
     previous_addresses = addresses;
@@ -73,62 +83,74 @@ browser.storage.onChanged.addListener(function (changes, area) {
 });
 
 // Update the currently displayed previous addresses context menu items.
-self.addEventListener("shown", function (event) {
-    if (!event.editable) return;
-
-    let domain;
+async function updateContextMenu(tabId, changeInfo, tab) {
     try {
-        domain = new URL(event.tab.url).hostname;
-    } catch (e) {
-        console.error("Fehler beim Parsen der URL:", event.tab.url, e);
-        return;
-    }
+        if (!tab.url) return; // Falls keine URL vorhanden ist, abbrechen.
 
-    if (domain === current_domain) return;
-
-    current_domain = domain;
-
-    // Remove previous menu items.
-    for (const id of previous_address_menus) browser.menus.remove(id);
-    previous_address_menus = [];
-
-    if (!current_domain) {
-        browser.menus.refresh();
-        return;
-    }
-
-    let addresses = [];
-    let p = current_domain.length;
-    while (p >= 0) {
-        p = current_domain.lastIndexOf(".", p - 1);
-        let domainPart = current_domain.slice(p + 1);
-        if (domainPart in previous_addresses) {
-            addresses = previous_addresses[domainPart];
-            break;
-        }
-    }
-
-    for (let [email, url] of addresses) {
-        let url_detail;
+        let domain;
         try {
-            url = new URL(url);
-            url_detail = current_domain == url.hostname ? url.pathname : url.hostname;
+            domain = new URL(tab.url).hostname;
         } catch (e) {
-            console.error("Fehlerhafte URL:", url, e);
-            continue;
+            console.error("Error while parsing the URL:", tab.url, e);
+            return;
         }
 
-        let id = browser.menus.create({
-            id: email,
-            contexts: ["editable"],
-            title: browser.i18n.getMessage("menuPastePrevious", email) + " (" + url_detail + ")"
-        });
+        if (domain === current_domain) return;
+        current_domain = domain;
 
-        previous_address_menus.push(id);
+        // Entferne vorherige Menüeinträge
+        await browser.contextMenus.removeAll();
+        previous_address_menus = [];
+
+        // Falls die Domain leer ist, beende das Update
+        if (!current_domain) {
+            return;
+        }
+
+        // Lade gespeicherte Adressen aus dem Speicher
+        let storage = await browser.storage.local.get("previous_addresses");
+        let previous_addresses = storage["previous_addresses"] || {};
+        let addresses = [];
+
+        let p = current_domain.length;
+        while (p >= 0) {
+            p = current_domain.lastIndexOf(".", p - 1);
+            let domainPart = current_domain.slice(p + 1);
+            if (domainPart in previous_addresses) {
+                addresses = previous_addresses[domainPart];
+                break;
+            }
+        }
+
+        for (let [email, url] of addresses) {
+            let url_detail;
+            try {
+                url = new URL(url);
+                url_detail = current_domain == url.hostname ? url.pathname : url.hostname;
+            } catch (e) {
+                console.error("Fehlerhafte URL:", url, e);
+                continue;
+            }
+
+            let id = browser.contextMenus.create({
+                id: email,
+                contexts: ["editable"],
+                title: browser.i18n.getMessage("menuPastePrevious", email) + " (" + url_detail + ")"
+            });
+
+            previous_address_menus.push(id);
+        }
+    } catch (error) {
+        console.error("Error on creating context menu:", error);
     }
+}
 
-    browser.menus.refresh();
+// Listener für Tab-Wechsel und Seiten-Neuladen
+browser.tabs.onUpdated.addListener(updateContextMenu);
+browser.tabs.onActivated.addListener(activeInfo => {
+    browser.tabs.get(activeInfo.tabId).then(tab => updateContextMenu(tab.id, {}, tab));
 });
+
 
 // Update some settings each time the addon is loaded.
 browser.storage.sync.get(["username", "password"]).then(function (storage) {
@@ -163,7 +185,14 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
         if (address["website"]) {
             let domain;
             try {
-                domain = new URL(address["website"]);
+                let urlString = address["website"].trim(); // Entferne Leerzeichen
+
+                // Falls kein Protokoll vorhanden ist, "https://" hinzufügen
+                if (!/^https?:\/\//i.test(urlString)) {
+                    urlString = "https://" + urlString;
+                }
+
+                domain = new URL(urlString);
             } catch (e) {
                 console.warn("Ungültige URL:", address["website"], e);
                 continue;

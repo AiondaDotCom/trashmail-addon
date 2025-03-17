@@ -108,24 +108,29 @@ function addressManager() {
     });
 }
 
-function createAddress(e) {
+async function createAddress(e) {
     e.preventDefault();
 
-    var create_button = document.getElementById("btn-create");
-    var progress = document.getElementById("progress");
-    var error = document.getElementById("error_msg");
-    var form = new FormData(e.target);
+    let create_button = document.getElementById("btn-create");
+    let progress = document.getElementById("progress");
+    let error = document.getElementById("error_msg");
+    let form = new FormData(e.target);
 
     create_button.disabled = true;
     progress.style.display = "block";
     error.style.display = "none";
 
-    login_details.then(function (login) {
-        var data = {
+    try {
+        // Login-Daten abrufen
+        let login = await login_details;
+
+        let data = {
             "cmd": "create_dea",
             "session_id": login["session_id"]
         };
-        var json = {"data": {
+
+        let json = {
+            "data": {
                 "disposable_name": form.get("disposable_name"),
                 "disposable_domain": form.get("domain"),
                 "destination": form.get("email"),
@@ -135,49 +140,54 @@ function createAddress(e) {
                 "masq": form.get("masq") || false,
                 "notify": form.get("notify") || false,
                 "website": form.get("send") ? parent_url : ""
-            }}
+            }
+        };
 
-        return callAPI(data, json);
-    }).then(function () {
+        await callAPI(data, json);
+
         let address = [form.get("disposable_name") + "@" + form.get("domain"), parent_url];
 
-        // Update locally stored previous addresses.
-        let suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
-            if (response.ok)
-                return response.json();
-        });
-        let storage = browser.storage.local.get("previous_addresses");
-        Promise.all([storage, suffixes]).then(function (values) {
-            let [storage, [rules, exceptions]] = values;
-            let addresses = storage["previous_addresses"];
-            let domain;
-            try {
-                domain = org_domain(new URL(parent_url), rules, exceptions);
-            } catch (e) {
-                console.error("Ungültige URL:", parent_url, e);
-                domain = "trashmail.com"; // Standardwert setzen
-            }
-            if (domain in addresses)
-                addresses[domain].push(address);
-            else
-                addresses[domain] = [address];
+        // **Suffixes und Storage abrufen**
+        let [storage, suffixesResponse] = await Promise.all([
+            browser.storage.local.get("previous_addresses"),
+            fetch(browser.runtime.getURL("public_suffix.json"))
+        ]);
 
-            browser.storage.local.set({"previous_addresses": addresses});
-        });
+        let suffixes = suffixesResponse.ok ? await suffixesResponse.json() : [[], []];
+        let [rules, exceptions] = suffixes;
+        let addresses = storage["previous_addresses"] || {}; // Initialisiere, falls nicht vorhanden
 
-        // Paste address
-        return browser.tabs.sendMessage(tab_id, address[0], {"frameId": frame_id});
-    }).then(function () {
-        return browser.windows.getCurrent();
-    }).then(function (window) {
-        browser.windows.remove(window.id);
-    }).catch(function (msg) {
+        let domain;
+        try {
+            domain = org_domain(new URL(parent_url), rules, exceptions);
+        } catch (e) {
+            console.error("Ungültige URL:", parent_url, e);
+            domain = "trashmail.com"; // Fallback-Domain
+        }
+
+        if (domain in addresses) {
+            addresses[domain].push(address);
+        } else {
+            addresses[domain] = [address];
+        }
+
+        await browser.storage.local.set({ "previous_addresses": addresses });
+
+        // **Adresse in aktiven Tab einfügen**
+        await browser.tabs.sendMessage(tab_id, address[0], { "frameId": frame_id });
+
+        // **Popup schließen**
+        let currentWindow = await browser.windows.getCurrent();
+        await browser.windows.remove(currentWindow.id);
+
+    } catch (msg) {
         error.innerText = msg;
         error.style.display = "block";
         progress.style.display = "none";
         create_button.disabled = false;
-    });
+    }
 }
+
 
 document.querySelector("form").addEventListener("submit", createAddress);
 
