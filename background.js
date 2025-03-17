@@ -212,3 +212,4 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
     previous_addresses = current_prev_addresses;
     browser.storage.local.set({ "previous_addresses": current_prev_addresses });
 });
+
