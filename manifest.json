@@ -5,7 +5,7 @@
     "homepage_url": "https://trashmail.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
-    "version": "4.2.0",
+    "version": "4.3.0",
     "default_locale": "en",
     "icons": {
         "16": "images/Icon-16.png",
@@ -19,8 +19,7 @@
     "permissions": [
         "tabs",
         "storage",
-        "contextMenus",
-        "webNavigation"
+        "contextMenus"
     ],
     "host_permissions": [
         "<all_urls>"
