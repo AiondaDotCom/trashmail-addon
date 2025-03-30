@@ -22,12 +22,6 @@ function restoreOptions() {
 
         document.getElementById("username").textContent = sync["username"] || "Not logged in";
 
-        // If no default prefix has been set, pick one at random and save it.
-        if (!("default_prefix" in sync)) {
-            sync["default_prefix"] = PREFIXES[Math.floor(Math.random() * PREFIXES.length)] + "_";
-            browser.storage.sync.set({"default_prefix": sync["default_prefix"]});
-        }
-
         const pairs = [["real_emails","default_email"], ["domains","default_domain"]];
         for (const [list, prop] of pairs) {
             let select = document.getElementById(prop);
@@ -42,8 +36,7 @@ function restoreOptions() {
             }
         }
 
-        var props = ["default_forwards", "default_expire", "default_prefix",
-            "default_random_length"];
+        var props = ["default_forwards", "default_expire"];
         for (const prop of props) {
             if (sync.hasOwnProperty(prop))
                 document.getElementById(prop).value = sync[prop];
@@ -127,7 +120,7 @@ function resetOptions() {
     const options = [
         "default_email", "default_forwards", "default_expire",
         "default_challenge", "default_masq", "default_notify", "default_send",
-        "default_domain", "default_prefix", "default_random_length"];
+        "default_domain"];
     browser.storage.sync.get().then(function (storage) {
         if (sessionStorage !== null) {
             // Save current options, in case user wants to undo this action.

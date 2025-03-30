@@ -4,14 +4,8 @@
 if (typeof browser === "undefined") {
     var browser = chrome;
 }
-
-function generate_name(prefix, length) {
-    var name = prefix;
-    for (let i=0; i < length; ++i)
-        name += Math.floor(Math.random()*36).toString(36);
-
-    return name;
-}
+var lang = browser.i18n.getUILanguage().substring(0, 2);
+var mailFaker = new MailFaker(lang);
 
 var parent_url, parent_id, tab_id, frame_id;
 var p1 = browser.storage.sync.get();
@@ -73,8 +67,8 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
             document.getElementById(prop).checked = sync[key];
     }
 
-    document.getElementById("disposable-name").value = generate_name(
-        sync["default_prefix"], sync["default_random_length"] || 6);
+
+    document.getElementById("disposable-name").value = mailFaker.localPart();
 
     return sync;
 }).then(function (storage) {
@@ -92,7 +86,7 @@ function addressManager() {
 
     login_details.then(function (login_details) {
         let params = new URLSearchParams({
-            "lang": browser.i18n.getUILanguage().substr(0, 2),
+            "lang": lang,
             "session_id": login_details["session_id"]
         });
 
