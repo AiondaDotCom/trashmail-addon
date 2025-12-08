@@ -114,5 +114,20 @@
         "placeholders": {
             "plus": {"content": "$1", "exemple": "*"}
         }
+    },
+
+    "title2FA": {"message": "Authentification à deux facteurs"},
+    "info2FA": {"message": "Entrez le code à 6 chiffres de votre application d'authentification."},
+    "buttonVerify": {"message": "Vérifier"},
+    "error2FAInvalidCode": {"message": "Veuillez entrer un code à 6 chiffres."},
+
+    "error2FARequired": {
+        "message": "$STRONG$Authentification à deux facteurs requise$STRONGEND$$BR$$BR$Votre compte a 2FA activé. Pour utiliser l'extension du navigateur, vous devez créer un Personal Access Token :$BR$$BR$1. Cliquez sur le bouton ci-dessous$BR$2. Allez dans $STRONG$Compte → Personal Access Tokens$STRONGEND$$BR$3. Créez un nouveau token et copiez-le$BR$4. Le $STRONG$nom d'utilisateur reste le même$STRONGEND$, collez uniquement le token comme « Mot de passe »$BR$$BR$$BUTTON$",
+        "placeholders": {
+            "strong": {"content": "<strong>"},
+            "strongend": {"content": "</strong>"},
+            "br": {"content": "<br>"},
+            "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Ouvrir Personal Access Tokens</button>"}
+        }
     }
 }

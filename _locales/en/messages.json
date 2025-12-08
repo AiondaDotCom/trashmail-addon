@@ -114,5 +114,20 @@
         "placeholders": {
             "plus": {"content": "$1", "example": "*"}
         }
+    },
+
+    "title2FA": {"message": "Two-Factor Authentication"},
+    "info2FA": {"message": "Enter the 6-digit code from your authenticator app."},
+    "buttonVerify": {"message": "Verify"},
+    "error2FAInvalidCode": {"message": "Please enter a 6-digit code."},
+
+    "error2FARequired": {
+        "message": "$STRONG$Two-Factor Authentication Required$STRONGEND$$BR$$BR$Your account has 2FA enabled. To use the browser extension, you need to create a Personal Access Token:$BR$$BR$1. Click the button below to open TrashMail$BR$2. Go to $STRONG$Account → Personal Access Tokens$STRONGEND$$BR$3. Create a new token and copy it$BR$4. Your $STRONG$username stays the same$STRONGEND$, only paste the token as your \"Password\"$BR$$BR$$BUTTON$",
+        "placeholders": {
+            "strong": {"content": "<strong>"},
+            "strongend": {"content": "</strong>"},
+            "br": {"content": "<br>"},
+            "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Open Personal Access Tokens</button>"}
+        }
     }
 }

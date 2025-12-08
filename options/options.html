@@ -124,5 +124,22 @@
         <h1 data-i18n="optionsContactTitle"></h1>
         <p data-i18n="optionsContact"></p>
     </div>
+
+    <!-- Hidden Debug Panel - Click title 5 times to reveal -->
+    <div id="debug-panel" style="display: none; margin-top: 20px; padding: 15px; border: 2px dashed #f00; background: #fff0f0;">
+        <h2 style="color: #c00; margin-top: 0;">🔧 Debug Mode</h2>
+        <div>
+            <label for="debug_api_url">API URL:</label>
+            <select id="debug_api_url" style="width: 100%; margin-top: 5px;">
+                <option value="https://trashmail.com">Production (trashmail.com)</option>
+                <option value="https://dev.trashmail.com">Development (dev.trashmail.com)</option>
+            </select>
+        </div>
+        <div style="margin-top: 10px;">
+            <button id="btn-save-debug" type="button" style="background: #c00; color: #fff;">Save Debug Settings</button>
+            <button id="btn-reset-debug" type="button">Reset to Production</button>
+        </div>
+        <p id="debug-status" style="margin-top: 10px; font-style: italic;"></p>
+    </div>
 </body>
 </html>

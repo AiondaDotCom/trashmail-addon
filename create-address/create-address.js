@@ -81,25 +81,26 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
     return callAPI(data);
 });
 
-function addressManager() {
-    const url = "https://trashmail.com/?cmd=manager";
+async function addressManager() {
+    try {
+        const baseUrl = await getApiBaseUrl();
+        const url = baseUrl + "/?cmd=manager";
+        const details = await login_details;
 
-    login_details.then(function (login_details) {
         let params = new URLSearchParams({
             "lang": lang,
-            "session_id": login_details["session_id"]
+            "session_id": details["session_id"]
         });
 
         let options = {"url": url.concat("&", params.toString()),
             "windowId": parent_id};
-        browser.tabs.create(options);
-    }).then(function () {
+        await browser.tabs.create(options);
         window.close();
-    }).catch(function (error) {
+    } catch (error) {
         let error_msg = document.getElementById("error_msg");
         error_msg.textContent = error;
         error_msg.style.display = "block";
-    });
+    }
 }
 
 async function createAddress(e) {

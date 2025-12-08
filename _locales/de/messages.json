@@ -114,5 +114,20 @@
         "placeholders": {
             "plus": {"content": "$1", "example": "*"}
         }
+    },
+
+    "title2FA": {"message": "Zwei-Faktor-Authentifizierung"},
+    "info2FA": {"message": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein."},
+    "buttonVerify": {"message": "Bestätigen"},
+    "error2FAInvalidCode": {"message": "Bitte geben Sie einen 6-stelligen Code ein."},
+
+    "error2FARequired": {
+        "message": "$STRONG$Zwei-Faktor-Authentifizierung erforderlich$STRONGEND$$BR$$BR$Ihr Konto hat 2FA aktiviert. Um die Browser-Erweiterung zu nutzen, müssen Sie ein Personal Access Token erstellen:$BR$$BR$1. Klicken Sie auf den Button unten$BR$2. Gehen Sie zu $STRONG$Konto → Personal Access Tokens$STRONGEND$$BR$3. Erstellen Sie ein neues Token und kopieren Sie es$BR$4. Der $STRONG$Benutzername bleibt gleich$STRONGEND$, nur das Token als \"Passwort\" einfügen$BR$$BR$$BUTTON$",
+        "placeholders": {
+            "strong": {"content": "<strong>"},
+            "strongend": {"content": "</strong>"},
+            "br": {"content": "<br>"},
+            "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Personal Access Tokens öffnen</button>"}
+        }
     }
 }

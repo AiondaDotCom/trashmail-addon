@@ -25,7 +25,8 @@ function restoreOptions() {
         const pairs = [["real_emails","default_email"], ["domains","default_domain"]];
         for (const [list, prop] of pairs) {
             let select = document.getElementById(prop);
-            for (const item of local[list]) {
+            const items = local[list] || [];
+            for (const item of items) {
                 let option = document.createElement("option");
                 option.value = option.text = item;
 
@@ -137,7 +138,6 @@ function resetOptions() {
 document.getElementById("btn-reset").addEventListener("click", resetOptions);
 
 function addressManager() {
-    const url = "https://trashmail.com/?cmd=manager";
     var progress = document.getElementById("progress");
     progress.style.display = "inline-block";
 
@@ -149,6 +149,8 @@ function addressManager() {
         };
 
         callAPI(data).then(function (login_details) {
+            // Use API_BASE_URL for manager link
+            const url = API_BASE_URL + "/?cmd=manager";
             let params = new URLSearchParams({
                 "lang": browser.i18n.getUILanguage().substr(0, 2),
                 "session_id": login_details["session_id"]
@@ -166,3 +168,82 @@ function addressManager() {
     });
 }
 document.getElementById("btn-address-manager").addEventListener("click", addressManager);
+
+// ============================================================
+// Hidden Debug Panel - Click title 5 times to reveal
+// ============================================================
+let debugClickCount = 0;
+let debugClickTimer = null;
+
+function initDebugPanel() {
+    const title = document.querySelector("h1");
+    if (!title) return;
+
+    title.style.cursor = "pointer";
+    title.addEventListener("click", function() {
+        debugClickCount++;
+        console.log("[Debug] Click count:", debugClickCount);
+
+        // Reset counter after 2 seconds of no clicks
+        clearTimeout(debugClickTimer);
+        debugClickTimer = setTimeout(() => { debugClickCount = 0; }, 2000);
+
+        // Show debug panel after 5 clicks
+        if (debugClickCount >= 5) {
+            debugClickCount = 0;
+            console.log("[Debug] 5 clicks reached!");
+            const debugPanel = document.getElementById("debug-panel");
+            console.log("[Debug] Panel element:", debugPanel);
+            if (!debugPanel) {
+                console.error("[Debug] Panel not found!");
+                return;
+            }
+            const isHidden = !debugPanel.style.display || debugPanel.style.display === "none";
+            debugPanel.style.display = isHidden ? "block" : "none";
+            console.log("[Debug] Panel toggled:", isHidden ? "shown" : "hidden");
+
+            // Load current debug URL setting
+            browser.storage.local.get('debugApiUrl').then(function(result) {
+                const select = document.getElementById("debug_api_url");
+                if (result.debugApiUrl) {
+                    select.value = result.debugApiUrl;
+                } else {
+                    select.value = "https://trashmail.com";
+                }
+                updateDebugStatus();
+            });
+        }
+    });
+}
+document.addEventListener("DOMContentLoaded", initDebugPanel);
+
+function updateDebugStatus() {
+    const status = document.getElementById("debug-status");
+    browser.storage.local.get('debugApiUrl').then(function(result) {
+        if (result.debugApiUrl && result.debugApiUrl !== "https://trashmail.com") {
+            status.textContent = "⚠️ Debug mode active: " + result.debugApiUrl;
+            status.style.color = "#c00";
+        } else {
+            status.textContent = "✅ Using production server";
+            status.style.color = "#080";
+        }
+    });
+}
+
+document.getElementById("btn-save-debug").addEventListener("click", function() {
+    const url = document.getElementById("debug_api_url").value;
+    browser.storage.local.set({ debugApiUrl: url }).then(function() {
+        API_BASE_URL = url;
+        updateDebugStatus();
+        alert("Debug settings saved! Please reload the extension or restart the browser for changes to take full effect.");
+    });
+});
+
+document.getElementById("btn-reset-debug").addEventListener("click", function() {
+    browser.storage.local.remove('debugApiUrl').then(function() {
+        API_BASE_URL = DEFAULT_API_URL;
+        document.getElementById("debug_api_url").value = "https://trashmail.com";
+        updateDebugStatus();
+        alert("Reset to production server!");
+    });
+});

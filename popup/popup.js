@@ -8,22 +8,23 @@ var login_details = browser.storage.sync.get(["username", "password"]).then(func
     return callAPI(data);
 });
 
-function addressManager() {
-    const url = "https://trashmail.com/?cmd=manager";
+async function addressManager() {
+    try {
+        const baseUrl = await getApiBaseUrl();
+        const url = baseUrl + "/?cmd=manager";
+        const details = await login_details;
 
-    login_details.then(function (login_details) {
         let params = new URLSearchParams({
             "lang": browser.i18n.getUILanguage().substr(0, 2),
-            "session_id": login_details["session_id"]
+            "session_id": details["session_id"]
         });
-        browser.tabs.create({"url": url.concat("&", params.toString())}).then(function () {
-            window.close();
-        });
-    }).catch(function (error) {
+        await browser.tabs.create({"url": url.concat("&", params.toString())});
+        window.close();
+    } catch (error) {
         let error_msg = document.getElementById("error_msg");
         error_msg.textContent = error;
         error_msg.style.display = "block";
-    });
+    }
 }
 
 document.getElementById("btn-address-manager").addEventListener("click", addressManager);
