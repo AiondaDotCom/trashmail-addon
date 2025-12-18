@@ -67,6 +67,134 @@ function register(e) {
     });
 }
 
+/**
+ * Get browser name for PAT token naming
+ */
+function getBrowserName() {
+    if (typeof navigator !== 'undefined' && navigator.userAgent) {
+        if (navigator.userAgent.includes("Firefox")) return "Firefox Extension";
+        if (navigator.userAgent.includes("Chrome")) return "Chrome Extension";
+        if (navigator.userAgent.includes("Safari")) return "Safari Extension";
+        if (navigator.userAgent.includes("Edge")) return "Edge Extension";
+    }
+    return "Browser Extension";
+}
+
+/**
+ * Perform classic login (password sent to server)
+ * Used for PAT tokens or accounts without SRP
+ */
+function classicLogin(username, password) {
+    return callAPI({
+        "cmd": "login",
+        "fe-login-user": username,
+        "fe-login-pass": password
+    });
+}
+
+/**
+ * Handle successful login - store data and create PAT if needed
+ */
+function handleLoginSuccess(username, password, loginDetails, needsPAT) {
+    var sessionId = loginDetails["session_id"];
+
+    var p1 = browser.storage.local.set({
+        "domains": loginDetails["domain_name_list"],
+        "real_emails": Object.keys(loginDetails["real_email_list"] || {})
+    });
+
+    // If password is not a PAT, create one for future logins
+    if (needsPAT && sessionId) {
+        return createAccessToken(sessionId, getBrowserName()).then(function(token) {
+            console.log("[TrashMail] PAT created successfully");
+            return browser.storage.sync.set({
+                "username": username,
+                "password": token  // Store PAT instead of original password
+            });
+        }).then(function() {
+            return p1;
+        }).then(function() {
+            return loginDetails;
+        }).catch(function(patError) {
+            // PAT creation failed, but login succeeded - store original password
+            console.warn("[TrashMail] PAT creation failed:", patError);
+            return browser.storage.sync.set({
+                "username": username,
+                "password": password
+            }).then(function() {
+                return p1;
+            }).then(function() {
+                return loginDetails;
+            });
+        });
+    } else {
+        // Password is already a PAT, just store it
+        var p2 = browser.storage.sync.set({
+            "username": username,
+            "password": password
+        });
+
+        return Promise.all([loginDetails, p1, p2]).then(function(values) {
+            return values[0];
+        });
+    }
+}
+
+/**
+ * Load DEA addresses and close window on success
+ */
+function loadDEAAndClose(sessionId) {
+    var data = {
+        "cmd": "read_dea",
+        "session_id": sessionId
+    };
+
+    var suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function(response) {
+        if (response.ok) return response.json();
+    });
+
+    return Promise.all([callAPI(data), suffixes]).then(function(values) {
+        var [addresses, [rules, exceptions]] = values;
+        var current_prev_addresses = {};
+
+        for (const address of addresses) {
+            if (address["website"]) {
+                try {
+                    var domain = new URL(address["website"]);
+                } catch (e) {
+                    if (e instanceof TypeError) continue;
+                    throw e;
+                }
+                domain = org_domain(domain, rules, exceptions);
+                let email = [address["disposable_name"] + "@" + address["disposable_domain"],
+                             address["website"]];
+
+                if (domain in current_prev_addresses)
+                    current_prev_addresses[domain].push(email);
+                else
+                    current_prev_addresses[domain] = [email];
+            }
+        }
+
+        return browser.storage.local.set({"previous_addresses": current_prev_addresses}).then(function() {
+            browser.windows.getCurrent().then(function(w) {
+                browser.windows.remove(w.id);
+            });
+        });
+    });
+}
+
+/**
+ * Main login function with SRP support
+ *
+ * Flow:
+ * 1. If password is PAT → use classic login (PATs bypass SRP)
+ * 2. Check if account uses SRP
+ * 3. If SRP enabled → use Zero-Knowledge SRP login
+ * 4. If not SRP → use classic login + silent migration
+ * 5. Handle 2FA if required
+ * 6. Create PAT for future logins
+ */
 function login(e) {
     e.preventDefault();
     var login_button = document.getElementById("btn-login");
@@ -82,130 +210,135 @@ function login(e) {
     var form = new FormData(e.target);
     var username = form.get("username");
     var password = form.get("password");
-
-    var data = {
-        "cmd": "login",
-        "fe-login-user": username,
-        "fe-login-pass": password
-    };
-
-    // Track if we need to create a PAT after login
     var needsPAT = !isPAT(password);
-    var sessionId = null;
 
-    callAPI(data).then(function (login_details) {
-        sessionId = login_details["session_id"];
+    // Flow A: If password is already a PAT, use classic login (PATs bypass SRP/2FA)
+    if (!needsPAT) {
+        console.log("[TrashMail] Using PAT token for login");
+        classicLogin(username, password)
+            .then(function(loginDetails) {
+                return handleLoginSuccess(username, password, loginDetails, false);
+            })
+            .then(function(loginDetails) {
+                return loadDEAAndClose(loginDetails["session_id"]);
+            })
+            .catch(function(error) {
+                login_error.textContent = error.message || error;
+                login_error.style.display = "block";
+                progress.style.display = "none";
+                cancel_button.disabled = false;
+                login_button.disabled = false;
+            });
+        return;
+    }
 
-        var p1 = browser.storage.local.set({
-            "domains": login_details["domain_name_list"],
-            "real_emails": Object.keys(login_details["real_email_list"])
-        });
+    // Flow B: New login with password - check for SRP if available
+    console.log("[TrashMail] Attempting login...");
 
-        // Flow A: If password is not a PAT, create one for future logins
-        if (needsPAT && sessionId) {
-            // Determine browser name for token
-            var browserName = "Browser Extension";
-            if (typeof navigator !== 'undefined' && navigator.userAgent) {
-                if (navigator.userAgent.includes("Firefox")) {
-                    browserName = "Firefox Extension";
-                } else if (navigator.userAgent.includes("Chrome")) {
-                    browserName = "Chrome Extension";
-                } else if (navigator.userAgent.includes("Safari")) {
-                    browserName = "Safari Extension";
-                } else if (navigator.userAgent.includes("Edge")) {
-                    browserName = "Edge Extension";
+    // Check if SRP client is available
+    if (typeof addonSrpClient === 'undefined') {
+        console.log("[TrashMail] SRP client not available, using classic login");
+        performClassicLoginWithMigration(username, password, login_button, cancel_button, progress, login_error);
+        return;
+    }
+
+    // Try to check if account uses SRP (with graceful fallback)
+    addonSrpClient.checkSrpEnabled(username).then(function(result) {
+        // Only use SRP if explicitly enabled and endpoint returned success
+        if (result && result.success !== false && result.srp_enabled) {
+            // SRP Login (Zero-Knowledge - password never sent to server!)
+            console.log("[TrashMail] Using SRP (Zero-Knowledge) authentication");
+            return addonSrpClient.login(username, password).then(function(loginDetails) {
+                // Handle 2FA if required
+                if (loginDetails.requires_2fa) {
+                    show2FAInput(username, password);
+                    throw { handled: true };  // Prevent further processing
                 }
-            }
 
-            // Create PAT and store it as the new password
-            return createAccessToken(sessionId, browserName).then(function(token) {
-                console.log("PAT created successfully, storing for future logins");
-                return browser.storage.sync.set({
-                    "username": username,
-                    "password": token  // Store PAT instead of original password
-                });
-            }).then(function() {
-                return p1;
-            }).then(function() {
-                return login_details;
-            }).catch(function(patError) {
-                // PAT creation failed, but login succeeded - store original password
-                console.warn("PAT creation failed, using original password:", patError);
-                return browser.storage.sync.set({
-                    "username": username,
-                    "password": password
-                }).then(function() {
-                    return p1;
-                }).then(function() {
-                    return login_details;
-                });
+                return handleLoginSuccess(username, password, loginDetails, true);
+            }).then(function(loginDetails) {
+                return loadDEAAndClose(loginDetails["session_id"]);
             });
         } else {
-            // Password is already a PAT, just store it
-            var p2 = browser.storage.sync.set({
-                "username": username,
-                "password": password
-            });
-
-            return Promise.all([login_details, p1, p2]).then(function(values) {
-                return values[0];
-            });
+            // Classic login (SRP not enabled or endpoint not available)
+            console.log("[TrashMail] Using classic login");
+            return performClassicLoginWithMigrationAsync(username, password);
         }
-    }).then(function (login_details) {
-        var data = {
-            "cmd": "read_dea",
-            "session_id": login_details["session_id"]
-        };
-
-        // Load public suffix data from file.
-        var suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function (response) {
-            if (response.ok)
-                return response.json();
-        });
-
-        return Promise.all([callAPI(data), suffixes]);
-    }).then(function (values) {
-        var [addresses, [rules, exceptions]] = values;
-        // Update local storage of existing disposable addresses.
-        var current_prev_addresses = {};
-        for (const address of addresses) {
-            if (address["website"]) {
-                try {
-                    var domain = new URL(address["website"]);
-                } catch (e) {
-                    if (e instanceof TypeError)
-                        continue;  // Not a valid URL.
-                    throw e;
-                }
-                domain = org_domain(domain, rules, exceptions);
-                let email = [address["disposable_name"] + "@" + address["disposable_domain"],
-                             address["website"]];
-
-                if (domain in current_prev_addresses)
-                    current_prev_addresses[domain].push(email);
-                else
-                    current_prev_addresses[domain] = [email];
-            }
+    }).catch(function(error) {
+        // If SRP check failed, fall back to classic login
+        if (error.message && (error.message.includes('srp_check') || error.message.includes('fetch'))) {
+            console.warn("[TrashMail] SRP check failed, falling back to classic login:", error.message);
+            return performClassicLoginWithMigrationAsync(username, password);
         }
 
-        browser.storage.local.set({"previous_addresses": current_prev_addresses}).then(function () {
-            browser.windows.getCurrent().then(function (w) {
-                browser.windows.remove(w.id);
-            });
-        });
-    }).catch(function (error) {
-        // Flow B: Handle 2FA required error - show OTP input
+        if (error.handled) return;  // 2FA flow, already handled
+
+        // Handle 2FA required from SRP or classic login
         if (error.requires_2fa) {
             show2FAInput(username, password);
-        } else {
-            login_error.textContent = error.message || error;
-            login_error.style.display = "block";
+            return;
         }
 
+        login_error.textContent = error.message || error;
+        login_error.style.display = "block";
         progress.style.display = "none";
         cancel_button.disabled = false;
         login_button.disabled = false;
     });
+}
+
+/**
+ * Perform classic login with optional SRP migration (async version)
+ * Migration only happens if server explicitly requests it via migrate_to_srp flag
+ */
+function performClassicLoginWithMigrationAsync(username, password) {
+    return classicLogin(username, password).then(function(loginDetails) {
+        // Handle 2FA if required
+        if (loginDetails.requires_2fa) {
+            show2FAInput(username, password);
+            throw { handled: true };
+        }
+
+        // Check if server suggests migration to SRP (only if server supports it)
+        if (loginDetails.migrate_to_srp && typeof addonSrpClient !== 'undefined') {
+            console.log("[TrashMail] Server supports SRP, migrating account...");
+            // Fire and forget - don't block login on migration
+            addonSrpClient.migrateToSrp(username, password).then(function() {
+                console.log("[TrashMail] SRP migration successful");
+            }).catch(function(err) {
+                console.warn("[TrashMail] SRP migration failed (non-fatal):", err.message || err);
+            });
+        }
+
+        return handleLoginSuccess(username, password, loginDetails, true);
+    }).then(function(loginDetails) {
+        return loadDEAAndClose(loginDetails["session_id"]);
+    });
+}
+
+/**
+ * Perform classic login (fallback when SRP client not available)
+ */
+function performClassicLoginWithMigration(username, password, login_button, cancel_button, progress, login_error) {
+    classicLogin(username, password)
+        .then(function(loginDetails) {
+            return handleLoginSuccess(username, password, loginDetails, true);
+        })
+        .then(function(loginDetails) {
+            return loadDEAAndClose(loginDetails["session_id"]);
+        })
+        .catch(function(error) {
+            if (error.requires_2fa) {
+                show2FAInput(username, password);
+                return;
+            }
+
+            login_error.textContent = error.message || error;
+            login_error.style.display = "block";
+            progress.style.display = "none";
+            cancel_button.disabled = false;
+            login_button.disabled = false;
+        });
 }
 
 /**
@@ -294,31 +427,18 @@ function verify2FA(e) {
     progress.style.display = "inline-block";
     errorEl.style.display = "none";
 
-    // Determine browser name for PAT
-    var browserName = "Browser Extension";
-    if (typeof navigator !== 'undefined' && navigator.userAgent) {
-        if (navigator.userAgent.includes("Firefox")) {
-            browserName = "Firefox Extension";
-        } else if (navigator.userAgent.includes("Chrome")) {
-            browserName = "Chrome Extension";
-        } else if (navigator.userAgent.includes("Safari")) {
-            browserName = "Safari Extension";
-        } else if (navigator.userAgent.includes("Edge")) {
-            browserName = "Edge Extension";
-        }
-    }
-
     var data = {
         "cmd": "verify_2fa_extension",
         "username": username,
         "password": password,
         "otp_code": otpCode,
-        "token_name": browserName
+        "token_name": getBrowserName()
     };
 
     callAPI(data).then(function(result) {
         // Success! Store PAT and login data
         var patToken = result["pat_token"];
+        var sessionId = result["session_id"];
 
         return Promise.all([
             browser.storage.local.set({
@@ -330,14 +450,21 @@ function verify2FA(e) {
                 "password": patToken  // Store PAT for future logins
             })
         ]).then(function() {
-            return result;
+            // Backward compatibility: Old backend returns "pat_auth" instead of real session
+            // New backend returns a real session ID
+            if (sessionId === 'pat_auth') {
+                // Old backend - need to login with PAT to get a real session
+                return classicLogin(username, patToken).then(function(loginDetails) {
+                    return loginDetails["session_id"];
+                });
+            }
+            return sessionId;
         });
-    }).then(function(result) {
+    }).then(function(sessionId) {
         // Load DEA addresses for previous_addresses
         var data = {
             "cmd": "read_dea",
-            "fe-login-user": username,
-            "fe-login-pass": result["pat_token"]
+            "session_id": sessionId
         };
 
         var suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function(response) {

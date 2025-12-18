@@ -153,7 +153,14 @@ browser.tabs.onActivated.addListener(activeInfo => {
 
 
 // Update some settings each time the addon is loaded.
+// Only attempt auto-login if we have stored credentials
 browser.storage.sync.get(["username", "password"]).then(function (storage) {
+    // Skip if no credentials stored
+    if (!storage["username"] || !storage["password"]) {
+        console.log("[TrashMail] No stored credentials, skipping auto-login");
+        return Promise.reject({ silent: true });
+    }
+
     let data = {
         "cmd": "login",
         "fe-login-user": storage["username"],
@@ -162,6 +169,9 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
 
     return callAPI(data);
 }).then(function (login) {
+    console.log("[TrashMail] Auto-login response:", login);
+    console.log("[TrashMail] Session ID:", login["session_id"]);
+
     browser.storage.local.set({
         "domains": login["domain_name_list"],
         "real_emails": Object.keys(login["real_email_list"])
@@ -171,6 +181,7 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
         "cmd": "read_dea",
         "session_id": login["session_id"]
     };
+    console.log("[TrashMail] read_dea request:", data);
 
     let suffixes = fetch(browser.runtime.getURL("public_suffix.json"))
         .then(response => response.ok ? response.json() : Promise.reject("Fehler beim Laden der Public Suffix List"))
@@ -211,6 +222,18 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
 
     previous_addresses = current_prev_addresses;
     browser.storage.local.set({ "previous_addresses": current_prev_addresses });
+}).catch(function (error) {
+    // Silent errors are expected (no credentials stored)
+    if (error && error.silent) return;
+
+    // 2FA required - can't auto-login, user needs to login manually
+    if (error && error.requires_2fa) {
+        console.log("[TrashMail] 2FA required, manual login needed");
+        return;
+    }
+
+    // Log other errors but don't crash
+    console.warn("[TrashMail] Auto-login failed:", error.message || error);
 });
 
 browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
