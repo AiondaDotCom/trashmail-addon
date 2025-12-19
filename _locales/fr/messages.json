@@ -77,6 +77,7 @@
 
     "username": {"message": "Nom d'utilisateur"},
     "password": {"message": "Mot de passe"},
+    "passwordOrPat": {"message": "Mot de passe / Personal Access Token"},
     "email": {"message": "Adresse courielle"},
     "saved": {"message": "Sauvegardée"},
     "undo": {"message": "Annuler"},

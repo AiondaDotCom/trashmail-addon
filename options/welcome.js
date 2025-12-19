@@ -342,170 +342,94 @@ function performClassicLoginWithMigration(username, password, login_button, canc
 }
 
 /**
- * Show 2FA OTP input form
+ * Show 2FA/SRP PAT required message
+ * Instead of OTP input, we now show instructions to create a PAT
  */
 function show2FAInput(username, password) {
     var loginPanel = document.getElementById("login-panel");
+    var progress = document.getElementById("progress-login");
+    var login_button = document.getElementById("btn-login");
+    var cancel_button = document.getElementById("btn-login-cancel");
 
-    // Create 2FA panel if it doesn't exist
-    var panel2fa = document.getElementById("2fa-panel");
-    if (!panel2fa) {
-        panel2fa = document.createElement("div");
-        panel2fa.id = "2fa-panel";
-        panel2fa.className = "panel";
-        panel2fa.innerHTML = `
-            <h2>${browser.i18n.getMessage("title2FA") || "Two-Factor Authentication"}</h2>
-            <p>${browser.i18n.getMessage("info2FA") || "Enter the 6-digit code from your authenticator app."}</p>
-            <form id="form-2fa">
-                <input type="hidden" id="2fa-username" name="username">
-                <input type="hidden" id="2fa-password" name="password">
-                <div>
-                    <input type="text" id="otp-code" name="otp_code"
-                           placeholder="000000" maxlength="6" pattern="[0-9]{6}"
-                           autocomplete="one-time-code" inputmode="numeric"
-                           style="font-size: 24px; text-align: center; letter-spacing: 8px; width: 180px;">
-                </div>
-                <p id="2fa-error" class="error" style="display: none;"></p>
-                <span id="progress-2fa" class="progress" style="display: none;"></span>
-                <div style="margin-top: 15px;">
-                    <input type="submit" id="btn-verify-2fa" class="button"
-                           style="height: 32px; min-width: 100px;"
-                           value="${browser.i18n.getMessage("buttonVerify") || "Verify"}">
-                    <input type="button" id="btn-2fa-cancel" class="button"
-                           style="height: 32px; min-width: 100px;"
-                           value="${browser.i18n.getMessage("buttonCancel") || "Cancel"}">
-                </div>
-            </form>
+    // Hide progress
+    if (progress) progress.style.display = "none";
+    if (login_button) login_button.disabled = false;
+    if (cancel_button) cancel_button.disabled = false;
+
+    // Create PAT info panel if it doesn't exist
+    var panelPat = document.getElementById("pat-required-panel");
+    if (!panelPat) {
+        panelPat = document.createElement("div");
+        panelPat.id = "pat-required-panel";
+        panelPat.className = "panel";
+
+        var lang = browser.i18n.getUILanguage().substr(0, 2);
+        var title, info, step1, step2, step3, step4, step5, btnOpen, btnCancel;
+
+        if (lang === "de") {
+            title = "Zwei-Faktor-Authentifizierung aktiv";
+            info = "Ihr Konto hat 2FA aktiviert. Browser-Erweiterungen unterstützen keine direkte 2FA-Eingabe. Bitte erstellen Sie ein Personal Access Token:";
+            step1 = "Öffnen Sie trashmail.com und melden Sie sich an";
+            step2 = "Klicken Sie im Adress-Manager rechts oben auf Ihren Benutzernamen";
+            step3 = "Wählen Sie <strong>Konto → Personal Access Tokens</strong>";
+            step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
+            step5 = "Kommen Sie hierher zurück: <strong>Benutzername bleibt gleich</strong>, aber im Feld <strong>\"Passwort\"</strong> geben Sie das kopierte Token ein";
+            btnOpen = "TrashMail öffnen";
+            btnCancel = "Abbrechen";
+        } else if (lang === "fr") {
+            title = "Authentification à deux facteurs active";
+            info = "Votre compte a 2FA activé. Les extensions de navigateur ne prennent pas en charge la saisie directe du 2FA. Veuillez créer un Personal Access Token :";
+            step1 = "Ouvrez trashmail.com et connectez-vous";
+            step2 = "Cliquez sur votre nom d'utilisateur en haut à droite du gestionnaire d'adresses";
+            step3 = "Sélectionnez <strong>Compte → Personal Access Tokens</strong>";
+            step4 = "Créez un nouveau token et copiez-le";
+            step5 = "Revenez ici : <strong>le nom d'utilisateur reste le même</strong>, mais dans le champ <strong>« Mot de passe »</strong> entrez le token copié";
+            btnOpen = "Ouvrir TrashMail";
+            btnCancel = "Annuler";
+        } else {
+            title = "Two-Factor Authentication Active";
+            info = "Your account has 2FA enabled. Browser extensions do not support direct 2FA input. Please create a Personal Access Token:";
+            step1 = "Open trashmail.com and log in";
+            step2 = "Click on your username in the top right of the Address Manager";
+            step3 = "Select <strong>Account → Personal Access Tokens</strong>";
+            step4 = "Create a new token and copy it";
+            step5 = "Come back here: <strong>Username stays the same</strong>, but in the <strong>\"Password\"</strong> field enter the copied token";
+            btnOpen = "Open TrashMail";
+            btnCancel = "Cancel";
+        }
+
+        panelPat.innerHTML = `
+            <h2>${title}</h2>
+            <p>${info}</p>
+            <ol style="text-align: left; margin: 15px auto; max-width: 400px;">
+                <li>${step1}</li>
+                <li>${step2}</li>
+                <li>${step3}</li>
+                <li>${step4}</li>
+                <li>${step5}</li>
+            </ol>
+            <div style="margin-top: 20px;">
+                <input type="button" id="btn-open-trashmail" class="button"
+                       style="height: 32px; min-width: 140px; background-color: #0066cc; color: white;"
+                       value="${btnOpen}">
+                <input type="button" id="btn-pat-cancel" class="button"
+                       style="height: 32px; min-width: 100px;"
+                       value="${btnCancel}">
+            </div>
         `;
-        loginPanel.parentNode.insertBefore(panel2fa, loginPanel.nextSibling);
+        loginPanel.parentNode.insertBefore(panelPat, loginPanel.nextSibling);
 
         // Add event listeners
-        document.getElementById("form-2fa").addEventListener("submit", verify2FA);
-        document.getElementById("btn-2fa-cancel").onclick = function() {
+        document.getElementById("btn-open-trashmail").onclick = function() {
+            browser.tabs.create({ url: API_BASE_URL + "/?cmd=manager" });
+        };
+        document.getElementById("btn-pat-cancel").onclick = function() {
             changePanel("login-panel");
         };
     }
 
-    // Store credentials
-    document.getElementById("2fa-username").value = username;
-    document.getElementById("2fa-password").value = password;
-    document.getElementById("otp-code").value = "";
-    document.getElementById("2fa-error").style.display = "none";
-
-    // Show 2FA panel
-    changePanel("2fa-panel");
-
-    // Focus OTP input
-    setTimeout(function() {
-        document.getElementById("otp-code").focus();
-    }, 100);
-}
-
-/**
- * Verify 2FA code and get PAT
- */
-function verify2FA(e) {
-    e.preventDefault();
-
-    var username = document.getElementById("2fa-username").value;
-    var password = document.getElementById("2fa-password").value;
-    var otpCode = document.getElementById("otp-code").value;
-    var verifyButton = document.getElementById("btn-verify-2fa");
-    var cancelButton = document.getElementById("btn-2fa-cancel");
-    var progress = document.getElementById("progress-2fa");
-    var errorEl = document.getElementById("2fa-error");
-
-    // Validate OTP format
-    if (!/^\d{6}$/.test(otpCode)) {
-        errorEl.textContent = browser.i18n.getMessage("error2FAInvalidCode") || "Please enter a 6-digit code.";
-        errorEl.style.display = "block";
-        return;
-    }
-
-    verifyButton.disabled = true;
-    cancelButton.disabled = true;
-    progress.style.display = "inline-block";
-    errorEl.style.display = "none";
-
-    var data = {
-        "cmd": "verify_2fa_extension",
-        "username": username,
-        "password": password,
-        "otp_code": otpCode,
-        "token_name": getBrowserName()
-    };
-
-    callAPI(data).then(function(result) {
-        // Success! Store PAT and login data
-        var patToken = result["pat_token"];
-        var sessionId = result["session_id"];
-
-        return Promise.all([
-            browser.storage.local.set({
-                "domains": result["domain_name_list"],
-                "real_emails": Object.keys(result["real_email_list"] || {})
-            }),
-            browser.storage.sync.set({
-                "username": username,
-                "password": patToken  // Store PAT for future logins
-            })
-        ]).then(function() {
-            // Backward compatibility: Old backend returns "pat_auth" instead of real session
-            // New backend returns a real session ID
-            if (sessionId === 'pat_auth') {
-                // Old backend - need to login with PAT to get a real session
-                return classicLogin(username, patToken).then(function(loginDetails) {
-                    return loginDetails["session_id"];
-                });
-            }
-            return sessionId;
-        });
-    }).then(function(sessionId) {
-        // Load DEA addresses for previous_addresses
-        var data = {
-            "cmd": "read_dea",
-            "session_id": sessionId
-        };
-
-        var suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then(function(response) {
-            if (response.ok) return response.json();
-        });
-
-        return Promise.all([callAPI(data), suffixes]);
-    }).then(function(values) {
-        var [addresses, [rules, exceptions]] = values;
-        var current_prev_addresses = {};
-
-        for (const address of addresses) {
-            if (address["website"]) {
-                try {
-                    var domain = new URL(address["website"]);
-                } catch (e) {
-                    if (e instanceof TypeError) continue;
-                    throw e;
-                }
-                domain = org_domain(domain, rules, exceptions);
-                let email = [address["disposable_name"] + "@" + address["disposable_domain"],
-                             address["website"]];
-                if (domain in current_prev_addresses)
-                    current_prev_addresses[domain].push(email);
-                else
-                    current_prev_addresses[domain] = [email];
-            }
-        }
-
-        browser.storage.local.set({"previous_addresses": current_prev_addresses}).then(function() {
-            browser.windows.getCurrent().then(function(w) {
-                browser.windows.remove(w.id);
-            });
-        });
-    }).catch(function(error) {
-        errorEl.textContent = error.message || error;
-        errorEl.style.display = "block";
-        progress.style.display = "none";
-        verifyButton.disabled = false;
-        cancelButton.disabled = false;
-    });
+    // Show PAT info panel
+    changePanel("pat-required-panel");
 }
 
 function resetPassword(e) {
