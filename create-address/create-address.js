@@ -7,9 +7,16 @@ if (typeof browser === "undefined") {
 var lang = browser.i18n.getUILanguage().substring(0, 2);
 var mailFaker = new MailFaker(lang);
 
+/**
+ * Check if password is a Personal Access Token
+ */
+function isPAT(password) {
+    return password && typeof password === 'string' && password.startsWith('tmpat_') && password.length > 6;
+}
+
 var parent_url, parent_id, tab_id, frame_id;
 var p1 = browser.storage.sync.get();
-var p2 = browser.storage.local.get(["domains", "real_emails"]);
+var p2 = browser.storage.local.get(["domains", "real_emails", "session_id"]);
 
 // Set variables passed from background script.
 browser.runtime.onMessage.addListener(function (message) {
@@ -70,15 +77,34 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
 
     document.getElementById("disposable-name").value = mailFaker.localPart();
 
-    return sync;
-}).then(function (storage) {
+    return result;  // Return both sync and local
+}).then(function (result) {
+    var [sync, local] = result;
+
+    // If we have a stored session_id, use it directly
+    if (local.session_id) {
+        console.log("[TrashMail] Using stored session_id");
+        return { session_id: local.session_id };
+    }
+
+    // Check if this is an OPAQUE account (PAT stored)
+    if (isPAT(sync["password"])) {
+        // Can't do OPAQUE login here, throw error to redirect user
+        throw new Error("Session expired. Please log in again via Options.");
+    }
+
+    // For non-OPAQUE accounts, use classic login
     var data = {
         "cmd": "login",
-        "fe-login-user": storage["username"],
-        "fe-login-pass": storage["password"]
+        "fe-login-user": sync["username"],
+        "fe-login-pass": sync["password"]
     };
 
-    return callAPI(data);
+    return callAPI(data).then(function(response) {
+        // Store the new session_id
+        browser.storage.local.set({ "session_id": response.session_id });
+        return response;
+    });
 });
 
 async function addressManager() {
