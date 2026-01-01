@@ -97,10 +97,14 @@ function classicLogin(username, password) {
  */
 function handleLoginSuccess(username, password, loginDetails, needsPAT) {
     var sessionId = loginDetails["session_id"];
+    var isOpaqueAccount = isPAT(password);  // If using PAT, it's likely an OPAQUE account
 
+    // Store session_id and auth type for popup.js to use
     var p1 = browser.storage.local.set({
         "domains": loginDetails["domain_name_list"],
-        "real_emails": Object.keys(loginDetails["real_email_list"] || {})
+        "real_emails": Object.keys(loginDetails["real_email_list"] || {}),
+        "session_id": sessionId,
+        "is_opaque_account": isOpaqueAccount
     });
 
     // If password is not a PAT, create one for future logins
@@ -185,15 +189,19 @@ function loadDEAAndClose(sessionId) {
 }
 
 /**
- * Main login function with SRP support
+ * Main login function with OPAQUE and SRP support
  *
  * Flow:
- * 1. If password is PAT → use classic login (PATs bypass SRP)
- * 2. Check if account uses SRP
- * 3. If SRP enabled → use Zero-Knowledge SRP login
- * 4. If not SRP → use classic login + silent migration
- * 5. Handle 2FA if required
- * 6. Create PAT for future logins
+ * 1. Check if password is a PAT (starts with 'tmpat_')
+ * 2. If PAT → check if server uses OPAQUE:
+ *    - OPAQUE enabled → use PAT-OPAQUE (Zero-Knowledge)
+ *    - OPAQUE not enabled → use classic PAT login
+ * 3. If not PAT (regular password):
+ *    - Check if account uses OPAQUE → show "PAT required" message
+ *    - Check if account uses SRP → use SRP login
+ *    - Otherwise → use classic login
+ * 4. Handle 2FA if required
+ * 5. Create PAT for future logins (only for non-OPAQUE accounts)
  */
 function login(e) {
     e.preventDefault();
@@ -210,81 +218,233 @@ function login(e) {
     var form = new FormData(e.target);
     var username = form.get("username");
     var password = form.get("password");
-    var needsPAT = !isPAT(password);
+    var isPatToken = isPAT(password);
 
-    // Flow A: If password is already a PAT, use classic login (PATs bypass SRP/2FA)
-    if (!needsPAT) {
-        console.log("[TrashMail] Using PAT token for login");
-        classicLogin(username, password)
-            .then(function(loginDetails) {
-                return handleLoginSuccess(username, password, loginDetails, false);
-            })
-            .then(function(loginDetails) {
-                return loadDEAAndClose(loginDetails["session_id"]);
-            })
-            .catch(function(error) {
-                login_error.textContent = error.message || error;
-                login_error.style.display = "block";
-                progress.style.display = "none";
-                cancel_button.disabled = false;
-                login_button.disabled = false;
-            });
-        return;
-    }
+    // Flow A: If password is a PAT, check if we need OPAQUE or classic
+    if (isPatToken) {
+        console.log("[TrashMail] PAT detected, checking auth method...");
 
-    // Flow B: New login with password - check for SRP if available
-    console.log("[TrashMail] Attempting login...");
-
-    // Check if SRP client is available
-    if (typeof addonSrpClient === 'undefined') {
-        console.log("[TrashMail] SRP client not available, using classic login");
-        performClassicLoginWithMigration(username, password, login_button, cancel_button, progress, login_error);
-        return;
-    }
-
-    // Try to check if account uses SRP (with graceful fallback)
-    addonSrpClient.checkSrpEnabled(username).then(function(result) {
-        // Only use SRP if explicitly enabled and endpoint returned success
-        if (result && result.success !== false && result.srp_enabled) {
-            // SRP Login (Zero-Knowledge - password never sent to server!)
-            console.log("[TrashMail] Using SRP (Zero-Knowledge) authentication");
-            return addonSrpClient.login(username, password).then(function(loginDetails) {
-                // Handle 2FA if required
-                if (loginDetails.requires_2fa) {
-                    show2FAInput(username, password);
-                    throw { handled: true };  // Prevent further processing
+        // Check if OPAQUE client and server support are available
+        if (typeof addonOpaqueClient !== 'undefined') {
+            addonOpaqueClient.checkOpaqueEnabled(username).then(function(authMethods) {
+                if (authMethods.opaque_enabled) {
+                    // Use PAT-OPAQUE (Zero-Knowledge)
+                    console.log("[TrashMail] Using PAT-OPAQUE authentication");
+                    return addonOpaqueClient.patOpaqueLogin(username, password);
+                } else {
+                    // Use classic PAT login (server hasn't migrated yet)
+                    console.log("[TrashMail] Using classic PAT login (server not OPAQUE yet)");
+                    return classicLogin(username, password);
                 }
-
-                return handleLoginSuccess(username, password, loginDetails, true);
+            }).then(function(loginDetails) {
+                return handleLoginSuccess(username, password, loginDetails, false);
             }).then(function(loginDetails) {
                 return loadDEAAndClose(loginDetails["session_id"]);
+            }).catch(function(error) {
+                // Fallback to classic PAT login on OPAQUE errors
+                if (error.message && error.message.includes('OPAQUE')) {
+                    console.warn("[TrashMail] OPAQUE failed, trying classic PAT login:", error.message);
+                    classicLogin(username, password)
+                        .then(function(loginDetails) {
+                            return handleLoginSuccess(username, password, loginDetails, false);
+                        })
+                        .then(function(loginDetails) {
+                            return loadDEAAndClose(loginDetails["session_id"]);
+                        })
+                        .catch(function(fallbackError) {
+                            showLoginError(fallbackError, login_error, progress, cancel_button, login_button);
+                        });
+                    return;
+                }
+                showLoginError(error, login_error, progress, cancel_button, login_button);
             });
         } else {
-            // Classic login (SRP not enabled or endpoint not available)
-            console.log("[TrashMail] Using classic login");
-            return performClassicLoginWithMigrationAsync(username, password);
+            // No OPAQUE client, use classic PAT login
+            console.log("[TrashMail] OPAQUE client not available, using classic PAT login");
+            classicLogin(username, password)
+                .then(function(loginDetails) {
+                    return handleLoginSuccess(username, password, loginDetails, false);
+                })
+                .then(function(loginDetails) {
+                    return loadDEAAndClose(loginDetails["session_id"]);
+                })
+                .catch(function(error) {
+                    showLoginError(error, login_error, progress, cancel_button, login_button);
+                });
         }
+        return;
+    }
+
+    // Flow B: Regular password - check auth method
+    console.log("[TrashMail] Checking authentication method...");
+
+    // First check if OPAQUE is enabled for this account
+    checkAuthMethodAndLogin(username, password, login_button, cancel_button, progress, login_error);
+}
+
+/**
+ * Helper to display login errors
+ */
+function showLoginError(error, login_error, progress, cancel_button, login_button) {
+    login_error.textContent = error.message || error;
+    login_error.style.display = "block";
+    progress.style.display = "none";
+    cancel_button.disabled = false;
+    login_button.disabled = false;
+}
+
+/**
+ * Check auth method (OPAQUE/SRP/Classic) and perform appropriate login
+ */
+function checkAuthMethodAndLogin(username, password, login_button, cancel_button, progress, login_error) {
+    // Check OPAQUE first (if client available)
+    var opaqueCheckPromise;
+    if (typeof addonOpaqueClient !== 'undefined') {
+        opaqueCheckPromise = addonOpaqueClient.checkOpaqueEnabled(username);
+    } else {
+        opaqueCheckPromise = Promise.resolve({ opaque_enabled: false, srp_enabled: false });
+    }
+
+    opaqueCheckPromise.then(function(authMethods) {
+        // If OPAQUE is enabled, user MUST use PAT
+        if (authMethods.opaque_enabled) {
+            console.log("[TrashMail] Account uses OPAQUE - PAT required");
+            showOpaquePatRequired(username);
+            return;
+        }
+
+        // If OPAQUE not enabled, try SRP
+        if (typeof addonSrpClient === 'undefined') {
+            console.log("[TrashMail] SRP client not available, using classic login");
+            performClassicLoginWithMigration(username, password, login_button, cancel_button, progress, login_error);
+            return;
+        }
+
+        // Check SRP
+        return addonSrpClient.checkSrpEnabled(username).then(function(result) {
+            if (result && result.success !== false && result.srp_enabled) {
+                // SRP Login (Zero-Knowledge)
+                console.log("[TrashMail] Using SRP (Zero-Knowledge) authentication");
+                return addonSrpClient.login(username, password).then(function(loginDetails) {
+                    if (loginDetails.requires_2fa) {
+                        show2FAInput(username, password);
+                        throw { handled: true };
+                    }
+                    return handleLoginSuccess(username, password, loginDetails, true);
+                }).then(function(loginDetails) {
+                    return loadDEAAndClose(loginDetails["session_id"]);
+                });
+            } else {
+                // Classic login
+                console.log("[TrashMail] Using classic login");
+                return performClassicLoginWithMigrationAsync(username, password);
+            }
+        });
     }).catch(function(error) {
-        // If SRP check failed, fall back to classic login
-        if (error.message && (error.message.includes('srp_check') || error.message.includes('fetch'))) {
-            console.warn("[TrashMail] SRP check failed, falling back to classic login:", error.message);
-            return performClassicLoginWithMigrationAsync(username, password);
-        }
+        if (error.handled) return;
 
-        if (error.handled) return;  // 2FA flow, already handled
-
-        // Handle 2FA required from SRP or classic login
         if (error.requires_2fa) {
             show2FAInput(username, password);
             return;
         }
 
-        login_error.textContent = error.message || error;
-        login_error.style.display = "block";
-        progress.style.display = "none";
-        cancel_button.disabled = false;
-        login_button.disabled = false;
+        // If check failed, try classic login as fallback
+        if (error.message && (error.message.includes('opaque_check') || error.message.includes('srp_check') || error.message.includes('fetch'))) {
+            console.warn("[TrashMail] Auth check failed, falling back to classic login:", error.message);
+            performClassicLoginWithMigrationAsync(username, password).catch(function(fallbackError) {
+                showLoginError(fallbackError, login_error, progress, cancel_button, login_button);
+            });
+            return;
+        }
+
+        showLoginError(error, login_error, progress, cancel_button, login_button);
     });
+}
+
+/**
+ * Show message that OPAQUE account requires PAT
+ */
+function showOpaquePatRequired(username) {
+    var loginPanel = document.getElementById("login-panel");
+    var progress = document.getElementById("progress-login");
+    var login_button = document.getElementById("btn-login");
+    var cancel_button = document.getElementById("btn-login-cancel");
+
+    if (progress) progress.style.display = "none";
+    if (login_button) login_button.disabled = false;
+    if (cancel_button) cancel_button.disabled = false;
+
+    var panelOpaque = document.getElementById("opaque-pat-required-panel");
+    if (!panelOpaque) {
+        panelOpaque = document.createElement("div");
+        panelOpaque.id = "opaque-pat-required-panel";
+        panelOpaque.className = "panel";
+
+        var lang = browser.i18n.getUILanguage().substr(0, 2);
+        var title, info, step1, step2, step3, step4, step5, btnOpen, btnCancel;
+
+        if (lang === "de") {
+            title = "Personal Access Token erforderlich";
+            info = "Ihr Konto verwendet die neue OPAQUE-Authentifizierung. Diese bietet maximale Sicherheit, erfordert aber einen Personal Access Token (PAT) für die Browser-Erweiterung:";
+            step1 = "Öffnen Sie trashmail.com und melden Sie sich an";
+            step2 = "Klicken Sie im Adress-Manager rechts oben auf Ihren Benutzernamen";
+            step3 = "Wählen Sie <strong>Konto → Personal Access Tokens</strong>";
+            step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
+            step5 = "Kommen Sie hierher zurück: <strong>Benutzername bleibt gleich</strong>, aber im Feld <strong>\"Passwort\"</strong> geben Sie das kopierte Token ein";
+            btnOpen = "TrashMail öffnen";
+            btnCancel = "Abbrechen";
+        } else if (lang === "fr") {
+            title = "Personal Access Token requis";
+            info = "Votre compte utilise la nouvelle authentification OPAQUE. Cela offre une sécurité maximale mais nécessite un Personal Access Token (PAT) pour l'extension du navigateur :";
+            step1 = "Ouvrez trashmail.com et connectez-vous";
+            step2 = "Cliquez sur votre nom d'utilisateur en haut à droite du gestionnaire d'adresses";
+            step3 = "Sélectionnez <strong>Compte → Personal Access Tokens</strong>";
+            step4 = "Créez un nouveau token et copiez-le";
+            step5 = "Revenez ici : <strong>le nom d'utilisateur reste le même</strong>, mais dans le champ <strong>« Mot de passe »</strong> entrez le token copié";
+            btnOpen = "Ouvrir TrashMail";
+            btnCancel = "Annuler";
+        } else {
+            title = "Personal Access Token Required";
+            info = "Your account uses the new OPAQUE authentication. This provides maximum security but requires a Personal Access Token (PAT) for the browser extension:";
+            step1 = "Open trashmail.com and log in";
+            step2 = "Click on your username in the top right of the Address Manager";
+            step3 = "Select <strong>Account → Personal Access Tokens</strong>";
+            step4 = "Create a new token and copy it";
+            step5 = "Come back here: <strong>Username stays the same</strong>, but in the <strong>\"Password\"</strong> field enter the copied token";
+            btnOpen = "Open TrashMail";
+            btnCancel = "Cancel";
+        }
+
+        panelOpaque.innerHTML = `
+            <h2>${title}</h2>
+            <p>${info}</p>
+            <ol style="text-align: left; margin: 15px auto; max-width: 400px;">
+                <li>${step1}</li>
+                <li>${step2}</li>
+                <li>${step3}</li>
+                <li>${step4}</li>
+                <li>${step5}</li>
+            </ol>
+            <div style="margin-top: 20px;">
+                <input type="button" id="btn-open-trashmail-opaque" class="button"
+                       style="height: 32px; min-width: 140px; background-color: #0066cc; color: white;"
+                       value="${btnOpen}">
+                <input type="button" id="btn-opaque-cancel" class="button"
+                       style="height: 32px; min-width: 100px;"
+                       value="${btnCancel}">
+            </div>
+        `;
+        loginPanel.parentNode.insertBefore(panelOpaque, loginPanel.nextSibling);
+
+        document.getElementById("btn-open-trashmail-opaque").onclick = function() {
+            browser.tabs.create({ url: API_BASE_URL + "/?cmd=manager" });
+        };
+        document.getElementById("btn-opaque-cancel").onclick = function() {
+            changePanel("login-panel");
+        };
+    }
+
+    changePanel("opaque-pat-required-panel");
 }
 
 /**

@@ -152,6 +152,13 @@ browser.tabs.onActivated.addListener(activeInfo => {
 });
 
 
+/**
+ * Check if password is a Personal Access Token
+ */
+function isPAT(password) {
+    return password && typeof password === 'string' && password.startsWith('tmpat_') && password.length > 6;
+}
+
 // Update some settings each time the addon is loaded.
 // Only attempt auto-login if we have stored credentials
 browser.storage.sync.get(["username", "password"]).then(function (storage) {
@@ -159,6 +166,23 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
     if (!storage["username"] || !storage["password"]) {
         console.log("[TrashMail] No stored credentials, skipping auto-login");
         return Promise.reject({ silent: true });
+    }
+
+    // Skip auto-login for OPAQUE accounts (PAT stored)
+    // OPAQUE requires the full library which can't run in Service Worker
+    // User will need to login via Options page, which stores session_id
+    if (isPAT(storage["password"])) {
+        console.log("[TrashMail] PAT detected (OPAQUE account), checking for stored session...");
+        // Try to use stored session_id instead
+        return browser.storage.local.get(["session_id"]).then(function(localStorage) {
+            if (localStorage.session_id) {
+                console.log("[TrashMail] Using stored session_id for auto-refresh");
+                return { session_id: localStorage.session_id };
+            } else {
+                console.log("[TrashMail] No stored session for OPAQUE account, user needs to login via Options");
+                return Promise.reject({ silent: true });
+            }
+        });
     }
 
     let data = {
@@ -172,10 +196,13 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
     console.log("[TrashMail] Auto-login response:", login);
     console.log("[TrashMail] Session ID:", login["session_id"]);
 
-    browser.storage.local.set({
-        "domains": login["domain_name_list"],
-        "real_emails": Object.keys(login["real_email_list"])
-    });
+    // Only update domains/emails if they're in the response (not for stored session_id)
+    if (login["domain_name_list"] && login["real_email_list"]) {
+        browser.storage.local.set({
+            "domains": login["domain_name_list"],
+            "real_emails": Object.keys(login["real_email_list"])
+        });
+    }
 
     let data = {
         "cmd": "read_dea",
