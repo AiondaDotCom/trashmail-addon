@@ -59,18 +59,20 @@ function isPAT(password) {
 
 /**
  * Open Address Manager with current session
+ *
+ * NOTE: We intentionally don't pass session_id as GET parameter anymore.
+ * The browser's session cookie will be used automatically.
+ *
+ * BUG FIX (2025-01-02): Previously, passing session_id in URL would override
+ * the browser's existing session cookie, causing users to be logged out of
+ * their active sessions when the extension opened a new tab.
  */
 async function addressManager() {
     try {
         const baseUrl = await getApiBaseUrl();
-        const url = baseUrl + "/?cmd=manager";
-        const details = await getSessionDetails();
-
-        let params = new URLSearchParams({
-            "lang": browser.i18n.getUILanguage().substr(0, 2),
-            "session_id": details["session_id"]
-        });
-        await browser.tabs.create({"url": url.concat("&", params.toString())});
+        // Only pass language, let the browser use its session cookie
+        const url = baseUrl + "/?cmd=manager&lang=" + browser.i18n.getUILanguage().substr(0, 2);
+        await browser.tabs.create({"url": url});
         window.close();
     } catch (error) {
         let error_msg = document.getElementById("error_msg");
