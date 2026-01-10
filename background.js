@@ -5,19 +5,35 @@ if (typeof browser === "undefined") {
     var browser = chrome;
 }
 
-// Import additional scripts
-importScripts("api.js", "publicsuffixlist.js");
+// Import additional scripts (Service Worker only - Chrome)
+// Firefox with background.scripts loads these via manifest
+if (typeof importScripts === "function") {
+    importScripts("api.js", "publicsuffixlist.js");
+}
 
 // Open welcome screen when installing addon.
-self.addEventListener("install", function (event) {
-    event.waitUntil(
+// Service Worker uses "install" event, Firefox Event Pages use "runtime.onInstalled"
+if (typeof self !== "undefined" && typeof self.addEventListener === "function" && typeof ServiceWorkerGlobalScope !== "undefined") {
+    // Chrome Service Worker
+    self.addEventListener("install", function (event) {
+        event.waitUntil(
+            browser.storage.sync.get("username").then(function (storage) {
+                if (!("username" in storage) || !storage["username"]) {
+                    browser.runtime.openOptionsPage();
+                }
+            })
+        );
+    });
+} else {
+    // Firefox Event Page
+    browser.runtime.onInstalled.addListener(function () {
         browser.storage.sync.get("username").then(function (storage) {
             if (!("username" in storage) || !storage["username"]) {
                 browser.runtime.openOptionsPage();
             }
-        })
-    );
-});
+        });
+    });
+}
 
 // Check if the context menu item already exists before creating it
 async function createContextMenu() {

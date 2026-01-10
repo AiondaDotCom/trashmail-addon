@@ -7,7 +7,7 @@ if (typeof browser === "undefined") {
 
 // Open welcome screen on switch login button.
 document.getElementById("btn-switch-login").onclick = function () {
-    var options = {"url": "options/welcome.html", "width": 950, "height": 420, "type": "popup"};
+    var options = {"url": browser.runtime.getURL("options/welcome.html"), "width": 950, "height": 420, "type": "popup"};
     browser.windows.create(options).then(function (welcomeWindow) {
         browser.windows.onRemoved.addListener(function (id) {
             if (id == welcomeWindow.id)
