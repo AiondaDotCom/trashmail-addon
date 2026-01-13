@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title data-i18n="guardianInfoTitle"></title>
+    <script src="../translate.js" defer></script>
+    <script src="guardian-info.js" defer></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 16px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .header .icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+        .content {
+            padding: 16px;
+        }
+        .content p {
+            color: #4b5563;
+            line-height: 1.5;
+            margin: 0 0 12px 0;
+            font-size: 13px;
+        }
+        .status-box {
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        .status-box .label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .status-box .value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .status-box.verified .value {
+            color: #059669;
+        }
+        .status-box.protected .value {
+            color: #2563eb;
+        }
+        .status-box.warning .value {
+            color: #d97706;
+        }
+        .status-box.danger .value {
+            color: #dc2626;
+        }
+        .close-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .close-btn:hover {
+            background: #2563eb;
+        }
+        .features {
+            margin: 12px 0;
+        }
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .feature-icon {
+            font-size: 16px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .feature-text {
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon" id="status-icon">&#128737;</div>
+            <h1 data-i18n="guardianInfoTitle"></h1>
+        </div>
+        <div class="content">
+            <div class="status-box" id="status-box">
+                <div class="label" data-i18n="guardianInfoCurrentStatus"></div>
+                <div class="value" id="status-value" data-i18n="guardianLoading"></div>
+            </div>
+
+            <p data-i18n="guardianInfoText"></p>
+
+            <div class="features">
+                <div class="feature">
+                    <span class="feature-icon">&#128272;</span>
+                    <span class="feature-text" data-i18n="guardianFeature1"></span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">&#127970;</span>
+                    <span class="feature-text" data-i18n="guardianFeature2"></span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">&#9889;</span>
+                    <span class="feature-text" data-i18n="guardianFeature3"></span>
+                </div>
+            </div>
+
+            <button class="close-btn" id="btn-close" data-i18n="buttonClose"></button>
+        </div>
+    </div>
+</body>
+</html>

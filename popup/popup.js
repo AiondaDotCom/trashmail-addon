@@ -30,8 +30,8 @@ async function updateSecurityStatus() {
             // Guardian nicht initialisiert
             statusEl.className = "inactive";
             iconEl.textContent = "⚠️";
-            textEl.textContent = "Not Initialized";
-            detailEl.textContent = "Guardian module failed to load";
+            textEl.textContent = browser.i18n.getMessage("guardianNotInitialized");
+            detailEl.textContent = browser.i18n.getMessage("guardianFailedToLoad");
             return;
         }
 
@@ -39,8 +39,8 @@ async function updateSecurityStatus() {
             // Nicht auf TrashMail-Seite
             statusEl.className = "inactive";
             iconEl.textContent = "🔒";
-            textEl.textContent = "MITM Protection";
-            detailEl.textContent = "Visit TrashMail.com to activate";
+            textEl.textContent = browser.i18n.getMessage("guardianMitmProtection");
+            detailEl.textContent = browser.i18n.getMessage("guardianVisitToActivate");
             return;
         }
 
@@ -51,7 +51,7 @@ async function updateSecurityStatus() {
             // Noch keine Verifizierung erfolgt
             statusEl.className = "protected";
             iconEl.textContent = "🛡️";
-            textEl.textContent = "Protected";
+            textEl.textContent = browser.i18n.getMessage("guardianProtected");
             detailEl.textContent = response.hostname;
             return;
         }
@@ -60,48 +60,99 @@ async function updateSecurityStatus() {
             case "VERIFIED":
                 statusEl.className = "verified";
                 iconEl.textContent = "✅";
-                textEl.textContent = "Verified";
-                detailEl.textContent = `${status.verified} responses verified`;
+                textEl.textContent = browser.i18n.getMessage("guardianVerified");
+                detailEl.textContent = browser.i18n.getMessage("guardianResponsesVerified", [status.verified.toString()]);
                 break;
 
             case "VERIFIED_DEPRECATED":
                 statusEl.className = "warning";
                 iconEl.textContent = "⚠️";
-                textEl.textContent = "Key Expiring Soon";
-                detailEl.textContent = "Signature valid, but key needs renewal";
+                textEl.textContent = browser.i18n.getMessage("guardianKeyExpiringSoon");
+                detailEl.textContent = browser.i18n.getMessage("guardianKeyNeedsRenewal");
                 break;
 
             case "KEY_EXPIRED":
                 statusEl.className = "danger";
                 iconEl.textContent = "⏰";
-                textEl.textContent = "Key Expired";
-                detailEl.textContent = "Server key needs renewal";
+                textEl.textContent = browser.i18n.getMessage("guardianKeyExpired");
+                detailEl.textContent = browser.i18n.getMessage("guardianServerKeyNeedsRenewal");
                 break;
 
             case "COMPROMISED":
                 statusEl.className = "danger";
                 iconEl.textContent = "🚨";
-                textEl.textContent = "MITM DETECTED!";
-                detailEl.textContent = "Signature verification failed!";
+                textEl.textContent = browser.i18n.getMessage("guardianMitmDetected");
+                detailEl.textContent = browser.i18n.getMessage("guardianSignatureVerificationFailed");
+                break;
+
+            case "UNSIGNED":
+                statusEl.className = "danger";
+                iconEl.textContent = "⚠️";
+                textEl.textContent = browser.i18n.getMessage("guardianUnsigned");
+                detailEl.textContent = browser.i18n.getMessage("guardianMissingSignatures", [(status.unsigned || 0).toString()]);
                 break;
 
             default:
                 statusEl.className = "inactive";
                 iconEl.textContent = "❓";
-                textEl.textContent = "Unknown";
+                textEl.textContent = browser.i18n.getMessage("guardianUnknown");
                 detailEl.textContent = status.status;
         }
     } catch (err) {
         console.error("[Popup] Failed to get guardian status:", err);
         statusEl.className = "inactive";
         statusEl.querySelector(".status-icon").textContent = "❌";
-        statusEl.querySelector(".status-text").textContent = "Error";
+        statusEl.querySelector(".status-text").textContent = browser.i18n.getMessage("guardianError");
         statusEl.querySelector(".status-detail").textContent = err.message || "Unknown error";
     }
 }
 
 // Security Status beim Laden aktualisieren
 document.addEventListener("DOMContentLoaded", updateSecurityStatus);
+
+/**
+ * Guardian Info-Fenster öffnen (zentriert am Bildschirm)
+ */
+function openGuardianInfoWindow() {
+    const statusEl = document.getElementById("security-status");
+    const text = statusEl.querySelector(".status-text").textContent;
+    const detail = statusEl.querySelector(".status-detail").textContent;
+    const statusClass = statusEl.className;
+
+    // Status-Typ ermitteln
+    let status = 'unknown';
+    if (statusClass.includes('verified')) status = 'verified';
+    else if (statusClass.includes('protected')) status = 'protected';
+    else if (statusClass.includes('warning')) status = 'warning';
+    else if (statusClass.includes('danger')) status = 'danger';
+    else if (statusClass.includes('inactive')) status = 'inactive';
+
+    // URL mit Parametern bauen
+    const params = new URLSearchParams({
+        status: status,
+        text: text,
+        detail: detail
+    });
+
+    // Fenstergröße und Position berechnen (zentriert)
+    const width = 450;
+    const height = 595;
+    const left = Math.round((screen.width - width) / 2);
+    const top = Math.round((screen.height - height) / 2);
+
+    // Neues Fenster öffnen
+    browser.windows.create({
+        url: browser.runtime.getURL("popup/guardian-info.html?" + params.toString()),
+        type: "popup",
+        width: width,
+        height: height,
+        left: left,
+        top: top
+    });
+}
+
+// Event Listener für klickbaren Security-Status
+document.getElementById("security-status").addEventListener("click", openGuardianInfoWindow);
 
 /**
  * Get session details - either from stored session_id or by logging in

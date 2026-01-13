@@ -130,5 +130,42 @@
             "br": {"content": "<br>"},
             "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Ouvrir Personal Access Tokens</button>"}
         }
-    }
+    },
+
+    "guardianMitmProtection": {"message": "Protection MITM"},
+    "guardianLoading": {"message": "Chargement..."},
+    "guardianNotInitialized": {"message": "Non initialisé"},
+    "guardianFailedToLoad": {"message": "Le module Guardian n'a pas pu être chargé"},
+    "guardianVisitToActivate": {"message": "Visitez TrashMail.com pour activer"},
+    "guardianProtected": {"message": "Protégé"},
+    "guardianVerified": {"message": "Vérifié"},
+    "guardianResponsesVerified": {
+        "message": "$NUM$ réponses vérifiées",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "guardianKeyExpiringSoon": {"message": "Clé expire bientôt"},
+    "guardianKeyNeedsRenewal": {"message": "Signature valide, mais la clé doit être renouvelée"},
+    "guardianKeyExpired": {"message": "Clé expirée"},
+    "guardianServerKeyNeedsRenewal": {"message": "La clé du serveur doit être renouvelée"},
+    "guardianMitmDetected": {"message": "MITM DÉTECTÉ !"},
+    "guardianSignatureVerificationFailed": {"message": "Échec de la vérification de signature !"},
+    "guardianUnsigned": {"message": "Signatures manquantes !"},
+    "guardianMissingSignatures": {
+        "message": "$NUM$ réponses sans signature",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"}
+        }
+    },
+    "guardianUnknown": {"message": "Inconnu"},
+    "guardianError": {"message": "Erreur"},
+
+    "guardianInfoTitle": {"message": "Protection MITM"},
+    "guardianInfoText": {"message": "Cette fonction vous protège contre les attaques Man-in-the-Middle (MITM). Les proxies d'entreprise comme ZScaler ou les réseaux malveillants pourraient intercepter votre connexion et lire ou modifier vos données. TrashMail signe chaque réponse avec une signature cryptographique que cette extension vérifie. Si quelqu'un manipule les données, la signature ne correspondra pas et vous serez immédiatement averti."},
+    "guardianInfoCurrentStatus": {"message": "Statut actuel :"},
+    "guardianFeature1": {"message": "Les signatures cryptographiques Ed25519 vérifient chaque réponse du serveur"},
+    "guardianFeature2": {"message": "Détecte la manipulation ou la suppression d'en-têtes par les proxies (ZScaler, Fortinet, etc.)"},
+    "guardianFeature3": {"message": "Vérification en temps réel avec alertes instantanées si les données sont modifiées"},
+    "buttonClose": {"message": "Fermer"}
 }

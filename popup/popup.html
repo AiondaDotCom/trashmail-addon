@@ -72,17 +72,30 @@
             background: #e5e7eb;
             margin: 10px 0;
         }
+
+        /* Clickable Security Status */
+        #security-status {
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        #security-status:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        #security-status:active {
+            transform: scale(0.98);
+        }
     </style>
     <link rel="stylesheet" type="text/css" href="../common.css" />
 </head>
 <body>
     <img src="../images/menu@1x.png" alt="trashmail.com" />
 
-    <!-- Security Status -->
-    <div id="security-status" class="inactive">
+    <!-- Security Status (clickable) -->
+    <div id="security-status" class="inactive" title="Click for info">
         <span class="status-icon">🔒</span>
-        <span class="status-text">MITM Protection</span>
-        <span class="status-detail">Loading...</span>
+        <span class="status-text" data-i18n="guardianMitmProtection"></span>
+        <span class="status-detail" data-i18n="guardianLoading"></span>
     </div>
 
     <div class="divider"></div>

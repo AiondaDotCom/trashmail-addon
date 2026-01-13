@@ -130,5 +130,42 @@
             "br": {"content": "<br>"},
             "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Open Personal Access Tokens</button>"}
         }
-    }
+    },
+
+    "guardianMitmProtection": {"message": "MITM Protection"},
+    "guardianLoading": {"message": "Loading..."},
+    "guardianNotInitialized": {"message": "Not Initialized"},
+    "guardianFailedToLoad": {"message": "Guardian module failed to load"},
+    "guardianVisitToActivate": {"message": "Visit TrashMail.com to activate"},
+    "guardianProtected": {"message": "Protected"},
+    "guardianVerified": {"message": "Verified"},
+    "guardianResponsesVerified": {
+        "message": "$NUM$ responses verified",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "guardianKeyExpiringSoon": {"message": "Key Expiring Soon"},
+    "guardianKeyNeedsRenewal": {"message": "Signature valid, but key needs renewal"},
+    "guardianKeyExpired": {"message": "Key Expired"},
+    "guardianServerKeyNeedsRenewal": {"message": "Server key needs renewal"},
+    "guardianMitmDetected": {"message": "MITM DETECTED!"},
+    "guardianSignatureVerificationFailed": {"message": "Signature verification failed!"},
+    "guardianUnsigned": {"message": "Missing Signatures!"},
+    "guardianMissingSignatures": {
+        "message": "$NUM$ responses without signature",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"}
+        }
+    },
+    "guardianUnknown": {"message": "Unknown"},
+    "guardianError": {"message": "Error"},
+
+    "guardianInfoTitle": {"message": "MITM Protection"},
+    "guardianInfoText": {"message": "This feature protects you against Man-in-the-Middle (MITM) attacks. Corporate proxies like ZScaler or malicious networks could intercept your connection and read or modify your data. TrashMail signs every response with a cryptographic signature that this extension verifies. If someone tampers with the data, the signature won't match and you'll be warned immediately."},
+    "guardianInfoCurrentStatus": {"message": "Current status:"},
+    "guardianFeature1": {"message": "Ed25519 cryptographic signatures verify every server response"},
+    "guardianFeature2": {"message": "Detects tampering or header stripping by proxies (ZScaler, Fortinet, etc.)"},
+    "guardianFeature3": {"message": "Real-time verification with instant warnings if data is modified"},
+    "buttonClose": {"message": "Close"}
 }

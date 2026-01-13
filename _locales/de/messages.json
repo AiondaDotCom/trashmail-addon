@@ -130,5 +130,42 @@
             "br": {"content": "<br>"},
             "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Personal Access Tokens öffnen</button>"}
         }
-    }
+    },
+
+    "guardianMitmProtection": {"message": "MITM-Schutz"},
+    "guardianLoading": {"message": "Lädt..."},
+    "guardianNotInitialized": {"message": "Nicht initialisiert"},
+    "guardianFailedToLoad": {"message": "Guardian-Modul konnte nicht geladen werden"},
+    "guardianVisitToActivate": {"message": "Besuche TrashMail.com zum Aktivieren"},
+    "guardianProtected": {"message": "Geschützt"},
+    "guardianVerified": {"message": "Verifiziert"},
+    "guardianResponsesVerified": {
+        "message": "$NUM$ Antworten verifiziert",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "guardianKeyExpiringSoon": {"message": "Schlüssel läuft bald ab"},
+    "guardianKeyNeedsRenewal": {"message": "Signatur gültig, aber Schlüssel muss erneuert werden"},
+    "guardianKeyExpired": {"message": "Schlüssel abgelaufen"},
+    "guardianServerKeyNeedsRenewal": {"message": "Server-Schlüssel muss erneuert werden"},
+    "guardianMitmDetected": {"message": "MITM ERKANNT!"},
+    "guardianSignatureVerificationFailed": {"message": "Signatur-Verifikation fehlgeschlagen!"},
+    "guardianUnsigned": {"message": "Fehlende Signaturen!"},
+    "guardianMissingSignatures": {
+        "message": "$NUM$ Antworten ohne Signatur",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"}
+        }
+    },
+    "guardianUnknown": {"message": "Unbekannt"},
+    "guardianError": {"message": "Fehler"},
+
+    "guardianInfoTitle": {"message": "MITM-Schutz"},
+    "guardianInfoText": {"message": "Diese Funktion schützt dich vor Man-in-the-Middle (MITM) Angriffen. Firmen-Proxies wie ZScaler oder bösartige Netzwerke könnten deine Verbindung abfangen und deine Daten lesen oder verändern. TrashMail signiert jede Antwort mit einer kryptografischen Signatur, die diese Erweiterung überprüft. Wenn jemand die Daten manipuliert, stimmt die Signatur nicht überein und du wirst sofort gewarnt."},
+    "guardianInfoCurrentStatus": {"message": "Aktueller Status:"},
+    "guardianFeature1": {"message": "Ed25519 kryptografische Signaturen verifizieren jede Server-Antwort"},
+    "guardianFeature2": {"message": "Erkennt Manipulation oder Header-Entfernung durch Proxies (ZScaler, Fortinet, etc.)"},
+    "guardianFeature3": {"message": "Echtzeit-Verifikation mit sofortiger Warnung bei Datenänderung"},
+    "buttonClose": {"message": "Schließen"}
 }

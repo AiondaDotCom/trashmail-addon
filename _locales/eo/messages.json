@@ -115,5 +115,42 @@
         "placeholders": {
             "plus": {"content": "$1", "example": "*"}
         }
-    }
+    },
+
+    "guardianMitmProtection": {"message": "MITM-Protekto"},
+    "guardianLoading": {"message": "Ŝarĝante..."},
+    "guardianNotInitialized": {"message": "Ne pravalorigita"},
+    "guardianFailedToLoad": {"message": "Guardian-modulo ne ŝarĝiĝis"},
+    "guardianVisitToActivate": {"message": "Vizitu TrashMail.com por aktivigi"},
+    "guardianProtected": {"message": "Protektita"},
+    "guardianVerified": {"message": "Kontrolita"},
+    "guardianResponsesVerified": {
+        "message": "$NUM$ respondoj kontrolitaj",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "guardianKeyExpiringSoon": {"message": "Ŝlosilo baldaŭ senvalidiĝos"},
+    "guardianKeyNeedsRenewal": {"message": "Subskribo valida, sed ŝlosilo bezonas renovigon"},
+    "guardianKeyExpired": {"message": "Ŝlosilo senvalidiĝis"},
+    "guardianServerKeyNeedsRenewal": {"message": "Servila ŝlosilo bezonas renovigon"},
+    "guardianMitmDetected": {"message": "MITM DETEKTITA!"},
+    "guardianSignatureVerificationFailed": {"message": "Subskriba kontrolo malsukcesis!"},
+    "guardianUnsigned": {"message": "Mankantaj subskriboj!"},
+    "guardianMissingSignatures": {
+        "message": "$NUM$ respondoj sen subskribo",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"}
+        }
+    },
+    "guardianUnknown": {"message": "Nekonata"},
+    "guardianError": {"message": "Eraro"},
+
+    "guardianInfoTitle": {"message": "MITM-Protekto"},
+    "guardianInfoText": {"message": "Ĉi tiu funkcio protektas vin kontraŭ Man-in-the-Middle (MITM) atakoj. Entreprenaj prokuriloj kiel ZScaler aŭ malicaj retoj povus kapti vian konekton kaj legi aŭ modifi viajn datumojn. TrashMail subskribas ĉiun respondon per kriptografia subskribo, kiun ĉi tiu etendaĵo kontrolas. Se iu manipulas la datumojn, la subskribo ne kongruos kaj vi estos tuj avertita."},
+    "guardianInfoCurrentStatus": {"message": "Nuna stato:"},
+    "guardianFeature1": {"message": "Ed25519 kriptografiaj subskriboj kontrolas ĉiun servilan respondon"},
+    "guardianFeature2": {"message": "Detektas manipuladon aŭ forigon de kapinformoj fare de prokuriloj (ZScaler, Fortinet, ktp.)"},
+    "guardianFeature3": {"message": "Realtempa kontrolo kun tujaj avertoj se datumoj estas modifitaj"},
+    "buttonClose": {"message": "Fermi"}
 }
