@@ -162,6 +162,9 @@
     },
     "guardianUnknown": {"message": "Unknown"},
     "guardianError": {"message": "Error"},
+    "guardianSecurityError": {"message": "Security Error"},
+    "guardianSecurityErrorMissing": {"message": "Server response is not signed. Possible MITM attack!"},
+    "guardianSecurityErrorMismatch": {"message": "Signature verification failed. Possible MITM attack!"},
 
     "guardianInfoTitle": {"message": "MITM Protection"},
     "guardianInfoText": {"message": "This feature protects you against Man-in-the-Middle (MITM) attacks. Corporate proxies like ZScaler or malicious networks could intercept your connection and read or modify your data. TrashMail signs every response with a cryptographic signature that this extension verifies. If someone tampers with the data, the signature won't match and you'll be warned immediately."},

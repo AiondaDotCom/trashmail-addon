@@ -147,6 +147,9 @@
     },
     "guardianUnknown": {"message": "Nekonata"},
     "guardianError": {"message": "Eraro"},
+    "guardianSecurityError": {"message": "Sekureca Eraro"},
+    "guardianSecurityErrorMissing": {"message": "Servila respondo ne estas subskribita. Ebla MITM-atako!"},
+    "guardianSecurityErrorMismatch": {"message": "Subskriba kontrolo malsukcesis. Ebla MITM-atako!"},
 
     "guardianInfoTitle": {"message": "MITM-Protekto"},
     "guardianInfoText": {"message": "Ĉi tiu funkcio protektas vin kontraŭ Man-in-the-Middle (MITM) atakoj. Entreprenaj prokuriloj kiel ZScaler aŭ malicaj retoj povus kapti vian konekton kaj legi aŭ modifi viajn datumojn. TrashMail subskribas ĉiun respondon per kriptografia subskribo, kiun ĉi tiu etendaĵo kontrolas. Se iu manipulas la datumojn, la subskribo ne kongruos kaj vi estos tuj avertita."},
