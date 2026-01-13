@@ -20,10 +20,16 @@ var p2 = browser.storage.local.get(["domains", "real_emails", "session_id"]);
 
 // Set variables passed from background script.
 browser.runtime.onMessage.addListener(function (message) {
-    if (Array.isArray(message) && message.length >= 4) {
+    // Only handle array messages (from context menu / paste action)
+    // Ignore other messages like {action: 'get_guardian_status'}
+    if (!Array.isArray(message)) {
+        return; // Not for us, ignore silently
+    }
+
+    if (message.length >= 4) {
         [parent_url, parent_id, tab_id, frame_id] = message;
     } else {
-        console.error("Unerwartetes Nachrichtenformat:", message);
+        console.error("Unexpected message format:", message);
         return;
     }
 

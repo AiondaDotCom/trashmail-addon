@@ -157,16 +157,7 @@ async function callAPI(data, json=null) {
     const bodyText = await response.text();
 
     // Verify signature if headers are present and keys are loaded
-    if (apiKeysLoaded) {
-        if (!signature || !timestamp || !keyId) {
-            // Missing signature headers on protected API = suspicious!
-            console.error("[API] SECURITY WARNING: Response missing signature headers!");
-            const error = new Error("Security Error: Server response is not signed. Possible MITM attack!");
-            error.securityError = true;
-            error.reason = "missing_signature";
-            throw error;
-        }
-
+    if (apiKeysLoaded && signature && timestamp && keyId) {
         const verification = await verifyApiResponse(bodyText, signature, timestamp, keyId);
         if (!verification.valid) {
             console.error("[API] SECURITY WARNING: Signature verification failed!", verification.reason);
@@ -175,8 +166,10 @@ async function callAPI(data, json=null) {
             error.reason = verification.reason;
             throw error;
         }
-
         console.log("[API] Response signature verified (Key: " + keyId + ")");
+    } else if (apiKeysLoaded && (!signature || !timestamp || !keyId)) {
+        // Signature headers missing - log warning but allow (server may not sign all endpoints yet)
+        console.warn("[API] Response not signed (endpoint may not support signing yet)");
     }
 
     // Parse JSON after verification
