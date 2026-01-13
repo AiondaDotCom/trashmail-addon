@@ -156,11 +156,40 @@ async function callAPI(data, json=null) {
     // Read body as text for verification
     const bodyText = await response.text();
 
-    // Note: API signature verification is disabled for now.
-    // The Guardian module handles signature verification for website responses.
-    // API endpoints may use different signing schemes that need separate implementation.
-    if (signature && timestamp && keyId) {
-        console.log("[API] Response has signature headers (verification delegated to Guardian)");
+    // Verify signature if headers are present and keys are loaded
+    if (apiKeysLoaded && signature && timestamp && keyId) {
+        // Validate that key-id matches the server we're talking to
+        const isDev = API_BASE_URL.includes("dev.trashmail.com");
+        let expectedKeyPrefix;
+
+        switch (true) {
+            case isDev:
+                expectedKeyPrefix = "dev-";
+                break;
+            default:
+                expectedKeyPrefix = "prod-";
+                break;
+        }
+
+        if (!keyId.startsWith(expectedKeyPrefix)) {
+            console.error("[API] SECURITY WARNING: Key ID mismatch! Expected " + expectedKeyPrefix + "* but got " + keyId);
+            const error = new Error("Security Error: Invalid key for this server");
+            error.securityError = true;
+            throw error;
+        }
+
+        const verification = await verifyApiResponse(bodyText, signature, timestamp, keyId);
+        if (!verification.valid) {
+            console.error("[API] SECURITY WARNING: Signature verification failed!", verification.reason);
+            const error = new Error("Security Error: " + verification.reason);
+            error.securityError = true;
+            error.reason = verification.reason;
+            throw error;
+        }
+        console.log("[API] Response signature verified (Key: " + keyId + ")");
+    } else if (signature || timestamp || keyId) {
+        // Some but not all headers present - suspicious
+        console.warn("[API] Incomplete signature headers - skipping verification");
     }
 
     // Parse JSON after verification
