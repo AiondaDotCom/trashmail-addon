@@ -5,7 +5,7 @@
     "homepage_url": "https://trashmail.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
-    "version": "7.2.4",
+    "version": "7.3.0",
     "default_locale": "en",
     "icons": {
         "16": "images/Icon-16.png",
@@ -19,7 +19,8 @@
     "permissions": [
         "tabs",
         "storage",
-        "contextMenus"
+        "contextMenus",
+        "webRequest"
     ],
     "host_permissions": [
         "<all_urls>"
@@ -65,7 +66,7 @@
     },
     "web_accessible_resources": [
         {
-            "resources": ["public_suffix.js", "api.js", "argon2-bundled.min.js", "srp-client.js", "libopaque.js", "opaque-client.js"],
+            "resources": ["public_suffix.js", "api.js", "argon2-bundled.min.js", "srp-client.js", "libopaque.js", "opaque-client.js", "public_key.json"],
             "matches": ["<all_urls>"]
         }
     ]

@@ -309,12 +309,47 @@ function updateBadge(tabId, status) {
             color = "#ef4444"; // Rot
             text = "✗";
             break;
+        case "PROTECTED":
+            color = "#3b82f6"; // Blau
+            text = "🛡";
+            break;
         default:
             return; // Kein Badge für UNKNOWN
     }
 
-    browser.action.setBadgeBackgroundColor({ tabId: tabId, color: color });
-    browser.action.setBadgeText({ tabId: tabId, text: text });
+    try {
+        browser.action.setBadgeBackgroundColor({ tabId: tabId, color: color });
+        browser.action.setBadgeText({ tabId: tabId, text: text });
+    } catch (err) {
+        console.warn("[Guardian] Failed to update badge:", err);
+    }
+}
+
+/**
+ * Badge für aktuellen Tab basierend auf URL aktualisieren
+ */
+async function updateBadgeForTab(tabId, url) {
+    if (!url) return;
+
+    try {
+        const hostname = new URL(url).hostname;
+
+        if (isProtectedHost(hostname)) {
+            // Auf geschützter Seite - zeige Status oder "Protected"
+            let status = tabSecurityStatus.get(tabId);
+            if (!status) {
+                // Noch kein Verifizierungsstatus - zeige "Protected"
+                status = { status: "PROTECTED", verified: 0, failed: [] };
+                tabSecurityStatus.set(tabId, status);
+            }
+            updateBadge(tabId, status);
+        } else {
+            // Nicht auf geschützter Seite - Badge entfernen
+            browser.action.setBadgeText({ tabId: tabId, text: "" });
+        }
+    } catch (err) {
+        // URL konnte nicht geparsed werden
+    }
 }
 
 /**
@@ -363,11 +398,20 @@ async function initGuardian() {
         ["responseHeaders"]
     );
 
-    // Tab-Wechsel überwachen (Badge zurücksetzen)
-    browser.tabs.onActivated.addListener((activeInfo) => {
-        const status = tabSecurityStatus.get(activeInfo.tabId);
-        if (status) {
-            updateBadge(activeInfo.tabId, status);
+    // Tab-Wechsel überwachen (Badge aktualisieren)
+    browser.tabs.onActivated.addListener(async (activeInfo) => {
+        try {
+            const tab = await browser.tabs.get(activeInfo.tabId);
+            updateBadgeForTab(activeInfo.tabId, tab.url);
+        } catch (err) {
+            // Tab existiert möglicherweise nicht mehr
+        }
+    });
+
+    // Tab-URL geändert
+    browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.url || changeInfo.status === "complete") {
+            updateBadgeForTab(tabId, tab.url);
         }
     });
 
@@ -376,8 +420,51 @@ async function initGuardian() {
         tabSecurityStatus.delete(tabId);
     });
 
+    // Message-Handler für Popup
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === "get_guardian_status") {
+            // Status für aktuellen Tab abrufen
+            browser.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+                if (tabs.length === 0) {
+                    sendResponse({ status: null });
+                    return;
+                }
+
+                const tab = tabs[0];
+                let hostname = null;
+                let isProtected = false;
+
+                try {
+                    hostname = new URL(tab.url).hostname;
+                    isProtected = isProtectedHost(hostname);
+                } catch (e) {
+                    // Ungültige URL
+                }
+
+                const securityStatus = tabSecurityStatus.get(tab.id);
+
+                sendResponse({
+                    tabId: tab.id,
+                    hostname: hostname,
+                    isProtected: isProtected,
+                    status: securityStatus || null,
+                    keysLoaded: publicKeys.size,
+                    initialized: guardianInitialized
+                });
+            });
+            return true; // Async response
+        }
+    });
+
     guardianInitialized = true;
     console.log("[Guardian] MITM Protection initialized with", publicKeys.size, "keys");
+
+    // Initial Badge für alle offenen TrashMail-Tabs setzen
+    browser.tabs.query({}).then(tabs => {
+        for (const tab of tabs) {
+            updateBadgeForTab(tab.id, tab.url);
+        }
+    });
 }
 
 // Guardian beim Laden der Extension starten

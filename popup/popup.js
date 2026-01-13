@@ -5,6 +5,104 @@ if (typeof browser === "undefined") {
     var browser = chrome;
 }
 
+// ============================================================
+// Guardian Security Status
+// ============================================================
+
+/**
+ * Guardian-Status vom Background-Script abrufen und anzeigen
+ */
+async function updateSecurityStatus() {
+    const statusEl = document.getElementById("security-status");
+    if (!statusEl) return;
+
+    try {
+        const response = await browser.runtime.sendMessage({ action: "get_guardian_status" });
+
+        const iconEl = statusEl.querySelector(".status-icon");
+        const textEl = statusEl.querySelector(".status-text");
+        const detailEl = statusEl.querySelector(".status-detail");
+
+        // Alle Status-Klassen entfernen
+        statusEl.className = "";
+
+        if (!response || !response.initialized) {
+            // Guardian nicht initialisiert
+            statusEl.className = "inactive";
+            iconEl.textContent = "⚠️";
+            textEl.textContent = "Not Initialized";
+            detailEl.textContent = "Guardian module failed to load";
+            return;
+        }
+
+        if (!response.isProtected) {
+            // Nicht auf TrashMail-Seite
+            statusEl.className = "inactive";
+            iconEl.textContent = "🔒";
+            textEl.textContent = "MITM Protection";
+            detailEl.textContent = "Visit TrashMail.com to activate";
+            return;
+        }
+
+        // Auf TrashMail-Seite
+        const status = response.status;
+
+        if (!status || status.status === "PROTECTED") {
+            // Noch keine Verifizierung erfolgt
+            statusEl.className = "protected";
+            iconEl.textContent = "🛡️";
+            textEl.textContent = "Protected";
+            detailEl.textContent = response.hostname;
+            return;
+        }
+
+        switch (status.status) {
+            case "VERIFIED":
+                statusEl.className = "verified";
+                iconEl.textContent = "✅";
+                textEl.textContent = "Verified";
+                detailEl.textContent = `${status.verified} responses verified`;
+                break;
+
+            case "VERIFIED_DEPRECATED":
+                statusEl.className = "warning";
+                iconEl.textContent = "⚠️";
+                textEl.textContent = "Key Expiring Soon";
+                detailEl.textContent = "Signature valid, but key needs renewal";
+                break;
+
+            case "KEY_EXPIRED":
+                statusEl.className = "danger";
+                iconEl.textContent = "⏰";
+                textEl.textContent = "Key Expired";
+                detailEl.textContent = "Server key needs renewal";
+                break;
+
+            case "COMPROMISED":
+                statusEl.className = "danger";
+                iconEl.textContent = "🚨";
+                textEl.textContent = "MITM DETECTED!";
+                detailEl.textContent = "Signature verification failed!";
+                break;
+
+            default:
+                statusEl.className = "inactive";
+                iconEl.textContent = "❓";
+                textEl.textContent = "Unknown";
+                detailEl.textContent = status.status;
+        }
+    } catch (err) {
+        console.error("[Popup] Failed to get guardian status:", err);
+        statusEl.className = "inactive";
+        statusEl.querySelector(".status-icon").textContent = "❌";
+        statusEl.querySelector(".status-text").textContent = "Error";
+        statusEl.querySelector(".status-detail").textContent = err.message || "Unknown error";
+    }
+}
+
+// Security Status beim Laden aktualisieren
+document.addEventListener("DOMContentLoaded", updateSecurityStatus);
+
 /**
  * Get session details - either from stored session_id or by logging in
  *

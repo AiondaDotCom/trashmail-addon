@@ -8,7 +8,7 @@ if (typeof browser === "undefined") {
 // Import additional scripts (Service Worker only - Chrome)
 // Firefox with background.scripts loads these via manifest
 if (typeof importScripts === "function") {
-    importScripts("api.js", "publicsuffixlist.js");
+    importScripts("api.js", "publicsuffixlist.js", "guardian.js");
 }
 
 // Open welcome screen when installing addon.
