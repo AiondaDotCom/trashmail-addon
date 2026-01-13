@@ -60,7 +60,7 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
         if (prop === "email") {
             let vaultOption = document.createElement("option");
             vaultOption.value = "vault";
-            vaultOption.text = browser.i18n.getMessage("optionsInternalMailbox");
+            vaultOption.text = browser.i18n.getMessage("optionsInternalMailbox") || "Internal Mailbox";
             if (sync["default_email"] === "vault")
                 vaultOption.selected = true;
             select.add(vaultOption);
