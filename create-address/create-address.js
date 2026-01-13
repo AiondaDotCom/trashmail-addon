@@ -228,3 +228,40 @@ document.getElementById("btn-address-manager").addEventListener("click", address
 document.getElementById("btn-close").addEventListener("click", function () {
     window.close();
 });
+
+// Auto-resize window to fit content
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(async function() {
+        try {
+            const card = document.querySelector('.card');
+            const header = document.querySelector('.header');
+            const container = document.querySelector('.container');
+
+            const contentHeight = header.offsetHeight + container.offsetHeight + 40; // padding
+            const contentWidth = Math.max(card.offsetWidth + 40, 500);
+
+            const currentWindow = await browser.windows.getCurrent();
+
+            // Calculate the difference between window size and viewport
+            const chromeHeight = currentWindow.height - window.innerHeight;
+            const chromeWidth = currentWindow.width - window.innerWidth;
+
+            // New window size = content + browser chrome
+            const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+            const newWidth = Math.min(contentWidth + chromeWidth, 650);
+
+            // Center on screen
+            const left = Math.round((screen.width - newWidth) / 2);
+            const top = Math.round((screen.height - newHeight) / 2);
+
+            await browser.windows.update(currentWindow.id, {
+                width: newWidth,
+                height: newHeight,
+                left: left,
+                top: top
+            });
+        } catch (err) {
+            console.log('[Create Address] Auto-resize failed:', err);
+        }
+    }, 100); // Small delay to ensure content is rendered
+});
