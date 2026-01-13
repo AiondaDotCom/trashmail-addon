@@ -97,6 +97,14 @@ async function verifyApiResponse(body, signature, timestamp, keyId) {
     const dataBuffer = new TextEncoder().encode(dataToVerify);
     const signatureBuffer = apiBase64ToArrayBuffer(signature);
 
+    // Debug: Log verification details
+    console.log("[API] Signature verification details:", {
+        dataToVerifyLength: dataToVerify.length,
+        dataToVerifyPreview: dataToVerify.substring(0, 150) + "...",
+        signatureLength: signatureBuffer.byteLength,
+        expectedSignatureLength: 64 // Ed25519 signatures are 64 bytes
+    });
+
     try {
         const valid = await crypto.subtle.verify(
             { name: "Ed25519" },
@@ -177,6 +185,15 @@ async function callAPI(data, json=null) {
             error.securityError = true;
             throw error;
         }
+
+        // Debug: Log what we're verifying
+        console.log("[API] Verifying signature:", {
+            bodyLength: bodyText.length,
+            bodyPreview: bodyText.substring(0, 100),
+            signature: signature,
+            timestamp: timestamp,
+            keyId: keyId
+        });
 
         const verification = await verifyApiResponse(bodyText, signature, timestamp, keyId);
         if (!verification.valid) {
