@@ -124,6 +124,7 @@
     "guardianVisitToActivate": {"message": "Vizitu TrashMail.com por aktivigi"},
     "guardianProtected": {"message": "Protektita"},
     "guardianVerified": {"message": "Kontrolita"},
+    "guardianResponseVerified": {"message": "1 respondo kontrolita"},
     "guardianResponsesVerified": {
         "message": "$NUM$ respondoj kontrolitaj",
         "placeholders": {
@@ -137,6 +138,7 @@
     "guardianMitmDetected": {"message": "MITM DETEKTITA!"},
     "guardianSignatureVerificationFailed": {"message": "Subskriba kontrolo malsukcesis!"},
     "guardianUnsigned": {"message": "Mankantaj subskriboj!"},
+    "guardianMissingSignature": {"message": "1 respondo sen subskribo"},
     "guardianMissingSignatures": {
         "message": "$NUM$ respondoj sen subskribo",
         "placeholders": {

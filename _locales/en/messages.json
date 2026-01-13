@@ -139,6 +139,7 @@
     "guardianVisitToActivate": {"message": "Visit TrashMail.com to activate"},
     "guardianProtected": {"message": "Protected"},
     "guardianVerified": {"message": "Verified"},
+    "guardianResponseVerified": {"message": "1 response verified"},
     "guardianResponsesVerified": {
         "message": "$NUM$ responses verified",
         "placeholders": {
@@ -152,6 +153,7 @@
     "guardianMitmDetected": {"message": "MITM DETECTED!"},
     "guardianSignatureVerificationFailed": {"message": "Signature verification failed!"},
     "guardianUnsigned": {"message": "Missing Signatures!"},
+    "guardianMissingSignature": {"message": "1 response without signature"},
     "guardianMissingSignatures": {
         "message": "$NUM$ responses without signature",
         "placeholders": {

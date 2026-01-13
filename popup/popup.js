@@ -61,7 +61,12 @@ async function updateSecurityStatus() {
                 statusEl.className = "verified";
                 iconEl.textContent = "✅";
                 textEl.textContent = browser.i18n.getMessage("guardianVerified");
-                detailEl.textContent = browser.i18n.getMessage("guardianResponsesVerified", [status.verified.toString()]);
+                // Singular/Plural
+                if (status.verified === 1) {
+                    detailEl.textContent = browser.i18n.getMessage("guardianResponseVerified");
+                } else {
+                    detailEl.textContent = browser.i18n.getMessage("guardianResponsesVerified", [status.verified.toString()]);
+                }
                 break;
 
             case "VERIFIED_DEPRECATED":
@@ -89,7 +94,12 @@ async function updateSecurityStatus() {
                 statusEl.className = "danger";
                 iconEl.textContent = "⚠️";
                 textEl.textContent = browser.i18n.getMessage("guardianUnsigned");
-                detailEl.textContent = browser.i18n.getMessage("guardianMissingSignatures", [(status.unsigned || 0).toString()]);
+                // Singular/Plural
+                if ((status.unsigned || 0) === 1) {
+                    detailEl.textContent = browser.i18n.getMessage("guardianMissingSignature");
+                } else {
+                    detailEl.textContent = browser.i18n.getMessage("guardianMissingSignatures", [(status.unsigned || 0).toString()]);
+                }
                 break;
 
             default:
