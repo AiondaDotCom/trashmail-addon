@@ -48,67 +48,64 @@ let tabSecurityStatus = new Map(); // tabId -> { status, reason, verified, faile
 // ============================================================
 
 console.log("[Guardian] Registering message handler...");
+console.log("[Guardian] guardianInitialized at registration:", guardianInitialized);
 
-browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// Firefox supports returning a Promise directly from the listener
+browser.runtime.onMessage.addListener((message, sender) => {
     if (message.action === "get_guardian_status") {
-        console.log("[Guardian] Received get_guardian_status request");
+        console.log("[Guardian] Received get_guardian_status request, initialized:", guardianInitialized, "keys:", publicKeys.size);
 
-        // Get status for current tab
-        browser.tabs.query({ active: true, currentWindow: true }).then(tabs => {
-            if (tabs.length === 0) {
-                sendResponse({
+        // Return a Promise - Firefox will wait for it and send the resolved value
+        return (async () => {
+            try {
+                const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+
+                if (tabs.length === 0) {
+                    return {
+                        initialized: guardianInitialized,
+                        keysLoaded: publicKeys.size,
+                        isProtected: false,
+                        status: null
+                    };
+                }
+
+                const tab = tabs[0];
+                let hostname = null;
+                let isProtected = false;
+
+                try {
+                    hostname = new URL(tab.url).hostname;
+                    isProtected = isProtectedHost(hostname);
+                } catch (e) {
+                    // Invalid URL
+                }
+
+                const securityStatus = tabSecurityStatus.get(tab.id);
+
+                const response = {
+                    tabId: tab.id,
+                    hostname: hostname,
+                    isProtected: isProtected,
+                    status: securityStatus || null,
+                    keysLoaded: publicKeys.size,
+                    initialized: guardianInitialized
+                };
+
+                console.log("[Guardian] Sending status response:", response);
+                return response;
+            } catch (err) {
+                console.error("[Guardian] Error getting tab info:", err);
+                return {
                     initialized: guardianInitialized,
                     keysLoaded: publicKeys.size,
                     isProtected: false,
-                    status: null
-                });
-                return;
+                    status: null,
+                    error: err.message
+                };
             }
-
-            const tab = tabs[0];
-            let hostname = null;
-            let isProtected = false;
-
-            try {
-                hostname = new URL(tab.url).hostname;
-                isProtected = isProtectedHost(hostname);
-            } catch (e) {
-                // Invalid URL
-            }
-
-            const securityStatus = tabSecurityStatus.get(tab.id);
-
-            console.log("[Guardian] Sending status response:", {
-                tabId: tab.id,
-                hostname,
-                isProtected,
-                status: securityStatus,
-                keysLoaded: publicKeys.size,
-                initialized: guardianInitialized
-            });
-
-            sendResponse({
-                tabId: tab.id,
-                hostname: hostname,
-                isProtected: isProtected,
-                status: securityStatus || null,
-                keysLoaded: publicKeys.size,
-                initialized: guardianInitialized
-            });
-        }).catch(err => {
-            console.error("[Guardian] Error getting tab info:", err);
-            sendResponse({
-                initialized: guardianInitialized,
-                keysLoaded: publicKeys.size,
-                isProtected: false,
-                status: null,
-                error: err.message
-            });
-        });
-
-        return true; // Async response
+        })();
     }
-    // Don't handle other messages - leave to other listeners
+    // Don't handle other messages - return undefined to let other listeners handle
 });
 
 console.log("[Guardian] Message handler registered");
@@ -148,6 +145,301 @@ function isHashedAsset(url) {
     // Pattern: filename.HASH.ext (e.g. app.a1b2c3d4.js or app.61bd607be317d6f746f436cc259f3a933396753b73ab14c891a768916bd97e04.min.js)
     // At least 8 hex chars, typically 64 chars (SHA-256)
     return /\.[a-f0-9]{8,64}\.(?:min\.)?(js|css|png|jpg|jpeg|gif|svg|webp|woff2?)$/i.test(url);
+}
+
+// ============================================================
+// TLS Certificate Verification (Firefox only)
+// ============================================================
+
+/**
+ * Cached server certificate fingerprint
+ * Format: { fingerprint: "sha256:...", timestamp: 123456789 }
+ */
+let cachedCertFingerprint = null;
+
+/**
+ * Flag to prevent concurrent fingerprint fetches
+ */
+let fetchingFingerprint = false;
+
+/**
+ * Check if we're running in Firefox (getSecurityInfo is Firefox-only)
+ */
+function isFirefox() {
+    return typeof browser !== "undefined" &&
+           typeof browser.webRequest !== "undefined" &&
+           typeof browser.webRequest.getSecurityInfo === "function";
+}
+
+/**
+ * Fetch certificate fingerprint from server
+ * Response is Ed25519 signed, so MITM cannot fake it
+ */
+async function fetchServerFingerprint() {
+    if (fetchingFingerprint) return cachedCertFingerprint;
+    fetchingFingerprint = true;
+
+    try {
+        console.log("[Guardian] Fetching certificate fingerprint from server...");
+
+        const response = await fetch("https://trashmail.com/?api=1&cmd=cert_fingerprint", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+
+        if (!response.ok) {
+            console.error("[Guardian] Failed to fetch fingerprint:", response.status);
+            return null;
+        }
+
+        // Verify Ed25519 signature on response
+        const signature = response.headers.get("x-aionda-signature");
+        const timestamp = response.headers.get("x-aionda-timestamp");
+        const keyId = response.headers.get("x-aionda-key-id");
+
+        const body = await response.text();
+        console.log("[Guardian] cert_fingerprint raw response:", body);
+
+        const data = JSON.parse(body);
+        console.log("[Guardian] cert_fingerprint parsed data:", data);
+
+        if (!data.success) {
+            console.error("[Guardian] Server returned error:", data.error);
+            console.error("[Guardian] Full response data:", JSON.stringify(data));
+            return null;
+        }
+
+        // Verify signature if headers present
+        if (signature && timestamp && keyId) {
+            const verification = await verifySignature(body, signature, parseInt(timestamp), keyId);
+            if (!verification.valid) {
+                console.error("[Guardian] Fingerprint response signature INVALID:", verification.reason);
+                // CRITICAL: Don't trust unsigned/invalid fingerprint responses!
+                return null;
+            }
+            console.log("[Guardian] Fingerprint response signature verified");
+        } else {
+            console.warn("[Guardian] Fingerprint response not signed - skipping verification");
+        }
+
+        cachedCertFingerprint = {
+            fingerprint: data.fingerprint,
+            timestamp: data.timestamp
+        };
+
+        console.log("[Guardian] Server fingerprint cached:", data.fingerprint.substring(0, 20) + "...");
+        return cachedCertFingerprint;
+
+    } catch (err) {
+        console.error("[Guardian] Error fetching fingerprint:", err);
+        return null;
+    } finally {
+        fetchingFingerprint = false;
+    }
+}
+
+/**
+ * Get SHA256 fingerprint from certificate
+ * @param {Object} cert - Certificate object from getSecurityInfo
+ * @returns {string} Fingerprint in format "sha256:hexstring"
+ */
+function getCertFingerprint(cert) {
+    if (!cert || !cert.fingerprint || !cert.fingerprint.sha256) {
+        return null;
+    }
+    // Firefox returns fingerprint with colons, e.g. "A1:B2:C3:..."
+    // Convert to lowercase hex without colons
+    const hex = cert.fingerprint.sha256.replace(/:/g, "").toLowerCase();
+    return "sha256:" + hex;
+}
+
+/**
+ * Check TLS certificate on request completion
+ * Only works in Firefox with webRequestBlocking permission
+ */
+async function checkCertificate(details) {
+    console.log("[Guardian] checkCertificate called for:", details.url);
+
+    // Only Firefox supports getSecurityInfo
+    if (!isFirefox()) {
+        console.log("[Guardian] checkCertificate: Not Firefox, skipping");
+        return;
+    }
+
+    // Ignore requests without valid tabId
+    if (!details.tabId || details.tabId < 0) {
+        console.log("[Guardian] checkCertificate: Invalid tabId, skipping");
+        return;
+    }
+
+    // Only check protected hosts
+    try {
+        const url = new URL(details.url);
+        if (!isProtectedHost(url.hostname)) {
+            console.log("[Guardian] checkCertificate: Not protected host, skipping:", url.hostname);
+            return;
+        }
+    } catch (e) {
+        return;
+    }
+
+    console.log("[Guardian] checkCertificate: Checking certificate for protected host");
+    console.log("[Guardian] Request ID:", details.requestId);
+
+    try {
+        // Get certificate info from browser
+        const securityInfo = await browser.webRequest.getSecurityInfo(
+            details.requestId,
+            { certificateChain: true }
+        );
+
+        // console.log("[Guardian] securityInfo:", JSON.stringify(securityInfo, null, 2));
+
+        if (!securityInfo || !securityInfo.certificates || securityInfo.certificates.length === 0) {
+            console.warn("[Guardian] No certificate info available for:", details.url);
+            console.warn("[Guardian] securityInfo was:", securityInfo);
+            return;
+        }
+
+        // Get leaf certificate fingerprint (the one presented by the server/CDN/proxy)
+        // certificates[0] should be the leaf cert, but verify by checking subject
+        let cert = securityInfo.certificates[0];
+
+        // Sanity check: leaf cert should have the domain in subject
+        if (cert.subject && !cert.subject.includes('trashmail.com') && !cert.subject.includes('byom.de')) {
+            console.warn("[Guardian] certificates[0] is not the leaf cert, searching...");
+            for (const c of securityInfo.certificates) {
+                if (c.subject && (c.subject.includes('trashmail.com') || c.subject.includes('byom.de'))) {
+                    cert = c;
+                    break;
+                }
+            }
+        }
+
+        console.log("[Guardian] Using cert with subject:", cert.subject);
+        const browserFingerprint = getCertFingerprint(cert);
+        if (!browserFingerprint) {
+            console.warn("[Guardian] Could not extract fingerprint from certificate");
+            return;
+        }
+
+        // First request? Fetch server fingerprint
+        if (!cachedCertFingerprint) {
+            await fetchServerFingerprint();
+            if (!cachedCertFingerprint) {
+                console.warn("[Guardian] Could not get server fingerprint for comparison");
+                return;
+            }
+        }
+
+        // Compare fingerprints
+        if (browserFingerprint === cachedCertFingerprint.fingerprint) {
+            // Fingerprints match - all good!
+            console.log("[Guardian] Certificate fingerprint OK:", browserFingerprint);
+
+            // Store TLS verification status
+            let status = tabSecurityStatus.get(details.tabId) || {
+                status: "PROTECTED",
+                verified: 0,
+                unsigned: 0,
+                failed: [],
+                deprecated: false
+            };
+            status.tlsVerified = true;
+            status.tlsFingerprint = browserFingerprint;
+            tabSecurityStatus.set(details.tabId, status);
+
+            return;
+        }
+
+        // MISMATCH! But don't panic yet - certificate might have been renewed
+        console.warn("[Guardian] Certificate fingerprint MISMATCH!");
+        console.warn("[Guardian] Browser sees:", browserFingerprint);
+        console.warn("[Guardian] Server reported:", cachedCertFingerprint.fingerprint);
+
+        // Fetch fresh fingerprint from server (Ed25519 signed - cannot be faked)
+        const freshFingerprint = await fetchServerFingerprint();
+        if (!freshFingerprint) {
+            // Could not verify - treat as suspicious
+            handleMitmDetected(details.tabId, browser.i18n.getMessage("guardianTlsUnreachable"));
+            return;
+        }
+
+        // Compare fresh server fingerprint with what browser sees
+        if (browserFingerprint === freshFingerprint.fingerprint) {
+            // OK! Certificate was renewed, our cache was outdated
+            console.log("[Guardian] Certificate was renewed - fingerprints now match");
+            cachedCertFingerprint = freshFingerprint;
+
+            // Store TLS verification status
+            let status = tabSecurityStatus.get(details.tabId) || {
+                status: "PROTECTED",
+                verified: 0,
+                unsigned: 0,
+                failed: [],
+                deprecated: false
+            };
+            status.tlsVerified = true;
+            status.tlsFingerprint = browserFingerprint;
+            tabSecurityStatus.set(details.tabId, status);
+
+            return;
+        }
+
+        // MITM DETECTED!
+        // Browser sees different certificate than server reports
+        // And server response is Ed25519 signed, so it cannot be faked
+        console.error("[Guardian] ⚠️ MITM DETECTED! Certificate mismatch after fresh fetch!");
+        console.error("[Guardian] Browser sees:", browserFingerprint);
+        console.error("[Guardian] Server says:", freshFingerprint.fingerprint);
+
+        const issuerInfo = securityInfo.certificates[0].issuer || "Unknown issuer";
+        const mitmMsg = browser.i18n.getMessage("guardianTlsMitmDetected") + "\n\n" +
+            browser.i18n.getMessage("guardianTlsBrowserCert") + ": " + browserFingerprint.substring(0, 30) + "...\n" +
+            browser.i18n.getMessage("guardianTlsExpected") + ": " + freshFingerprint.fingerprint.substring(0, 30) + "...\n\n" +
+            browser.i18n.getMessage("guardianTlsIssuer") + ": " + issuerInfo + "\n\n" +
+            browser.i18n.getMessage("guardianTlsProxyWarning");
+        handleMitmDetected(details.tabId, mitmMsg);
+
+    } catch (err) {
+        console.error("[Guardian] Error checking certificate:", err);
+        console.error("[Guardian] Error details:", err.message, err.stack);
+    }
+}
+
+/**
+ * Handle MITM detection
+ */
+function handleMitmDetected(tabId, message) {
+    // Update tab status
+    let status = tabSecurityStatus.get(tabId) || {
+        status: "COMPROMISED",
+        verified: 0,
+        unsigned: 0,
+        failed: [],
+        deprecated: false
+    };
+
+    status.status = "COMPROMISED";
+    status.mitmDetected = true;
+    status.mitmMessage = message;
+
+    tabSecurityStatus.set(tabId, status);
+    updateBadge(tabId, status);
+
+    // Show warning to user
+    showSecurityWarning(tabId, message);
+
+    // Also show browser notification
+    browser.notifications.create({
+        type: "basic",
+        iconUrl: "images/warning-32.png",
+        title: "⚠️ " + browser.i18n.getMessage("guardianNotificationTitle"),
+        message: browser.i18n.getMessage("guardianNotificationMitm"),
+        priority: 2
+    }).catch(() => {
+        // Notifications permission may not be granted
+    });
 }
 
 // ============================================================
@@ -286,19 +578,24 @@ async function verifySignature(body, signature, timestamp, keyId) {
  * Process response headers
  */
 async function processResponse(details) {
+    console.log("[Guardian] processResponse called for:", details.url);
+
     // Ignore requests without valid tabId (e.g. Service Worker)
     if (!details.tabId || details.tabId < 0) {
+        console.log("[Guardian] processResponse: Invalid tabId, skipping");
         return;
     }
 
     // Only protected hosts
     const url = new URL(details.url);
     if (!isProtectedHost(url.hostname)) {
+        console.log("[Guardian] processResponse: Not protected host, skipping");
         return;
     }
 
     // Skip CloudFlare CDN resources (cannot be signed)
     if (url.pathname.startsWith("/cdn-cgi/")) {
+        console.log("[Guardian] processResponse: CloudFlare CDN resource, skipping");
         return;
     }
 
@@ -348,6 +645,26 @@ async function processResponse(details) {
             // Set status to WARNING if not already COMPROMISED
             if (status.status !== "COMPROMISED") {
                 status.status = "UNSIGNED";
+
+                // Show warning popup for missing signatures (possible MITM stripping headers)
+                const missingMsg = (isApi ? browser.i18n.getMessage("guardianMissingSignatureApi") : browser.i18n.getMessage("guardianMissingSignaturePage")) + "\n\n" +
+                    browser.i18n.getMessage("guardianMissingSignatureUrl") + ": " + details.url + "\n\n" +
+                    browser.i18n.getMessage("guardianMissingSignatureHint") + "\n" +
+                    "• " + browser.i18n.getMessage("guardianMissingSignatureReason1") + "\n" +
+                    "• " + browser.i18n.getMessage("guardianMissingSignatureReason2") + "\n" +
+                    "• " + browser.i18n.getMessage("guardianMissingSignatureReason3");
+                showSecurityWarning(details.tabId, missingMsg);
+
+                // Also show browser notification
+                browser.notifications.create({
+                    type: "basic",
+                    iconUrl: "images/warning-32.png",
+                    title: "⚠️ " + browser.i18n.getMessage("guardianNotificationTitle"),
+                    message: browser.i18n.getMessage("guardianNotificationMissing"),
+                    priority: 2
+                }).catch(() => {
+                    // Notifications permission may not be granted
+                });
             }
         } else {
             // Other resources (JS, CSS, images) - only log
@@ -473,12 +790,57 @@ function resetTabStatus(tabId) {
  * Show security warning
  */
 function showSecurityWarning(tabId, message) {
-    // Notify content script to show warning
+    console.log("[Guardian] showSecurityWarning called for tab:", tabId, "message:", message.substring(0, 50) + "...");
+
+    // Get localized strings for the warning dialog
+    const warningTitle = browser.i18n.getMessage("guardianWarningTitle");
+    const dismissText = browser.i18n.getMessage("guardianWarningDismiss");
+
+    // Try sending to content script first
     browser.tabs.sendMessage(tabId, {
         action: "guardian_warning",
-        message: message
-    }).catch(() => {
-        // Tab may not have content script
+        message: message,
+        title: warningTitle,
+        dismissText: dismissText
+    }).then(() => {
+        console.log("[Guardian] Warning message sent successfully to tab:", tabId);
+    }).catch((err) => {
+        console.warn("[Guardian] Content script not ready, injecting warning directly:", err.message);
+
+        // Content script not loaded yet - inject warning directly using scripting API (MV3)
+        browser.scripting.executeScript({
+            target: { tabId: tabId },
+            func: (warningMessage, title, dismiss) => {
+                if (document.getElementById('trashmail-mitm-warning')) return;
+                const overlay = document.createElement('div');
+                overlay.id = 'trashmail-mitm-warning';
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(220,38,38,0.95);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
+
+                // Escape HTML in message
+                const escaped = warningMessage.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const escapedDismiss = dismiss.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                overlay.innerHTML = '<div style="background:white;padding:32px;border-radius:12px;max-width:500px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.25);">' +
+                    '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>' +
+                    '<h1 style="color:#dc2626;margin:0 0 16px 0;font-size:24px;">' + escapedTitle + '</h1>' +
+                    '<pre style="background:#fef2f2;padding:16px;border-radius:8px;text-align:left;white-space:pre-wrap;word-break:break-word;font-size:13px;color:#7f1d1d;margin:0 0 20px 0;max-height:200px;overflow:auto;">' + escaped + '</pre>' +
+                    '<button id="trashmail-mitm-dismiss" style="background:#dc2626;color:white;border:none;padding:12px 32px;border-radius:8px;font-size:16px;cursor:pointer;">' + escapedDismiss + '</button>' +
+                    '</div>';
+
+                document.body.appendChild(overlay);
+
+                // Add event listener for dismiss button
+                document.getElementById('trashmail-mitm-dismiss').addEventListener('click', () => {
+                    overlay.remove();
+                });
+            },
+            args: [message, warningTitle, dismissText]
+        }).then(() => {
+            console.log("[Guardian] Warning injected directly into tab:", tabId);
+        }).catch((err2) => {
+            console.error("[Guardian] Failed to inject warning:", err2);
+        });
     });
 }
 
@@ -502,7 +864,7 @@ async function initGuardian() {
         return;
     }
 
-    // Register WebRequest listener
+    // Register WebRequest listener for signature verification
     browser.webRequest.onResponseStarted.addListener(
         processResponse,
         {
@@ -515,6 +877,33 @@ async function initGuardian() {
         },
         ["responseHeaders"]
     );
+
+    // Register certificate verification listener (Firefox only)
+    // Uses onCompleted because getSecurityInfo needs completed request
+    console.log("[Guardian] Checking isFirefox():", isFirefox());
+    console.log("[Guardian] browser.webRequest:", typeof browser.webRequest);
+    console.log("[Guardian] browser.webRequest.getSecurityInfo:", typeof browser.webRequest?.getSecurityInfo);
+
+    // TLS Certificate verification (Firefox only)
+    // Uses cert.trashmail.com CNAME to ensure server connects through CloudFlare
+    if (isFirefox()) {
+        console.log("[Guardian] Firefox detected - enabling TLS certificate verification");
+        browser.webRequest.onHeadersReceived.addListener(
+            checkCertificate,
+            {
+                urls: [
+                    "*://trashmail.com/*",
+                    "*://*.trashmail.com/*",
+                    "*://byom.de/*",
+                    "*://*.byom.de/*"
+                ]
+            },
+            ["blocking"]
+        );
+        console.log("[Guardian] onHeadersReceived (blocking) listener registered for TLS verification");
+    } else {
+        console.log("[Guardian] Chrome detected - TLS certificate verification not available");
+    }
 
     // Monitor tab changes (update badge)
     browser.tabs.onActivated.addListener(async (activeInfo) => {

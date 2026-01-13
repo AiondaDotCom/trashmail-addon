@@ -175,5 +175,31 @@
     "guardianFeature1": {"message": "Ed25519 kryptografische Signaturen verifizieren jede Server-Antwort"},
     "guardianFeature2": {"message": "Erkennt Manipulation oder Header-Entfernung durch Proxies (ZScaler, Fortinet, etc.)"},
     "guardianFeature3": {"message": "Echtzeit-Verifikation mit sofortiger Warnung bei Datenänderung"},
-    "buttonClose": {"message": "Schließen"}
+    "buttonClose": {"message": "Schließen"},
+
+    "guardianTlsVerified": {"message": "TLS verifiziert"},
+    "guardianTlsNotVerified": {"message": "Noch nicht verifiziert"},
+    "guardianTlsCertificate": {"message": "TLS-Zertifikat"},
+
+    "guardianWarningTitle": {"message": "Sicherheitswarnung"},
+    "guardianWarningDismiss": {"message": "Schließen"},
+
+    "guardianTlsMitmDetected": {"message": "Deine Verbindung wird abgefangen!"},
+    "guardianTlsBrowserCert": {"message": "Browser-Zertifikat"},
+    "guardianTlsExpected": {"message": "Erwartet"},
+    "guardianTlsIssuer": {"message": "Aussteller"},
+    "guardianTlsProxyWarning": {"message": "Dies könnte ein Firmen-Proxy (ZScaler, Netskope, etc.) oder ein bösartiger Angreifer sein."},
+    "guardianTlsUnreachable": {"message": "Zertifikat konnte nicht verifiziert werden - Server nicht erreichbar"},
+
+    "guardianMissingSignatureApi": {"message": "Fehlende Signatur bei API-Antwort!"},
+    "guardianMissingSignaturePage": {"message": "Fehlende Signatur auf Seite!"},
+    "guardianMissingSignatureUrl": {"message": "URL"},
+    "guardianMissingSignatureHint": {"message": "Dies könnte bedeuten:"},
+    "guardianMissingSignatureReason1": {"message": "Ein Man-in-the-Middle-Angriff, der Sicherheits-Header entfernt"},
+    "guardianMissingSignatureReason2": {"message": "Eine Server-Fehlkonfiguration"},
+    "guardianMissingSignatureReason3": {"message": "Ein transparenter Proxy, der Antworten verändert"},
+
+    "guardianNotificationTitle": {"message": "TrashMail Sicherheitswarnung"},
+    "guardianNotificationMitm": {"message": "Deine Verbindung wird möglicherweise abgefangen! Klicke für Details."},
+    "guardianNotificationMissing": {"message": "Antwort-Signatur fehlt! Deine Verbindung könnte kompromittiert sein."}
 }

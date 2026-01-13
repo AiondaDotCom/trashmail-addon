@@ -175,5 +175,31 @@
     "guardianFeature1": {"message": "Ed25519 cryptographic signatures verify every server response"},
     "guardianFeature2": {"message": "Detects tampering or header stripping by proxies (ZScaler, Fortinet, etc.)"},
     "guardianFeature3": {"message": "Real-time verification with instant warnings if data is modified"},
-    "buttonClose": {"message": "Close"}
+    "buttonClose": {"message": "Close"},
+
+    "guardianTlsVerified": {"message": "TLS Verified"},
+    "guardianTlsNotVerified": {"message": "Not yet verified"},
+    "guardianTlsCertificate": {"message": "TLS Certificate"},
+
+    "guardianWarningTitle": {"message": "Security Warning"},
+    "guardianWarningDismiss": {"message": "Dismiss"},
+
+    "guardianTlsMitmDetected": {"message": "Your connection is being intercepted!"},
+    "guardianTlsBrowserCert": {"message": "Browser certificate"},
+    "guardianTlsExpected": {"message": "Expected"},
+    "guardianTlsIssuer": {"message": "Issuer"},
+    "guardianTlsProxyWarning": {"message": "This could be a corporate proxy (ZScaler, Netskope, etc.) or a malicious attacker."},
+    "guardianTlsUnreachable": {"message": "Could not verify certificate - server unreachable"},
+
+    "guardianMissingSignatureApi": {"message": "Missing signature on API response!"},
+    "guardianMissingSignaturePage": {"message": "Missing signature on page!"},
+    "guardianMissingSignatureUrl": {"message": "URL"},
+    "guardianMissingSignatureHint": {"message": "This could indicate:"},
+    "guardianMissingSignatureReason1": {"message": "A Man-in-the-Middle attack stripping security headers"},
+    "guardianMissingSignatureReason2": {"message": "A server misconfiguration"},
+    "guardianMissingSignatureReason3": {"message": "A transparent proxy modifying responses"},
+
+    "guardianNotificationTitle": {"message": "TrashMail Security Warning"},
+    "guardianNotificationMitm": {"message": "Your connection may be intercepted! Click for details."},
+    "guardianNotificationMissing": {"message": "Response signature missing! Your connection may be compromised."}
 }

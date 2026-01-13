@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const status = params.get('status') || 'unknown';
     const text = params.get('text') || '';
     const detail = params.get('detail') || '';
+    const tlsVerified = params.get('tlsVerified');
+    const tlsFingerprint = params.get('tlsFingerprint') || '';
 
     // Update status display
     const statusBox = document.getElementById('status-box');
@@ -41,6 +43,26 @@ document.addEventListener("DOMContentLoaded", function() {
         default:
             statusBox.className = 'status-box';
             statusIcon.textContent = '\uD83D\uDD12';
+    }
+
+    // TLS Certificate Status (Firefox only)
+    if (tlsVerified) {
+        const tlsStatusBox = document.getElementById('tls-status-box');
+        const tlsStatusValue = document.getElementById('tls-status-value');
+        const tlsFingerprintEl = document.getElementById('tls-fingerprint');
+
+        tlsStatusBox.style.display = 'block';
+
+        if (tlsVerified === '1') {
+            tlsStatusBox.className = 'status-box verified';
+            tlsStatusValue.textContent = browser.i18n.getMessage('guardianTlsVerified') + ' ✓';
+            if (tlsFingerprint) {
+                tlsFingerprintEl.textContent = tlsFingerprint;
+            }
+        } else {
+            tlsStatusBox.className = 'status-box inactive';
+            tlsStatusValue.textContent = browser.i18n.getMessage('guardianTlsNotVerified');
+        }
     }
 
     // Close button

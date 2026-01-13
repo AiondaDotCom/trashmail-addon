@@ -17,7 +17,9 @@ async function updateSecurityStatus() {
     if (!statusEl) return;
 
     try {
+        console.log("[Popup] Requesting guardian status...");
         const response = await browser.runtime.sendMessage({ action: "get_guardian_status" });
+        console.log("[Popup] Received response:", response);
 
         const iconEl = statusEl.querySelector(".status-icon");
         const textEl = statusEl.querySelector(".status-text");
@@ -27,6 +29,7 @@ async function updateSecurityStatus() {
         statusEl.className = "";
 
         if (!response || !response.initialized) {
+            console.log("[Popup] Guardian not initialized, response:", response);
             // Guardian nicht initialisiert
             statusEl.className = "inactive";
             iconEl.textContent = "⚠️";
@@ -123,7 +126,7 @@ document.addEventListener("DOMContentLoaded", updateSecurityStatus);
 /**
  * Guardian Info-Fenster öffnen (zentriert am Bildschirm)
  */
-function openGuardianInfoWindow() {
+async function openGuardianInfoWindow() {
     const statusEl = document.getElementById("security-status");
     const text = statusEl.querySelector(".status-text").textContent;
     const detail = statusEl.querySelector(".status-detail").textContent;
@@ -137,11 +140,26 @@ function openGuardianInfoWindow() {
     else if (statusClass.includes('danger')) status = 'danger';
     else if (statusClass.includes('inactive')) status = 'inactive';
 
+    // Get TLS status from guardian
+    let tlsVerified = '';
+    let tlsFingerprint = '';
+    try {
+        const response = await browser.runtime.sendMessage({ action: "get_guardian_status" });
+        if (response && response.status) {
+            tlsVerified = response.status.tlsVerified ? '1' : '0';
+            tlsFingerprint = response.status.tlsFingerprint || '';
+        }
+    } catch (e) {
+        console.log("[Popup] Could not get TLS status:", e);
+    }
+
     // URL mit Parametern bauen
     const params = new URLSearchParams({
         status: status,
         text: text,
-        detail: detail
+        detail: detail,
+        tlsVerified: tlsVerified,
+        tlsFingerprint: tlsFingerprint
     });
 
     // Fenstergröße und Position berechnen (zentriert)

@@ -175,5 +175,31 @@
     "guardianFeature1": {"message": "Les signatures cryptographiques Ed25519 vérifient chaque réponse du serveur"},
     "guardianFeature2": {"message": "Détecte la manipulation ou la suppression d'en-têtes par les proxies (ZScaler, Fortinet, etc.)"},
     "guardianFeature3": {"message": "Vérification en temps réel avec alertes instantanées si les données sont modifiées"},
-    "buttonClose": {"message": "Fermer"}
+    "buttonClose": {"message": "Fermer"},
+
+    "guardianTlsVerified": {"message": "TLS vérifié"},
+    "guardianTlsNotVerified": {"message": "Pas encore vérifié"},
+    "guardianTlsCertificate": {"message": "Certificat TLS"},
+
+    "guardianWarningTitle": {"message": "Alerte de sécurité"},
+    "guardianWarningDismiss": {"message": "Fermer"},
+
+    "guardianTlsMitmDetected": {"message": "Votre connexion est interceptée !"},
+    "guardianTlsBrowserCert": {"message": "Certificat du navigateur"},
+    "guardianTlsExpected": {"message": "Attendu"},
+    "guardianTlsIssuer": {"message": "Émetteur"},
+    "guardianTlsProxyWarning": {"message": "Cela pourrait être un proxy d'entreprise (ZScaler, Netskope, etc.) ou un attaquant malveillant."},
+    "guardianTlsUnreachable": {"message": "Impossible de vérifier le certificat - serveur injoignable"},
+
+    "guardianMissingSignatureApi": {"message": "Signature manquante sur la réponse API !"},
+    "guardianMissingSignaturePage": {"message": "Signature manquante sur la page !"},
+    "guardianMissingSignatureUrl": {"message": "URL"},
+    "guardianMissingSignatureHint": {"message": "Cela pourrait indiquer :"},
+    "guardianMissingSignatureReason1": {"message": "Une attaque Man-in-the-Middle supprimant les en-têtes de sécurité"},
+    "guardianMissingSignatureReason2": {"message": "Une mauvaise configuration du serveur"},
+    "guardianMissingSignatureReason3": {"message": "Un proxy transparent modifiant les réponses"},
+
+    "guardianNotificationTitle": {"message": "Alerte de sécurité TrashMail"},
+    "guardianNotificationMitm": {"message": "Votre connexion pourrait être interceptée ! Cliquez pour plus de détails."},
+    "guardianNotificationMissing": {"message": "Signature de réponse manquante ! Votre connexion pourrait être compromise."}
 }

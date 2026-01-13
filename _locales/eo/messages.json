@@ -160,5 +160,31 @@
     "guardianFeature1": {"message": "Ed25519 kriptografiaj subskriboj kontrolas ĉiun servilan respondon"},
     "guardianFeature2": {"message": "Detektas manipuladon aŭ forigon de kapinformoj fare de prokuriloj (ZScaler, Fortinet, ktp.)"},
     "guardianFeature3": {"message": "Realtempa kontrolo kun tujaj avertoj se datumoj estas modifitaj"},
-    "buttonClose": {"message": "Fermi"}
+    "buttonClose": {"message": "Fermi"},
+
+    "guardianTlsVerified": {"message": "TLS kontrolita"},
+    "guardianTlsNotVerified": {"message": "Ankoraŭ ne kontrolita"},
+    "guardianTlsCertificate": {"message": "TLS-Atestilo"},
+
+    "guardianWarningTitle": {"message": "Sekureca Averto"},
+    "guardianWarningDismiss": {"message": "Fermi"},
+
+    "guardianTlsMitmDetected": {"message": "Via konekto estas kaptata!"},
+    "guardianTlsBrowserCert": {"message": "Retumila atestilo"},
+    "guardianTlsExpected": {"message": "Atendata"},
+    "guardianTlsIssuer": {"message": "Eldonanto"},
+    "guardianTlsProxyWarning": {"message": "Ĉi tio povus esti entreprena prokurilo (ZScaler, Netskope, ktp.) aŭ malica atakanto."},
+    "guardianTlsUnreachable": {"message": "Ne eblis kontroli atestilon - servilo neatingebla"},
+
+    "guardianMissingSignatureApi": {"message": "Mankas subskribo sur API-respondo!"},
+    "guardianMissingSignaturePage": {"message": "Mankas subskribo sur paĝo!"},
+    "guardianMissingSignatureUrl": {"message": "URL"},
+    "guardianMissingSignatureHint": {"message": "Ĉi tio povus indiki:"},
+    "guardianMissingSignatureReason1": {"message": "Man-in-the-Middle atako foriganta sekurecajn kapinformojn"},
+    "guardianMissingSignatureReason2": {"message": "Servila misagordo"},
+    "guardianMissingSignatureReason3": {"message": "Travidebla prokurilo modifanta respondojn"},
+
+    "guardianNotificationTitle": {"message": "TrashMail Sekureca Averto"},
+    "guardianNotificationMitm": {"message": "Via konekto eble estas kaptata! Klaku por detaloj."},
+    "guardianNotificationMissing": {"message": "Responda subskribo mankas! Via konekto eble estas kompromitita."}
 }
