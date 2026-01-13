@@ -73,7 +73,7 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
             document.getElementById(prop).value = sync[key];
     }
 
-    props = ["challenge", "masq", "notify", "send"];
+    props = ["vault", "challenge", "masq", "notify", "send"];
     for (const prop of props) {
         let key = "default_" + prop;
         if (key in sync)
@@ -166,6 +166,7 @@ async function createAddress(e) {
                 "cs": form.get("challenge") || false,
                 "masq": form.get("masq") || false,
                 "notify": form.get("notify") || false,
+                "vault": form.get("vault") || false,
                 "website": form.get("send") ? parent_url : ""
             }
         };

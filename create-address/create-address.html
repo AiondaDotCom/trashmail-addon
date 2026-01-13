@@ -210,16 +210,6 @@
             background: #e2e8f0;
             border-color: #cbd5e1;
         }
-        .btn-link {
-            background: transparent;
-            color: #f97316;
-            padding: 14px 16px;
-            min-width: auto;
-            flex: none;
-        }
-        .btn-link:hover {
-            background: #fff7ed;
-        }
         .btn-icon {
             font-size: 16px;
         }
@@ -360,6 +350,10 @@
                 <div class="form-group">
                     <div class="checkbox-group">
                         <div class="checkbox-item">
+                            <input type="checkbox" id="vault" name="vault" data-i18n="optionsInternalMailboxTooltip|title" value="1" />
+                            <label for="vault" data-i18n="optionsInternalMailbox"></label>
+                        </div>
+                        <div class="checkbox-item">
                             <input type="checkbox" id="challenge" name="challenge" value="1" />
                             <label for="challenge" data-i18n="optionsChallengeResponse"></label>
                         </div>
@@ -386,7 +380,7 @@
                         <span data-i18n="buttonCreateAddress"></span>
                     </button>
                     <button id="btn-close" type="button" class="btn btn-secondary" data-i18n="buttonCancel"></button>
-                    <button id="btn-address-manager" type="button" class="btn btn-link">
+                    <button id="btn-address-manager" type="button" class="btn btn-secondary">
                         <span class="btn-icon">&#128231;</span>
                         <span data-i18n="buttonAddressManagerShort"></span>
                     </button>

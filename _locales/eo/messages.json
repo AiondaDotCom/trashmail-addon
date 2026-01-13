@@ -82,6 +82,9 @@
     "saved": {"message": "Konservita"},
     "undo": {"message": "Malfari"},
 
+    "optionsInternalMailbox": {"message": "Konservi en interna poŝtkesto"},
+    "optionsInternalMailboxTooltip": {"message": "Konservi retpoŝtojn en via TrashMail-trezorejo anstataŭ plusendi ilin"},
+
     "1day": {"message": "1 tago"},
     "ndays": {
         "message": "$NUM$ tagoj",

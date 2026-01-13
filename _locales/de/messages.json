@@ -82,6 +82,9 @@
     "saved": {"message": "Gespeichert"},
     "undo": {"message": "Widerrufen"},
 
+    "optionsInternalMailbox": {"message": "Im internen Postfach speichern"},
+    "optionsInternalMailboxTooltip": {"message": "E-Mails im TrashMail-Vault speichern statt weiterzuleiten"},
+
     "1day": {"message": "1 Tag"},
     "ndays": {
         "message": "$NUM$ Tage",

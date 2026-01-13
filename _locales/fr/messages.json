@@ -82,6 +82,9 @@
     "saved": {"message": "Sauvegardée"},
     "undo": {"message": "Annuler"},
 
+    "optionsInternalMailbox": {"message": "Stocker dans la boîte interne"},
+    "optionsInternalMailboxTooltip": {"message": "Stocker les emails dans votre coffre TrashMail au lieu de les transférer"},
+
     "1day": {"message": "1 jour"},
     "ndays": {
         "message": "$NUM$ jours",

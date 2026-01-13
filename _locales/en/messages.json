@@ -82,6 +82,9 @@
     "saved": {"message": "Saved"},
     "undo": {"message": "Undo"},
 
+    "optionsInternalMailbox": {"message": "Store in internal mailbox"},
+    "optionsInternalMailboxTooltip": {"message": "Store emails in your TrashMail vault instead of forwarding them"},
+
     "1day": {"message": "1 day"},
     "ndays": {
         "message": "$NUM$ days",
