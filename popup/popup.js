@@ -256,34 +256,3 @@ document.getElementById("btn-options").addEventListener("click", function () {
     });
 });
 
-/**
- * Paste disposable address - opens create-address dialog
- */
-document.getElementById("btn-paste").addEventListener("click", async function () {
-    try {
-        // Get current tab to determine URL for context
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        const currentTab = tabs[0];
-
-        // Open create-address dialog
-        const width = 650;
-        const height = 450;
-        const left = Math.round((screen.width - width) / 2);
-        const top = Math.round((screen.height - height) / 2);
-
-        await browser.windows.create({
-            url: browser.runtime.getURL("create-address/create-address.html"),
-            type: "popup",
-            width: width,
-            height: height,
-            left: left,
-            top: top
-        });
-
-        window.close();
-    } catch (error) {
-        let error_msg = document.getElementById("error_msg");
-        error_msg.textContent = error.message || error;
-        error_msg.style.display = "block";
-    }
-});
