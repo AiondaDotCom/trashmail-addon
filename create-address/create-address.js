@@ -55,6 +55,17 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
     const pairs = [["real_emails","email"], ["domains", "domain"]];
     for (const [list, prop] of pairs) {
         let select = document.getElementById(prop);
+
+        // Add "Internal Mailbox" as first option for email dropdown
+        if (prop === "email") {
+            let vaultOption = document.createElement("option");
+            vaultOption.value = "vault";
+            vaultOption.text = browser.i18n.getMessage("optionsInternalMailbox");
+            if (sync["default_email"] === "vault")
+                vaultOption.selected = true;
+            select.add(vaultOption);
+        }
+
         for (const item of local[list]) {
             let option = document.createElement("option");
             option.value = option.text = item;
@@ -73,7 +84,7 @@ var login_details = Promise.all([p1, p2]).then(function (result) {
             document.getElementById(prop).value = sync[key];
     }
 
-    props = ["vault", "challenge", "masq", "notify", "send"];
+    props = ["challenge", "masq", "notify", "send"];
     for (const prop of props) {
         let key = "default_" + prop;
         if (key in sync)
@@ -156,17 +167,20 @@ async function createAddress(e) {
             "session_id": login["session_id"]
         };
 
+        const destination = form.get("email");
+        const isVault = destination === "vault";
+
         let json = {
             "data": {
                 "disposable_name": form.get("disposable_name"),
                 "disposable_domain": form.get("domain"),
-                "destination": form.get("email"),
+                "destination": isVault ? "" : destination,
                 "forwards": form.get("forwards"),
                 "expire": form.get("expire"),
                 "cs": form.get("challenge") || false,
                 "masq": form.get("masq") || false,
                 "notify": form.get("notify") || false,
-                "vault": form.get("vault") || false,
+                "vault": isVault,
                 "website": form.get("send") ? parent_url : ""
             }
         };
