@@ -47,4 +47,36 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('btn-close').addEventListener('click', function() {
         window.close();
     });
+
+    // Auto-resize window to fit content
+    setTimeout(async function() {
+        try {
+            const container = document.querySelector('.container');
+            const contentHeight = container.offsetHeight + 32; // 32px = body padding
+            const contentWidth = container.offsetWidth + 32;
+
+            const currentWindow = await browser.windows.getCurrent();
+
+            // Calculate the difference between window size and viewport
+            const chromeHeight = currentWindow.height - window.innerHeight;
+            const chromeWidth = currentWindow.width - window.innerWidth;
+
+            // New window size = content + browser chrome
+            const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+            const newWidth = Math.min(contentWidth + chromeWidth, 500);
+
+            // Center on screen
+            const left = Math.round((screen.width - newWidth) / 2);
+            const top = Math.round((screen.height - newHeight) / 2);
+
+            await browser.windows.update(currentWindow.id, {
+                width: newWidth,
+                height: newHeight,
+                left: left,
+                top: top
+            });
+        } catch (err) {
+            console.log('[Guardian Info] Auto-resize failed:', err);
+        }
+    }, 50); // Small delay to ensure content is rendered
 });
