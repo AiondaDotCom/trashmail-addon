@@ -1,109 +1,401 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8" />
+    <meta charset="utf-8" />
     <title data-i18n="createTitle"></title>
-    <link rel="stylesheet" type="text/css" href="../common.css" />
     <script src="../translate.js" defer></script>
     <script src="../api.js" defer></script>
     <script src="../publicsuffixlist.js" defer></script>
     <script src="mailfaker.js" defer></script>
     <script src="create-address.js" defer></script>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
-            background: #EEE;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+            min-height: 100vh;
+            color: #1e293b;
         }
-        button, input[type="submit"] {
-            padding: 3px 15px;
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3);
         }
-        form div {
-            padding: 8px 0px;
+        .header img {
+            height: 28px;
+            filter: brightness(0) invert(1);
         }
-        #btn-address-manager {
-            float: right;
+        .header h1 {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+
+        /* Main Container */
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Card */
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group:last-of-type {
+            margin-bottom: 0;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        /* Address Input Row */
+        .address-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .address-row input {
+            flex: 1;
+            min-width: 0;
+        }
+        .address-row .at-symbol {
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .address-row select {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* Inputs & Selects */
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+            color: #1e293b;
+            transition: all 0.2s ease;
+        }
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #f97316;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+        }
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 40px;
+        }
+
+        /* Two Column Layout */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Checkboxes */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #f97316;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .checkbox-item label {
+            font-size: 13px;
+            color: #475569;
+            cursor: pointer;
+            line-height: 1.4;
+        }
+
+        /* Plus Info */
+        .plus-info {
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: right;
+            margin-top: 8px;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        .btn-link {
+            background: transparent;
+            color: #f97316;
+            padding: 14px 16px;
+            min-width: auto;
+            flex: none;
+        }
+        .btn-link:hover {
+            background: #fff7ed;
+        }
+        .btn-icon {
+            font-size: 16px;
+        }
+
+        /* Progress */
+        progress {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            margin-top: 16px;
+        }
+        progress::-webkit-progress-bar {
+            background: #e2e8f0;
+            border-radius: 3px;
+        }
+        progress::-webkit-progress-value {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border-radius: 3px;
+        }
+
+        /* Error */
+        .error {
+            margin-top: 16px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            color: #dc2626;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .error::before {
+            content: "!";
+            width: 20px;
+            height: 20px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .btn-group {
+                flex-direction: column;
+            }
+            .btn {
+                min-width: 100%;
+            }
+            .address-row {
+                flex-wrap: wrap;
+            }
+            .address-row input,
+            .address-row select {
+                flex: 1 1 100%;
+            }
+            .address-row .at-symbol {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-    <form>
-        <div>
-            <label for="domain" data-i18n="createNewAddress"></label>
-            <input type="text" id="disposable-name" name="disposable_name" maxlength="32" required />
-            <span>@</span>
-            <select id="domain" name="domain"></select>
-        </div>
+    <div class="header">
+        <img src="../images/menu@1x.png" alt="TrashMail" />
+        <h1 data-i18n="createTitle"></h1>
+    </div>
 
-        <div>
-            <label for="email" data-i18n="optionsRealAddress"></label>
-            <select id="email" name="email"></select>
-        </div>
+    <div class="container">
+        <form class="card">
+            <div class="card-body">
+                <!-- Disposable Address -->
+                <div class="form-group">
+                    <label class="form-label" for="disposable-name" data-i18n="createNewAddress"></label>
+                    <div class="address-row">
+                        <input type="text" id="disposable-name" name="disposable_name" maxlength="32" required placeholder="myaddress" />
+                        <span class="at-symbol">@</span>
+                        <select id="domain" name="domain"></select>
+                    </div>
+                </div>
 
-        <div>
-            <label for="forwards" data-i18n="optionsForwards"></label>
-            <select id="forwards" name="forwards">
-                <option value="1" data-i18n="#1"></option>
-                <option value="2" data-i18n="#2"></option>
-                <option value="3" data-i18n="#3"></option>
-                <option value="4" data-i18n="#4"></option>
-                <option value="5" data-i18n="#5"></option>
-                <option value="10" data-i18n="#10"></option>
-                <option value="100" data-i18n="#100*"></option>
-                <option value="1000" data-i18n="#1000*"></option>
-                <option value="-1" data-i18n="unlimited?*"></option>
-            </select>
-        </div>
+                <!-- Real Email Address -->
+                <div class="form-group">
+                    <label class="form-label" for="email" data-i18n="optionsRealAddress"></label>
+                    <select id="email" name="email"></select>
+                </div>
 
-        <div>
-            <label for="expire" data-i18n="optionsLifespan"></label>
-            <select id="expire" name="expire">
-                <option value="1" data-i18n="1day#"></option>
-                <option value="2" data-i18n="ndays#?2"></option>
-                <option value="3" data-i18n="ndays#?3"></option>
-                <option value="4" data-i18n="ndays#?4"></option>
-                <option value="5" data-i18n="ndays#?5"></option>
-                <option value="6" data-i18n="ndays#?6"></option>
-                <option value="7" data-i18n="1week#"></option>
-                <option value="14" data-i18n="nweeks#?2"></option>
-                <option value="21" data-i18n="nweeks#?3"></option>
-                <option value="30" data-i18n="1month#"></option>
-                <option value="60" data-i18n="nmonths#?2?*"></option>
-                <option value="90" data-i18n="nmonths#?3?*"></option>
-                <option value="120" data-i18n="nmonths#?4?*"></option>
-                <option value="150" data-i18n="nmonths#?5?*"></option>
-                <option value="180" data-i18n="nmonths#?6?*"></option>
-                <option value="-1" data-i18n="never?*"></option>
-            </select>
-        </div>
+                <!-- Forwards & Lifespan -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="forwards" data-i18n="optionsForwards"></label>
+                        <select id="forwards" name="forwards">
+                            <option value="1" data-i18n="#1"></option>
+                            <option value="2" data-i18n="#2"></option>
+                            <option value="3" data-i18n="#3"></option>
+                            <option value="4" data-i18n="#4"></option>
+                            <option value="5" data-i18n="#5"></option>
+                            <option value="10" data-i18n="#10"></option>
+                            <option value="100" data-i18n="#100*"></option>
+                            <option value="1000" data-i18n="#1000*"></option>
+                            <option value="-1" data-i18n="unlimited?*"></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="expire" data-i18n="optionsLifespan"></label>
+                        <select id="expire" name="expire">
+                            <option value="1" data-i18n="1day#"></option>
+                            <option value="2" data-i18n="ndays#?2"></option>
+                            <option value="3" data-i18n="ndays#?3"></option>
+                            <option value="4" data-i18n="ndays#?4"></option>
+                            <option value="5" data-i18n="ndays#?5"></option>
+                            <option value="6" data-i18n="ndays#?6"></option>
+                            <option value="7" data-i18n="1week#"></option>
+                            <option value="14" data-i18n="nweeks#?2"></option>
+                            <option value="21" data-i18n="nweeks#?3"></option>
+                            <option value="30" data-i18n="1month#"></option>
+                            <option value="60" data-i18n="nmonths#?2?*"></option>
+                            <option value="90" data-i18n="nmonths#?3?*"></option>
+                            <option value="120" data-i18n="nmonths#?4?*"></option>
+                            <option value="150" data-i18n="nmonths#?5?*"></option>
+                            <option value="180" data-i18n="nmonths#?6?*"></option>
+                            <option value="-1" data-i18n="never?*"></option>
+                        </select>
+                    </div>
+                </div>
 
-        <div>
-            <input type="checkbox" id="challenge" name="challenge" value="1" />
-            <label for="challenge" data-i18n="optionsChallengeResponse"></label>
-        </div>
+                <!-- Options -->
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="challenge" name="challenge" value="1" />
+                            <label for="challenge" data-i18n="optionsChallengeResponse"></label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="masq" name="masq" value="1" checked />
+                            <label for="masq" data-i18n="optionsMasquerade"></label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="notify" name="notify" value="1" checked />
+                            <label for="notify" data-i18n="optionsNotifyExpired"></label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="send" name="send" data-i18n="optionsSendURLTooltip|title" value="1" checked />
+                            <label for="send" data-i18n="optionsSendURL"></label>
+                        </div>
+                    </div>
+                    <div class="plus-info" data-i18n="optionsPlusInfo"></div>
+                </div>
 
-        <div>
-            <input type="checkbox" id="masq" name="masq" value="1" checked />
-            <label for="masq" data-i18n="optionsMasquerade"></label>
-        </div>
+                <!-- Buttons -->
+                <div class="btn-group">
+                    <button id="btn-create" type="submit" class="btn btn-primary">
+                        <span class="btn-icon">&#10003;</span>
+                        <span data-i18n="buttonCreateAddress"></span>
+                    </button>
+                    <button id="btn-close" type="button" class="btn btn-secondary" data-i18n="buttonCancel"></button>
+                    <button id="btn-address-manager" type="button" class="btn btn-link">
+                        <span class="btn-icon">&#128231;</span>
+                        <span data-i18n="buttonAddressManagerShort"></span>
+                    </button>
+                </div>
 
-        <div>
-            <input type="checkbox" id="notify" name="notify" value="1" checked />
-            <label for="notify" data-i18n="optionsNotifyExpired"></label>
-        </div>
-
-        <div>
-            <input type="checkbox" id="send" name="send" data-i18n="optionsSendURLTooltip|title" value="1" checked />
-            <label for="send" data-i18n="optionsSendURL"></label>
-        </div>
-
-        <div data-i18n="optionsPlusInfo"></div>
-
-        <div>
-            <input id="btn-create" type="submit" data-i18n="buttonCreateAddress|value" />
-            <button id="btn-close" type="button" data-i18n="buttonCancel"></button>
-            <button id="btn-address-manager" type="button" data-i18n="buttonAddressManager"></button>
-        </div>
-        <progress id="progress" style="display: none">Connecting…</progress>
-        <div id="error_msg" class="error" style="display: none"></div>
-    </form>
+                <progress id="progress" style="display: none">Connecting...</progress>
+                <div id="error_msg" class="error" style="display: none"></div>
+            </div>
+        </form>
+    </div>
 </body>
 </html>

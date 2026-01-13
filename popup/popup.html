@@ -1,47 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8" />
+    <meta charset="utf-8" />
     <script src="../translate.js" defer></script>
     <script src="../api.js" defer></script>
     <script src="popup.js" defer></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
-            width: 220px;
-            padding: 5px 10px;
+            width: 260px;
+            padding: 0;
+            margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fff;
         }
-        img {
-            padding-bottom: 10px;
-            width: 100%;
-        }
-        button {
-            padding: 8px 12px;
-            margin: 5px auto;
+        .header {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 12px;
             text-align: center;
-            width: 100%;
-            border-radius: 4px;
-            cursor: pointer;
+        }
+        .header img {
+            height: 32px;
+            filter: brightness(0) invert(1);
+        }
+        .content {
+            padding: 12px;
         }
 
         /* Security Status Box */
         #security-status {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 8px;
             text-align: center;
             font-size: 13px;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            border: 1px solid transparent;
+        }
+        #security-status:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        #security-status:active {
+            transform: translateY(0);
         }
         #security-status.verified {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
         }
         #security-status.protected {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             color: white;
         }
         #security-status.warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
             color: white;
         }
         #security-status.danger {
@@ -49,61 +64,119 @@
             color: white;
         }
         #security-status.inactive {
-            background: #f3f4f6;
-            color: #6b7280;
+            background: #f8fafc;
+            color: #64748b;
+            border-color: #e2e8f0;
         }
         #security-status .status-icon {
-            font-size: 24px;
+            font-size: 28px;
             display: block;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         #security-status .status-text {
             font-weight: 600;
+            font-size: 14px;
         }
         #security-status .status-detail {
             font-size: 11px;
             opacity: 0.9;
-            margin-top: 2px;
+            margin-top: 4px;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        .btn-icon {
+            font-size: 16px;
         }
 
         /* Divider */
         .divider {
             height: 1px;
-            background: #e5e7eb;
-            margin: 10px 0;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 12px 0;
         }
 
-        /* Clickable Security Status */
-        #security-status {
-            cursor: pointer;
-            transition: transform 0.1s ease, box-shadow 0.1s ease;
-        }
-        #security-status:hover {
-            transform: scale(1.02);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-        #security-status:active {
-            transform: scale(0.98);
+        /* Error */
+        .error {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            color: #dc2626;
+            font-size: 12px;
         }
     </style>
-    <link rel="stylesheet" type="text/css" href="../common.css" />
 </head>
 <body>
-    <img src="../images/menu@1x.png" alt="trashmail.com" />
-
-    <!-- Security Status (clickable) -->
-    <div id="security-status" class="inactive" title="Click for info">
-        <span class="status-icon">🔒</span>
-        <span class="status-text" data-i18n="guardianMitmProtection"></span>
-        <span class="status-detail" data-i18n="guardianLoading"></span>
+    <div class="header">
+        <img src="../images/menu@1x.png" alt="TrashMail" />
     </div>
 
-    <div class="divider"></div>
+    <div class="content">
+        <!-- Security Status (clickable) -->
+        <div id="security-status" class="inactive" title="Click for info">
+            <span class="status-icon">🔒</span>
+            <span class="status-text" data-i18n="guardianMitmProtection"></span>
+            <span class="status-detail" data-i18n="guardianLoading"></span>
+        </div>
 
-    <div>
-        <button id="btn-address-manager" type="button" data-i18n="buttonAddressManagerShort"></button>
-        <button id="btn-options" type="button" data-i18n="buttonSettings"></button>
+        <div class="divider"></div>
+
+        <div class="btn-group">
+            <button id="btn-paste" class="btn btn-primary" type="button">
+                <span class="btn-icon">📋</span>
+                <span data-i18n="menuPasteAddress"></span>
+            </button>
+            <button id="btn-address-manager" class="btn btn-secondary" type="button">
+                <span class="btn-icon">📧</span>
+                <span data-i18n="buttonAddressManagerShort"></span>
+            </button>
+            <button id="btn-options" class="btn btn-secondary" type="button">
+                <span class="btn-icon">⚙️</span>
+                <span data-i18n="buttonSettings"></span>
+            </button>
+        </div>
+
+        <div id="error_msg" class="error" style="display: none"></div>
     </div>
-    <div id="error_msg" class="error" style="display: none"></div>
 </body>
 </html>
