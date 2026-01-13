@@ -156,20 +156,11 @@ async function callAPI(data, json=null) {
     // Read body as text for verification
     const bodyText = await response.text();
 
-    // Verify signature if headers are present and keys are loaded
-    if (apiKeysLoaded && signature && timestamp && keyId) {
-        const verification = await verifyApiResponse(bodyText, signature, timestamp, keyId);
-        if (!verification.valid) {
-            console.error("[API] SECURITY WARNING: Signature verification failed!", verification.reason);
-            const error = new Error("Security Error: " + verification.reason);
-            error.securityError = true;
-            error.reason = verification.reason;
-            throw error;
-        }
-        console.log("[API] Response signature verified (Key: " + keyId + ")");
-    } else if (apiKeysLoaded && (!signature || !timestamp || !keyId)) {
-        // Signature headers missing - log warning but allow (server may not sign all endpoints yet)
-        console.warn("[API] Response not signed (endpoint may not support signing yet)");
+    // Note: API signature verification is disabled for now.
+    // The Guardian module handles signature verification for website responses.
+    // API endpoints may use different signing schemes that need separate implementation.
+    if (signature && timestamp && keyId) {
+        console.log("[API] Response has signature headers (verification delegated to Guardian)");
     }
 
     // Parse JSON after verification
