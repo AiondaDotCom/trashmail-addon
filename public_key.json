@@ -1,0 +1,19 @@
+{
+    "keys": {
+        "prod-2026-01": {
+            "algorithm": "Ed25519",
+            "public_key": "MCowBQYDK2VwAyEAYZ4llVYOALi8ic5YHPhBX5eQB0ul70B8A0rUNSrQol4=",
+            "valid_from": "2026-01-13T00:00:00Z",
+            "warn_after": null,
+            "valid_until": "2027-01-13T00:00:00Z"
+        },
+        "dev-2026-01": {
+            "algorithm": "Ed25519",
+            "public_key": "MCowBQYDK2VwAyEAYO7C5rk/V2MQ1Lr/OT3NYeFFaAFBEZeXBI8Li1Id5b0=",
+            "valid_from": "2026-01-13T00:00:00Z",
+            "warn_after": null,
+            "valid_until": "2027-01-13T00:00:00Z"
+        }
+    },
+    "current_key_id": "prod-2026-01"
+}
