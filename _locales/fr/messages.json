@@ -201,5 +201,9 @@
 
     "guardianNotificationTitle": {"message": "Alerte de sécurité TrashMail"},
     "guardianNotificationMitm": {"message": "Votre connexion pourrait être interceptée ! Cliquez pour plus de détails."},
-    "guardianNotificationMissing": {"message": "Signature de réponse manquante ! Votre connexion pourrait être compromise."}
+    "guardianNotificationMissing": {"message": "Signature de réponse manquante ! Votre connexion pourrait être compromise."},
+
+    "guardianLimitedMode": {"message": "Protection limitée"},
+    "guardianChromeNoTls": {"message": "Vérification du certificat TLS non disponible dans Chrome"},
+    "guardianEd25519NotSupported": {"message": "Ed25519 non supporté - Chrome 113+ requis"}
 }

@@ -28,13 +28,30 @@ async function updateSecurityStatus() {
         // Alle Status-Klassen entfernen
         statusEl.className = "";
 
-        if (!response || !response.initialized) {
-            console.log("[Popup] Guardian not initialized, response:", response);
-            // Guardian nicht initialisiert
+        if (!response) {
+            console.log("[Popup] No response from Guardian");
             statusEl.className = "inactive";
             iconEl.textContent = "⚠️";
             textEl.textContent = browser.i18n.getMessage("guardianNotInitialized");
             detailEl.textContent = browser.i18n.getMessage("guardianFailedToLoad");
+            return;
+        }
+
+        if (!response.initialized) {
+            console.log("[Popup] Guardian not initialized, response:", response);
+            statusEl.className = "inactive";
+            iconEl.textContent = "⚠️";
+            textEl.textContent = browser.i18n.getMessage("guardianNotInitialized");
+            detailEl.textContent = browser.i18n.getMessage("guardianFailedToLoad");
+            return;
+        }
+
+        // Ed25519 not supported (very old browser) - show warning
+        if (response.ed25519Supported === false) {
+            statusEl.className = "warning";
+            iconEl.textContent = "⚠️";
+            textEl.textContent = browser.i18n.getMessage("guardianEd25519NotSupported") || "Ed25519 not supported";
+            detailEl.textContent = "Chrome 113+ required";
             return;
         }
 
@@ -140,27 +157,36 @@ async function openGuardianInfoWindow() {
     else if (statusClass.includes('danger')) status = 'danger';
     else if (statusClass.includes('inactive')) status = 'inactive';
 
-    // Get TLS status from guardian
+    // Get TLS status from guardian (Firefox only - Chrome doesn't support getSecurityInfo)
     let tlsVerified = '';
     let tlsFingerprint = '';
+    let isFirefox = false;
     try {
         const response = await browser.runtime.sendMessage({ action: "get_guardian_status" });
-        if (response && response.status) {
-            tlsVerified = response.status.tlsVerified ? '1' : '0';
-            tlsFingerprint = response.status.tlsFingerprint || '';
+        if (response) {
+            isFirefox = response.isFirefox === true;
+            // Only include TLS info for Firefox
+            if (isFirefox && response.status) {
+                tlsVerified = response.status.tlsVerified ? '1' : '0';
+                tlsFingerprint = response.status.tlsFingerprint || '';
+            }
         }
     } catch (e) {
         console.log("[Popup] Could not get TLS status:", e);
     }
 
-    // URL mit Parametern bauen
+    // URL mit Parametern bauen - TLS nur für Firefox
     const params = new URLSearchParams({
         status: status,
         text: text,
-        detail: detail,
-        tlsVerified: tlsVerified,
-        tlsFingerprint: tlsFingerprint
+        detail: detail
     });
+
+    // Only add TLS params for Firefox
+    if (isFirefox) {
+        params.set('tlsVerified', tlsVerified);
+        params.set('tlsFingerprint', tlsFingerprint);
+    }
 
     // Fenstergröße und Position berechnen (zentriert)
     const width = 450;

@@ -186,5 +186,9 @@
 
     "guardianNotificationTitle": {"message": "TrashMail Sekureca Averto"},
     "guardianNotificationMitm": {"message": "Via konekto eble estas kaptata! Klaku por detaloj."},
-    "guardianNotificationMissing": {"message": "Responda subskribo mankas! Via konekto eble estas kompromitita."}
+    "guardianNotificationMissing": {"message": "Responda subskribo mankas! Via konekto eble estas kompromitita."},
+
+    "guardianLimitedMode": {"message": "Limigita Protekto"},
+    "guardianChromeNoTls": {"message": "TLS-atesta kontrolado ne disponebla en Chrome"},
+    "guardianEd25519NotSupported": {"message": "Ed25519 ne subtenata - Chrome 113+ bezonata"}
 }

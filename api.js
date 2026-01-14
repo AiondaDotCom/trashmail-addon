@@ -97,14 +97,6 @@ async function verifyApiResponse(body, signature, timestamp, keyId) {
     const dataBuffer = new TextEncoder().encode(dataToVerify);
     const signatureBuffer = apiBase64ToArrayBuffer(signature);
 
-    // Debug: Log verification details
-    console.log("[API] Signature verification details:", {
-        dataToVerifyLength: dataToVerify.length,
-        dataToVerifyPreview: dataToVerify.substring(0, 150) + "...",
-        signatureLength: signatureBuffer.byteLength,
-        expectedSignatureLength: 64 // Ed25519 signatures are 64 bytes
-    });
-
     try {
         const valid = await crypto.subtle.verify(
             { name: "Ed25519" },
@@ -168,16 +160,7 @@ async function callAPI(data, json=null) {
     if (apiKeysLoaded && signature && timestamp && keyId) {
         // Validate that key-id matches the server we're talking to
         const isDev = API_BASE_URL.includes("dev.trashmail.com");
-        let expectedKeyPrefix;
-
-        switch (true) {
-            case isDev:
-                expectedKeyPrefix = "dev-";
-                break;
-            default:
-                expectedKeyPrefix = "prod-";
-                break;
-        }
+        const expectedKeyPrefix = isDev ? "dev-" : "prod-";
 
         if (!keyId.startsWith(expectedKeyPrefix)) {
             console.error("[API] SECURITY WARNING: Key ID mismatch! Expected " + expectedKeyPrefix + "* but got " + keyId);
@@ -185,15 +168,6 @@ async function callAPI(data, json=null) {
             error.securityError = true;
             throw error;
         }
-
-        // Debug: Log what we're verifying
-        console.log("[API] Verifying signature:", {
-            bodyLength: bodyText.length,
-            bodyPreview: bodyText.substring(0, 100),
-            signature: signature,
-            timestamp: timestamp,
-            keyId: keyId
-        });
 
         const verification = await verifyApiResponse(bodyText, signature, timestamp, keyId);
         if (!verification.valid) {

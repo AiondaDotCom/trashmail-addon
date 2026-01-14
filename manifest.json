@@ -5,17 +5,8 @@
     "homepage_url": "https://trashmail.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
-    "version": "4.7.3",
+    "version": "5.0.1",
     "default_locale": "en",
-    "browser_specific_settings": {
-        "gecko": {
-            "id": "addon@trashmail.com",
-            "strict_min_version": "109.0",
-            "data_collection_permissions": {
-                "required": ["none"]
-            }
-        }
-    },
     "icons": {
         "16": "images/Icon-16.png",
         "18": "images/Icon-18.png",
@@ -30,7 +21,6 @@
         "storage",
         "contextMenus",
         "webRequest",
-        "webRequestBlocking",
         "webNavigation",
         "notifications",
         "scripting"
@@ -39,7 +29,7 @@
         "<all_urls>"
     ],
     "background": {
-        "scripts": ["api.js", "publicsuffixlist.js", "background.js", "guardian.js"]
+        "service_worker": "background.js"
     },
     "action": {
         "default_icon": {
@@ -71,6 +61,7 @@
         }
     ],
     "options_ui": {
+        "browser_style": true,
         "page": "options/options.html"
     },
     "content_security_policy": {

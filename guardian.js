@@ -13,6 +13,43 @@ if (typeof browser === "undefined") {
 }
 
 // ============================================================
+// Browser Detection
+// ============================================================
+
+/**
+ * Check if we're running in Firefox
+ * Firefox has getSecurityInfo for TLS certificate verification
+ */
+function isFirefoxBrowser() {
+    return typeof browser !== "undefined" &&
+           typeof browser.webRequest !== "undefined" &&
+           typeof browser.webRequest.getSecurityInfo === "function";
+}
+
+/**
+ * Check if Ed25519 is supported in WebCrypto
+ */
+let ed25519Supported = null;
+async function checkEd25519Support() {
+    if (ed25519Supported !== null) return ed25519Supported;
+
+    try {
+        // Try to generate a test key
+        await crypto.subtle.generateKey(
+            { name: "Ed25519" },
+            false,
+            ["sign", "verify"]
+        );
+        ed25519Supported = true;
+        console.log("[Guardian] Ed25519 is supported");
+    } catch (err) {
+        ed25519Supported = false;
+        console.warn("[Guardian] Ed25519 NOT supported in this browser:", err.message);
+    }
+    return ed25519Supported;
+}
+
+// ============================================================
 // Configuration
 // ============================================================
 
@@ -36,79 +73,23 @@ const GUARDIAN_CONFIG = {
 };
 
 // ============================================================
-// Global State
+// Global State (exposed on self for Service Worker access)
 // ============================================================
 
 let publicKeys = new Map(); // keyId -> { cryptoKey, validFrom, warnAfter, validUntil }
 let guardianInitialized = false;
 let tabSecurityStatus = new Map(); // tabId -> { status, reason, verified, failed }
 
-// ============================================================
-// Message Handler (Top-Level for immediate registration)
-// ============================================================
+// Expose variables on self for background.js access in Service Worker
+// (let/const variables are not on global scope, need explicit assignment)
+self.publicKeys = publicKeys;
+self.guardianInitialized = guardianInitialized;
+self.tabSecurityStatus = tabSecurityStatus;
+self.ed25519Supported = ed25519Supported;
+self.isFirefoxBrowser = isFirefoxBrowser;
+self.isProtectedHost = isProtectedHost; // Also needed by background.js
 
-console.log("[Guardian] Registering message handler...");
-console.log("[Guardian] guardianInitialized at registration:", guardianInitialized);
-
-// Firefox supports returning a Promise directly from the listener
-browser.runtime.onMessage.addListener((message, sender) => {
-    if (message.action === "get_guardian_status") {
-        console.log("[Guardian] Received get_guardian_status request, initialized:", guardianInitialized, "keys:", publicKeys.size);
-
-        // Return a Promise - Firefox will wait for it and send the resolved value
-        return (async () => {
-            try {
-                const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-
-                if (tabs.length === 0) {
-                    return {
-                        initialized: guardianInitialized,
-                        keysLoaded: publicKeys.size,
-                        isProtected: false,
-                        status: null
-                    };
-                }
-
-                const tab = tabs[0];
-                let hostname = null;
-                let isProtected = false;
-
-                try {
-                    hostname = new URL(tab.url).hostname;
-                    isProtected = isProtectedHost(hostname);
-                } catch (e) {
-                    // Invalid URL
-                }
-
-                const securityStatus = tabSecurityStatus.get(tab.id);
-
-                const response = {
-                    tabId: tab.id,
-                    hostname: hostname,
-                    isProtected: isProtected,
-                    status: securityStatus || null,
-                    keysLoaded: publicKeys.size,
-                    initialized: guardianInitialized
-                };
-
-                console.log("[Guardian] Sending status response:", response);
-                return response;
-            } catch (err) {
-                console.error("[Guardian] Error getting tab info:", err);
-                return {
-                    initialized: guardianInitialized,
-                    keysLoaded: publicKeys.size,
-                    isProtected: false,
-                    status: null,
-                    error: err.message
-                };
-            }
-        })();
-    }
-    // Don't handle other messages - return undefined to let other listeners handle
-});
-
-console.log("[Guardian] Message handler registered");
+console.log("[Guardian] Variables exposed on self for background.js");
 
 // ============================================================
 // Helper Functions
@@ -164,11 +145,10 @@ let fetchingFingerprint = false;
 
 /**
  * Check if we're running in Firefox (getSecurityInfo is Firefox-only)
+ * @deprecated Use isFirefoxBrowser() instead
  */
 function isFirefox() {
-    return typeof browser !== "undefined" &&
-           typeof browser.webRequest !== "undefined" &&
-           typeof browser.webRequest.getSecurityInfo === "function";
+    return isFirefoxBrowser();
 }
 
 /**
@@ -459,6 +439,15 @@ async function loadPublicKeys() {
             return false;
         }
 
+        // Check Ed25519 support first
+        const hasEd25519 = await checkEd25519Support();
+        if (!hasEd25519) {
+            console.warn("[Guardian] Ed25519 not supported - signature verification disabled");
+            console.warn("[Guardian] Chrome 113+ required for full Guardian functionality");
+            // Return true to mark as initialized, but with limited functionality
+            return true;
+        }
+
         const response = await fetch(browser.runtime.getURL("public_key.json"));
         if (!response.ok) {
             console.warn("[Guardian] public_key.json not found - Response Signing disabled");
@@ -654,17 +643,6 @@ async function processResponse(details) {
                     "• " + browser.i18n.getMessage("guardianMissingSignatureReason2") + "\n" +
                     "• " + browser.i18n.getMessage("guardianMissingSignatureReason3");
                 showSecurityWarning(details.tabId, missingMsg);
-
-                // Also show browser notification
-                browser.notifications.create({
-                    type: "basic",
-                    iconUrl: "images/warning-32.png",
-                    title: "⚠️ " + browser.i18n.getMessage("guardianNotificationTitle"),
-                    message: browser.i18n.getMessage("guardianNotificationMissing"),
-                    priority: 2
-                }).catch(() => {
-                    // Notifications permission may not be granted
-                });
             }
         } else {
             // Other resources (JS, CSS, images) - only log
@@ -764,12 +742,73 @@ async function updateBadgeForTab(tabId, url) {
                 tabSecurityStatus.set(tabId, status);
             }
             updateBadge(tabId, status);
+
+            // If still PROTECTED (no verification yet) and on trashmail.com, do a ping request
+            // This handles cached pages where no HTTP requests were made
+            if (status.status === "PROTECTED" && status.verified === 0 &&
+                (hostname === "trashmail.com" || hostname === "www.trashmail.com" || hostname === "dev.trashmail.com")) {
+                pingForVerification(tabId, hostname);
+            }
         } else {
             // Not on protected site - remove badge
             browser.action.setBadgeText({ tabId: tabId, text: "" });
         }
     } catch (err) {
         // URL could not be parsed
+    }
+}
+
+/**
+ * Ping trashmail.com to trigger signature verification (for cached pages)
+ */
+let pingInProgress = new Set();
+async function pingForVerification(tabId, hostname) {
+    // Prevent multiple pings for the same tab
+    if (pingInProgress.has(tabId)) return;
+    pingInProgress.add(tabId);
+
+    try {
+        console.log("[Guardian] Ping for verification on cached page, tab:", tabId);
+        // Small API request that will be signed
+        const response = await fetch(`https://${hostname}/?api=1&cmd=ping`, {
+            method: "GET",
+            cache: "no-store" // Bypass cache
+        });
+
+        // Check signature headers directly (fetch from Service Worker has no tabId for onResponseStarted)
+        const signature = response.headers.get(GUARDIAN_CONFIG.headers.signature);
+        const timestamp = response.headers.get(GUARDIAN_CONFIG.headers.timestamp);
+        const keyId = response.headers.get(GUARDIAN_CONFIG.headers.keyId);
+
+        console.log("[Guardian] Ping response - signature present:", !!signature);
+
+        let status = tabSecurityStatus.get(tabId) || {
+            status: "PROTECTED",
+            verified: 0,
+            unsigned: 0,
+            failed: [],
+            deprecated: false
+        };
+
+        if (signature && timestamp && keyId) {
+            // Signature headers present - mark as verified
+            status.verified++;
+            status.status = "VERIFIED";
+            console.log("[Guardian] Ping verified, updating badge to green");
+        } else {
+            // No signature - suspicious
+            status.unsigned++;
+            status.status = "UNSIGNED";
+            console.log("[Guardian] Ping unsigned, keeping badge status");
+        }
+
+        tabSecurityStatus.set(tabId, status);
+        updateBadge(tabId, status);
+
+    } catch (err) {
+        console.log("[Guardian] Ping failed:", err.message);
+    } finally {
+        pingInProgress.delete(tabId);
     }
 }
 
@@ -861,6 +900,7 @@ async function initGuardian() {
     if (!keysLoaded) {
         console.warn("[Guardian] No public keys loaded - Response verification disabled");
         guardianInitialized = true; // Still mark as initialized
+        self.guardianInitialized = true; // Update self reference for background.js
         return;
     }
 
@@ -939,7 +979,10 @@ async function initGuardian() {
     browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         if (changeInfo.status === "complete") {
             // After load: update badge if responses were processed
-            await updateBadgeForTab(tabId, tab.url);
+            // Multiple updates to catch late responses
+            updateBadgeForTab(tabId, tab.url);
+            setTimeout(() => updateBadgeForTab(tabId, tab.url), 250);
+            setTimeout(() => updateBadgeForTab(tabId, tab.url), 500);
         }
     });
 
@@ -949,6 +992,7 @@ async function initGuardian() {
     });
 
     guardianInitialized = true;
+    self.guardianInitialized = true; // Update self reference for background.js
     console.log("[Guardian] MITM Protection initialized with", publicKeys.size, "keys");
 
     // Set initial badge for all open TrashMail tabs
@@ -963,6 +1007,7 @@ async function initGuardian() {
 initGuardian().catch(err => {
     console.error("[Guardian] Failed to initialize:", err);
     guardianInitialized = true; // Still mark as initialized so popup doesn't show "failed to load"
+    self.guardianInitialized = true; // Update self reference for background.js
 });
 
 // Export for other modules

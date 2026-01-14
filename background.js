@@ -279,32 +279,83 @@ browser.storage.sync.get(["username", "password"]).then(function (storage) {
     console.warn("[TrashMail] Auto-login failed:", error.message || error);
 });
 
-browser.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Handle update_menu
     if (message.action === "update_menu") {
-        try {
-            // If `tabId` is provided, use it directly
-            if (message.tabId) {
-                let tab = await browser.tabs.get(message.tabId);
-                console.log("✅ Tab aus Nachricht erhalten:", tab.url);
-
-                // Update context menu with the correct tab
-                await updateContextMenu(message.tabId, {}, tab);
-                sendResponse({ status: "success" });
-                return true;
+        (async () => {
+            try {
+                if (message.tabId) {
+                    let tab = await browser.tabs.get(message.tabId);
+                    console.log("✅ Tab aus Nachricht erhalten:", tab.url);
+                    await updateContextMenu(message.tabId, {}, tab);
+                    return { status: "success" };
+                }
+                let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+                if (activeTab) {
+                    await updateContextMenu(activeTab.id, {}, activeTab);
+                    return { status: "success" };
+                } else {
+                    return { status: "error", message: "No active tab available." };
+                }
+            } catch (error) {
+                return { status: "error", message: error.toString() };
             }
-
-            // Fallback: If `tabId` is missing, get the active tab (rather unlikely)
-            let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
-            if (activeTab) {
-                await updateContextMenu(activeTab.id, {}, activeTab);
-                sendResponse({ status: "success" });
-            } else {
-                sendResponse({ status: "error", message: "No active tab available." });
-            }
-        } catch (error) {
-            sendResponse({ status: "error", message: error.toString() });
-        }
-
-        return true; // `sendResponse` is used asynchronously
+        })().then(sendResponse);
+        return true;
     }
+
+    // Handle get_guardian_status (for Chrome - guardian.js listener doesn't work reliably)
+    // Uses self.* to access guardian.js variables exposed on Service Worker global scope
+    if (message.action === "get_guardian_status") {
+        console.log("[Background] Handling get_guardian_status");
+        (async () => {
+            try {
+                const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+                if (tabs.length === 0) {
+                    return {
+                        initialized: self.guardianInitialized || false,
+                        keysLoaded: self.publicKeys ? self.publicKeys.size : 0,
+                        isProtected: false,
+                        status: null
+                    };
+                }
+                const tab = tabs[0];
+                let hostname = null;
+                let isProtected = false;
+                try {
+                    hostname = new URL(tab.url).hostname;
+                    // Use guardian.js isProtectedHost function
+                    isProtected = self.isProtectedHost ? self.isProtectedHost(hostname) : false;
+                } catch (e) {}
+
+                const securityStatus = self.tabSecurityStatus ? self.tabSecurityStatus.get(tab.id) : null;
+                const response = {
+                    tabId: tab.id,
+                    hostname: hostname,
+                    isProtected: isProtected,
+                    status: securityStatus || null,
+                    keysLoaded: self.publicKeys ? self.publicKeys.size : 0,
+                    initialized: self.guardianInitialized || false,
+                    isFirefox: typeof browser.webRequest?.getSecurityInfo === "function",
+                    ed25519Supported: self.ed25519Supported,
+                    limitedMode: typeof browser.webRequest?.getSecurityInfo !== "function"
+                };
+                console.log("[Background] Sending guardian status:", response);
+                return response;
+            } catch (err) {
+                console.error("[Background] Error in get_guardian_status:", err);
+                return {
+                    initialized: false,
+                    keysLoaded: 0,
+                    isProtected: false,
+                    status: null,
+                    error: err.message
+                };
+            }
+        })().then(sendResponse);
+        return true;
+    }
+
+    // Unknown message - don't handle
+    return false;
 });

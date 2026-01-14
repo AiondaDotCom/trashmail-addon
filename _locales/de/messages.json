@@ -201,5 +201,9 @@
 
     "guardianNotificationTitle": {"message": "TrashMail Sicherheitswarnung"},
     "guardianNotificationMitm": {"message": "Deine Verbindung wird möglicherweise abgefangen! Klicke für Details."},
-    "guardianNotificationMissing": {"message": "Antwort-Signatur fehlt! Deine Verbindung könnte kompromittiert sein."}
+    "guardianNotificationMissing": {"message": "Antwort-Signatur fehlt! Deine Verbindung könnte kompromittiert sein."},
+
+    "guardianLimitedMode": {"message": "Eingeschränkter Schutz"},
+    "guardianChromeNoTls": {"message": "TLS-Zertifikatsprüfung in Chrome nicht verfügbar"},
+    "guardianEd25519NotSupported": {"message": "Ed25519 nicht unterstützt - Chrome 113+ erforderlich"}
 }
