@@ -635,14 +635,16 @@ async function processResponse(details) {
             if (status.status !== "COMPROMISED") {
                 status.status = "UNSIGNED";
 
-                // Show warning popup for missing signatures (possible MITM stripping headers)
-                const missingMsg = (isApi ? browser.i18n.getMessage("guardianMissingSignatureApi") : browser.i18n.getMessage("guardianMissingSignaturePage")) + "\n\n" +
-                    browser.i18n.getMessage("guardianMissingSignatureUrl") + ": " + details.url + "\n\n" +
-                    browser.i18n.getMessage("guardianMissingSignatureHint") + "\n" +
-                    "• " + browser.i18n.getMessage("guardianMissingSignatureReason1") + "\n" +
-                    "• " + browser.i18n.getMessage("guardianMissingSignatureReason2") + "\n" +
-                    "• " + browser.i18n.getMessage("guardianMissingSignatureReason3");
-                showSecurityWarning(details.tabId, missingMsg);
+                // Show toast notification for missing signatures
+                browser.notifications.create({
+                    type: "basic",
+                    iconUrl: "images/warning-32.png",
+                    title: "⚠️ " + browser.i18n.getMessage("guardianNotificationTitle"),
+                    message: browser.i18n.getMessage("guardianNotificationMissing") + "\n" + details.url,
+                    priority: 2
+                }).catch(() => {
+                    // Notifications permission may not be granted
+                });
             }
         } else {
             // Other resources (JS, CSS, images) - only log

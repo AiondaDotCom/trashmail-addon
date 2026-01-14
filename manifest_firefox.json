@@ -5,7 +5,7 @@
     "homepage_url": "https://trashmail.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
-    "version": "5.0.1",
+    "version": "5.0.2",
     "default_locale": "en",
     "browser_specific_settings": {
         "gecko": {
