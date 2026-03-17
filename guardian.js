@@ -56,6 +56,8 @@ async function checkEd25519Support() {
 const GUARDIAN_CONFIG = {
     // Hosts to monitor
     protectedHosts: [
+        "mail.aionda.com",
+        "dev.mail.aionda.com",
         "trashmail.com",
         "www.trashmail.com",
         "dev.trashmail.com",
@@ -162,7 +164,7 @@ async function fetchServerFingerprint() {
     try {
         console.log("[Guardian] Fetching certificate fingerprint from server...");
 
-        const response = await fetch("https://trashmail.com/?api=1&cmd=cert_fingerprint", {
+        const response = await fetch("https://mail.aionda.com/?api=1&cmd=cert_fingerprint", {
             method: "GET",
             headers: { "Accept": "application/json" }
         });
@@ -286,10 +288,10 @@ async function checkCertificate(details) {
         let cert = securityInfo.certificates[0];
 
         // Sanity check: leaf cert should have the domain in subject
-        if (cert.subject && !cert.subject.includes('trashmail.com') && !cert.subject.includes('byom.de')) {
+        if (cert.subject && !cert.subject.includes('mail.aionda.com') && !cert.subject.includes('trashmail.com') && !cert.subject.includes('byom.de')) {
             console.warn("[Guardian] certificates[0] is not the leaf cert, searching...");
             for (const c of securityInfo.certificates) {
-                if (c.subject && (c.subject.includes('trashmail.com') || c.subject.includes('byom.de'))) {
+                if (c.subject && (c.subject.includes('mail.aionda.com') || c.subject.includes('trashmail.com') || c.subject.includes('byom.de'))) {
                     cert = c;
                     break;
                 }
@@ -748,7 +750,7 @@ async function updateBadgeForTab(tabId, url) {
             // If still PROTECTED (no verification yet) and on trashmail.com, do a ping request
             // This handles cached pages where no HTTP requests were made
             if (status.status === "PROTECTED" && status.verified === 0 &&
-                (hostname === "trashmail.com" || hostname === "www.trashmail.com" || hostname === "dev.trashmail.com")) {
+                (hostname === "mail.aionda.com" || hostname === "dev.mail.aionda.com" || hostname === "trashmail.com" || hostname === "www.trashmail.com" || hostname === "dev.trashmail.com")) {
                 pingForVerification(tabId, hostname);
             }
         } else {
@@ -911,6 +913,8 @@ async function initGuardian() {
         processResponse,
         {
             urls: [
+                "*://mail.aionda.com/*",
+                "*://*.mail.aionda.com/*",
                 "*://trashmail.com/*",
                 "*://*.trashmail.com/*",
                 "*://byom.de/*",
@@ -934,6 +938,8 @@ async function initGuardian() {
             checkCertificate,
             {
                 urls: [
+                    "*://mail.aionda.com/*",
+                    "*://*.mail.aionda.com/*",
                     "*://trashmail.com/*",
                     "*://*.trashmail.com/*",
                     "*://byom.de/*",

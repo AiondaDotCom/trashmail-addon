@@ -62,7 +62,7 @@ class AddonOpaqueClient {
      * @returns {Promise<{opaque_enabled: boolean, srp_enabled: boolean, migration_available: boolean}>}
      */
     async checkOpaqueEnabled(username) {
-        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://trashmail.com';
+        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
         const lang = browser.i18n.getUILanguage().substr(0, 2);
 
         const response = await fetch(baseUrl + '/?api=1&cmd=opaque_check&lang=' + lang, {
@@ -93,7 +93,7 @@ class AddonOpaqueClient {
         // Ensure library is initialized
         await this.initialize();
 
-        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://trashmail.com';
+        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
         const lang = browser.i18n.getUILanguage().substr(0, 2);
 
         // Step 1: Start PAT-OPAQUE login - create KE1

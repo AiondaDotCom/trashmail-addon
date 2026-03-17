@@ -2,10 +2,10 @@
     "manifest_version": 3,
     "author": "Aionda GmbH",
     "description": "__MSG_extensionDescription__",
-    "homepage_url": "https://trashmail.com/",
+    "homepage_url": "https://mail.aionda.com/",
     "name": "__MSG_extensionName__",
     "short_name": "TrashMail",
-    "version": "5.0.2",
+    "version": "5.0.3",
     "default_locale": "en",
     "browser_specific_settings": {
         "gecko": {

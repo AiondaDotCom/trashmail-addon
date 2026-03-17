@@ -6,7 +6,7 @@ if (typeof browser === "undefined") {
 }
 
 // API Base URL - can be overridden via hidden debug option
-const DEFAULT_API_URL = "https://trashmail.com";
+const DEFAULT_API_URL = "https://mail.aionda.com";
 let API_BASE_URL = DEFAULT_API_URL;
 
 // ============================================================
@@ -159,7 +159,7 @@ async function callAPI(data, json=null) {
     // Verify signature if headers are present and keys are loaded
     if (apiKeysLoaded && signature && timestamp && keyId) {
         // Validate that key-id matches the server we're talking to
-        const isDev = API_BASE_URL.includes("dev.trashmail.com");
+        const isDev = API_BASE_URL.includes("dev.trashmail.com") || API_BASE_URL.includes("dev.mail.aionda.com");
         const expectedKeyPrefix = isDev ? "dev-" : "prod-";
 
         if (!keyId.startsWith(expectedKeyPrefix)) {

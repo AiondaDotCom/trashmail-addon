@@ -386,7 +386,7 @@ function showOpaquePatRequired(username) {
         if (lang === "de") {
             title = "Personal Access Token erforderlich";
             info = "Ihr Konto verwendet die neue OPAQUE-Authentifizierung. Diese bietet maximale Sicherheit, erfordert aber einen Personal Access Token (PAT) für die Browser-Erweiterung:";
-            step1 = "Öffnen Sie trashmail.com und melden Sie sich an";
+            step1 = "Öffnen Sie mail.aionda.com und melden Sie sich an";
             step2 = "Klicken Sie im Adress-Manager rechts oben auf Ihren Benutzernamen";
             step3 = "Wählen Sie <strong>Konto → Personal Access Tokens</strong>";
             step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
@@ -396,7 +396,7 @@ function showOpaquePatRequired(username) {
         } else if (lang === "fr") {
             title = "Personal Access Token requis";
             info = "Votre compte utilise la nouvelle authentification OPAQUE. Cela offre une sécurité maximale mais nécessite un Personal Access Token (PAT) pour l'extension du navigateur :";
-            step1 = "Ouvrez trashmail.com et connectez-vous";
+            step1 = "Ouvrez mail.aionda.com et connectez-vous";
             step2 = "Cliquez sur votre nom d'utilisateur en haut à droite du gestionnaire d'adresses";
             step3 = "Sélectionnez <strong>Compte → Personal Access Tokens</strong>";
             step4 = "Créez un nouveau token et copiez-le";
@@ -406,7 +406,7 @@ function showOpaquePatRequired(username) {
         } else {
             title = "Personal Access Token Required";
             info = "Your account uses the new OPAQUE authentication. This provides maximum security but requires a Personal Access Token (PAT) for the browser extension:";
-            step1 = "Open trashmail.com and log in";
+            step1 = "Open mail.aionda.com and log in";
             step2 = "Click on your username in the top right of the Address Manager";
             step3 = "Select <strong>Account → Personal Access Tokens</strong>";
             step4 = "Create a new token and copy it";
@@ -529,7 +529,7 @@ function show2FAInput(username, password) {
         if (lang === "de") {
             title = "Zwei-Faktor-Authentifizierung aktiv";
             info = "Ihr Konto hat 2FA aktiviert. Browser-Erweiterungen unterstützen keine direkte 2FA-Eingabe. Bitte erstellen Sie ein Personal Access Token:";
-            step1 = "Öffnen Sie trashmail.com und melden Sie sich an";
+            step1 = "Öffnen Sie mail.aionda.com und melden Sie sich an";
             step2 = "Klicken Sie im Adress-Manager rechts oben auf Ihren Benutzernamen";
             step3 = "Wählen Sie <strong>Konto → Personal Access Tokens</strong>";
             step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
@@ -539,7 +539,7 @@ function show2FAInput(username, password) {
         } else if (lang === "fr") {
             title = "Authentification à deux facteurs active";
             info = "Votre compte a 2FA activé. Les extensions de navigateur ne prennent pas en charge la saisie directe du 2FA. Veuillez créer un Personal Access Token :";
-            step1 = "Ouvrez trashmail.com et connectez-vous";
+            step1 = "Ouvrez mail.aionda.com et connectez-vous";
             step2 = "Cliquez sur votre nom d'utilisateur en haut à droite du gestionnaire d'adresses";
             step3 = "Sélectionnez <strong>Compte → Personal Access Tokens</strong>";
             step4 = "Créez un nouveau token et copiez-le";
@@ -549,7 +549,7 @@ function show2FAInput(username, password) {
         } else {
             title = "Two-Factor Authentication Active";
             info = "Your account has 2FA enabled. Browser extensions do not support direct 2FA input. Please create a Personal Access Token:";
-            step1 = "Open trashmail.com and log in";
+            step1 = "Open mail.aionda.com and log in";
             step2 = "Click on your username in the top right of the Address Manager";
             step3 = "Select <strong>Account → Personal Access Tokens</strong>";
             step4 = "Create a new token and copy it";

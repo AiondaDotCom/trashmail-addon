@@ -208,7 +208,7 @@ function initDebugPanel() {
                 if (result.debugApiUrl) {
                     select.value = result.debugApiUrl;
                 } else {
-                    select.value = "https://trashmail.com";
+                    select.value = "https://mail.aionda.com";
                 }
                 updateDebugStatus();
             });
@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", initDebugPanel);
 function updateDebugStatus() {
     const status = document.getElementById("debug-status");
     browser.storage.local.get('debugApiUrl').then(function(result) {
-        if (result.debugApiUrl && result.debugApiUrl !== "https://trashmail.com") {
+        if (result.debugApiUrl && result.debugApiUrl !== "https://mail.aionda.com") {
             status.textContent = "⚠️ Debug mode active: " + result.debugApiUrl;
             status.style.color = "#c00";
         } else {
@@ -242,7 +242,7 @@ document.getElementById("btn-save-debug").addEventListener("click", function() {
 document.getElementById("btn-reset-debug").addEventListener("click", function() {
     browser.storage.local.remove('debugApiUrl').then(function() {
         API_BASE_URL = DEFAULT_API_URL;
-        document.getElementById("debug_api_url").value = "https://trashmail.com";
+        document.getElementById("debug_api_url").value = "https://mail.aionda.com";
         updateDebugStatus();
         alert("Reset to production server!");
     });

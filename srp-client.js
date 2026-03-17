@@ -450,7 +450,7 @@ class AddonSrpClient {
      */
     async _apiRequest(cmd, params) {
         // Use API_BASE_URL from api.js (global variable)
-        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://trashmail.com';
+        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
         const lang = browser.i18n.getUILanguage().substr(0, 2);
 
         const response = await fetch(baseUrl + '/?api=1&cmd=' + cmd + '&lang=' + lang, {
