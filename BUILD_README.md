@@ -71,5 +71,5 @@ Since no build is required:
 ## Contact
 
 - **Developer**: Aionda GmbH
-- **Website**: https://trashmail.com
-- **Support**: support@trashmail.com
+- **Website**: https://mail.aionda.com
+- **Support**: support@aionda.com

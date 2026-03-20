@@ -747,7 +747,7 @@ async function updateBadgeForTab(tabId, url) {
             }
             updateBadge(tabId, status);
 
-            // If still PROTECTED (no verification yet) and on trashmail.com, do a ping request
+            // If still PROTECTED (no verification yet) and on mail.aionda.com, do a ping request
             // This handles cached pages where no HTTP requests were made
             if (status.status === "PROTECTED" && status.verified === 0 &&
                 (hostname === "mail.aionda.com" || hostname === "dev.mail.aionda.com" || hostname === "trashmail.com" || hostname === "www.trashmail.com" || hostname === "dev.trashmail.com")) {
@@ -763,7 +763,7 @@ async function updateBadgeForTab(tabId, url) {
 }
 
 /**
- * Ping trashmail.com to trigger signature verification (for cached pages)
+ * Ping mail.aionda.com to trigger signature verification (for cached pages)
  */
 let pingInProgress = new Set();
 async function pingForVerification(tabId, hostname) {
@@ -931,7 +931,7 @@ async function initGuardian() {
     console.log("[Guardian] browser.webRequest.getSecurityInfo:", typeof browser.webRequest?.getSecurityInfo);
 
     // TLS Certificate verification (Firefox only)
-    // Uses cert.trashmail.com CNAME to ensure server connects through CloudFlare
+    // Uses CNAME to ensure server connects through CloudFlare
     if (isFirefox()) {
         console.log("[Guardian] Firefox detected - enabling TLS certificate verification");
         browser.webRequest.onHeadersReceived.addListener(

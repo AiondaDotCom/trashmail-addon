@@ -22,7 +22,7 @@
     "optionsContact": {
         "message": "Bitte senden Sie Fehler und Erweiterungswünsche an $MAILTO$",
         "placeholders": {
-            "mailto": {"content": "<a href='mailto:support@trashmail.com?subject=TrashMail'>support@trashmail.com</a>"}
+            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=TrashMail'>support@aionda.com</a>"}
         }
     },
 

@@ -1,0 +1,208 @@
+{
+    "extensionName": {"message": "TrashMail.com: Crear dirección desechable"},
+    "extensionDescription": {"message": "Crea direcciones de correo desechables."},
+
+    "optionsSettingsTitle": {"message": "Configuración"},
+    "optionsCurrentAccount": {"message": "Cuenta actual"},
+    "optionsForwards": {"message": "Número de reenvíos:"},
+    "optionsLifespan": {"message": "Tiempo de vida:"},
+    "optionsSwitchLoginButton": {"message": "Cambiar inicio de sesión"},
+    "optionsRealAddress": {"message": "Tu dirección de correo real:"},
+    "optionsAddressPrefix": {"message": "Prefijo de dirección de correo:"},
+    "optionsRandomLength": {"message": "Longitud del alias aleatorio:"},
+    "optionsDomain": {"message": "Dominio de dirección de correo:"},
+    "optionsChallengeResponse": {"message": "Sistema de verificación"},
+    "optionsMasquerade": {"message": "Enmascaramiento de respuesta"},
+    "optionsNotifyExpired": {"message": "Notificarme cuando mi cuenta haya expirado"},
+    "optionsSendURL": {"message": "Enviar URL al servidor TrashMail"},
+    "optionsSendURLTooltip": {"message": "Envía la URL actual de tu navegador al servidor TrashMail cuando solicites una nueva dirección de correo desechable"},
+    "optionsPlusInfo": {"message": "* requiere TrashMail Plus"},
+
+    "optionsContactTitle": {"message": "Contáctanos"},
+    "optionsContact": {
+        "message": "Envía informes de errores y solicitudes de funciones a $MAILTO$",
+        "placeholders": {
+            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=TrashMail'>support@aionda.com</a>"}
+        }
+    },
+
+    "welcomeTitle": {"message": "Bienvenido a la extensión TrashMail.com"},
+    "welcomeInfo": {"message": "Para crear direcciones de correo desechables, necesitarás una cuenta TrashMail. Con esta cuenta podrás usar esta extensión en múltiples ordenadores y navegadores."},
+    "welcomeLostPassword": {"message": "¿Olvidaste tu contraseña?"},
+    "registerConfirm": {"message": "Confirmar contraseña"},
+    "registerEmail": {"message": "Dirección de correo real"},
+    "registerNewsletter": {"message": "Boletín"},
+    "registerSuccess": {
+        "message": "$PBEGIN$Se ha enviado un correo con un enlace de confirmación a tu dirección '$EMAIL$'.$PEND$$PBEGIN$Por favor confirma tu dirección haciendo clic en el enlace para completar el registro.$PEND$$PBEGIN$Ahora puedes cerrar esta ventana.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+    "lostPasswordInfo": {"message": "Si has perdido tu contraseña, será necesario restablecerla. Por favor introduce tu dirección de correo real asociada con tu nombre de usuario:"},
+    "lostPasswordSuccess": {
+        "message": "$PBEGIN$Enlace de restablecimiento de contraseña enviado a '$EMAIL$'.$PEND$$PBEGIN$Por favor revisa tu bandeja de entrada para encontrar el enlace de restablecimiento.$PEND$",
+        "placeholders": {
+            "email": {"content": "$1"},
+            "pbegin": {"content": "<p>"},
+            "pend": {"content": "</p>"}
+        }
+    },
+
+    "createTitle": {"message": "Crear dirección de correo desechable"},
+    "createNewAddress": {"message": "Nueva dirección de reenvío:"},
+
+    "buttonCancel": {"message": "Cancelar"},
+    "buttonLogin": {"message": "Iniciar sesión"},
+    "buttonToLogin": {"message": "Introduce tu nombre de usuario y contraseña"},
+    "buttonSave": {"message": "Guardar"},
+    "buttonRegister": {"message": "Registrar cuenta"},
+    "buttonToRegister": {"message": "Registrar una nueva cuenta"},
+    "buttonReset": {"message": "Restablecer configuración predeterminada"},
+    "buttonResetPassword": {"message": "Restablecer contraseña"},
+    "buttonAddressManager": {"message": "Gestor de direcciones TrashMail"},
+    "buttonAddressManagerShort": {"message": "Gestor de direcciones"},
+    "buttonSettings": {"message": "Configuración"},
+    "buttonCreateAddress": {"message": "Crear dirección"},
+
+    "menuPasteAddress": {"message": "Pegar dirección desechable"},
+    "menuPastePrevious": {
+        "message": "Pegar '$EMAIL$'",
+        "placeholders": {
+            "email": {"content": "$1", "example": "foobar@trashmail.com"}
+        }
+    },
+
+    "username": {"message": "Nombre de usuario"},
+    "password": {"message": "Contraseña"},
+    "passwordOrPat": {"message": "Contraseña / Token de acceso personal"},
+    "email": {"message": "Correo"},
+    "saved": {"message": "Guardado"},
+    "undo": {"message": "Deshacer"},
+
+    "optionsInternalMailbox": {"message": "Guardar en buzón interno"},
+    "optionsInternalMailboxTooltip": {"message": "Guarda los correos en tu postfach de TrashMail en lugar de reenviarlos"},
+
+    "1day": {"message": "1 día"},
+    "ndays": {
+        "message": "$NUM$ días",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "1week": {"message": "1 semana"},
+    "nweeks": {
+        "message": "$NUM$ semanas",
+        "placeholders": {
+            "num": {"content": "$1", "example": "2"}
+        }
+    },
+    "1month": {"message": "1 mes"},
+    "nmonths": {
+        "message": "$NUM$ meses$PLUS$",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"},
+            "plus": {"content": "$2", "example": "*"}
+        }
+    },
+    "never": {
+        "message": "nunca$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    },
+    "unlimited": {
+        "message": "ilimitado$PLUS$",
+        "placeholders": {
+            "plus": {"content": "$1", "example": "*"}
+        }
+    },
+
+    "title2FA": {"message": "Autenticación de dos factores"},
+    "info2FA": {"message": "Introduce el código de 6 dígitos de tu aplicación de autenticación."},
+    "buttonVerify": {"message": "Verificar"},
+    "error2FAInvalidCode": {"message": "Por favor introduce un código de 6 dígitos."},
+
+    "error2FARequired": {
+        "message": "$STRONG$Se requiere autenticación de dos factores$STRONGEND$$BR$$BR$Tu cuenta tiene 2FA activado. Para usar la extensión del navegador, necesitas crear un Token de Acceso Personal:$BR$$BR$1. Haz clic en el botón de abajo para abrir TrashMail$BR$2. Ve a $STRONG$Cuenta → Tokens de Acceso Personal$STRONGEND$$BR$3. Crea un nuevo token y cópialo$BR$4. Tu $STRONG$nombre de usuario sigue siendo el mismo$STRONGEND$, solo pega el token como tu \"Contraseña\"$BR$$BR$$BUTTON$",
+        "placeholders": {
+            "strong": {"content": "<strong>"},
+            "strongend": {"content": "</strong>"},
+            "br": {"content": "<br>"},
+            "button": {"content": "<button type=\"button\" id=\"btn-open-access-tokens\" class=\"button\">Abrir Tokens de Acceso Personal</button>"}
+        }
+    },
+
+    "guardianMitmProtection": {"message": "Protección MITM"},
+    "guardianLoading": {"message": "Cargando..."},
+    "guardianNotInitialized": {"message": "No inicializado"},
+    "guardianFailedToLoad": {"message": "No se pudo cargar el módulo Guardian"},
+    "guardianVisitToActivate": {"message": "Visita TrashMail.com para activar"},
+    "guardianProtected": {"message": "Protegido"},
+    "guardianVerified": {"message": "Verificado"},
+    "guardianResponseVerified": {"message": "1 respuesta verificada"},
+    "guardianResponsesVerified": {
+        "message": "$NUM$ respuestas verificadas",
+        "placeholders": {
+            "num": {"content": "$1", "example": "5"}
+        }
+    },
+    "guardianKeyExpiringSoon": {"message": "Clave expirando pronto"},
+    "guardianKeyNeedsRenewal": {"message": "Firma válida, pero la clave necesita renovación"},
+    "guardianKeyExpired": {"message": "Clave expirada"},
+    "guardianServerKeyNeedsRenewal": {"message": "La clave del servidor necesita renovación"},
+    "guardianMitmDetected": {"message": "¡MITM DETECTADO!"},
+    "guardianSignatureVerificationFailed": {"message": "¡Verificación de firma fallida!"},
+    "guardianUnsigned": {"message": "¡Faltan firmas!"},
+    "guardianMissingSignature": {"message": "1 respuesta sin firma"},
+    "guardianMissingSignatures": {
+        "message": "$NUM$ respuestas sin firma",
+        "placeholders": {
+            "num": {"content": "$1", "example": "3"}
+        }
+    },
+    "guardianUnknown": {"message": "Desconocido"},
+    "guardianError": {"message": "Error"},
+    "guardianSecurityError": {"message": "Error de seguridad"},
+    "guardianSecurityErrorMissing": {"message": "La respuesta del servidor no está firmada. ¡Posible ataque MITM!"},
+    "guardianSecurityErrorMismatch": {"message": "Verificación de firma fallida. ¡Posible ataque MITM!"},
+
+    "guardianInfoTitle": {"message": "Protección MITM"},
+    "guardianInfoText": {"message": "Esta función te protege contra ataques Man-in-the-Middle (MITM). Los proxies corporativos como ZScaler o redes maliciosas podrían interceptar tu conexión y leer o modificar tus datos. TrashMail firma cada respuesta con una firma criptográfica que esta extensión verifica. Si alguien manipula los datos, la firma no coincidirá y serás avisado inmediatamente."},
+    "guardianInfoCurrentStatus": {"message": "Estado actual:"},
+    "guardianFeature1": {"message": "Las firmas criptográficas Ed25519 verifican cada respuesta del servidor"},
+    "guardianFeature2": {"message": "Detecta manipulación o eliminación de cabeceras por proxies (ZScaler, Fortinet, etc.)"},
+    "guardianFeature3": {"message": "Verificación en tiempo real con avisos instantáneos si los datos son modificados"},
+    "buttonClose": {"message": "Cerrar"},
+
+    "guardianTlsVerified": {"message": "TLS verificado"},
+    "guardianTlsNotVerified": {"message": "Aún no verificado"},
+    "guardianTlsCertificate": {"message": "Certificado TLS"},
+
+    "guardianWarningTitle": {"message": "Aviso de seguridad"},
+    "guardianWarningDismiss": {"message": "Descartar"},
+
+    "guardianTlsMitmDetected": {"message": "¡Tu conexión está siendo interceptada!"},
+    "guardianTlsBrowserCert": {"message": "Certificado del navegador"},
+    "guardianTlsExpected": {"message": "Esperado"},
+    "guardianTlsIssuer": {"message": "Emisor"},
+    "guardianTlsProxyWarning": {"message": "Esto podría ser un proxy corporativo (ZScaler, Netskope, etc.) o un atacante malicioso."},
+    "guardianTlsUnreachable": {"message": "No se pudo verificar el certificado - servidor inaccesible"},
+
+    "guardianMissingSignatureApi": {"message": "¡Falta firma en la respuesta de la API!"},
+    "guardianMissingSignaturePage": {"message": "¡Falta firma en la página!"},
+    "guardianMissingSignatureUrl": {"message": "URL"},
+    "guardianMissingSignatureHint": {"message": "Esto podría indicar:"},
+    "guardianMissingSignatureReason1": {"message": "Un ataque Man-in-the-Middle eliminando cabeceras de seguridad"},
+    "guardianMissingSignatureReason2": {"message": "Una mala configuración del servidor"},
+    "guardianMissingSignatureReason3": {"message": "Un proxy transparente modificando respuestas"},
+
+    "guardianNotificationTitle": {"message": "Aviso de seguridad de TrashMail"},
+    "guardianNotificationMitm": {"message": "¡Tu conexión puede estar siendo interceptada! Haz clic para más detalles."},
+    "guardianNotificationMissing": {"message": "¡Falta firma de respuesta! Tu conexión puede estar comprometida."},
+
+    "guardianLimitedMode": {"message": "Protección limitada"},
+    "guardianChromeNoTls": {"message": "Verificación de certificado TLS no disponible en Chrome"},
+    "guardianEd25519NotSupported": {"message": "Ed25519 no compatible - se requiere Chrome 113+"}
+}

@@ -65,5 +65,5 @@ trashmail-addon/
 ## Contact
 
 Aionda GmbH
-support@trashmail.com
-https://trashmail.com
+support@aionda.com
+https://mail.aionda.com

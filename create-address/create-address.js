@@ -204,7 +204,7 @@ async function createAddress(e) {
             domain = org_domain(new URL(parent_url), rules, exceptions);
         } catch (e) {
             console.error("Ungültige URL:", parent_url, e);
-            domain = "trashmail.com"; // Fallback-Domain
+            domain = "mail.aionda.com"; // Fallback-Domain
         }
 
         if (domain in addresses) {
