@@ -157,14 +157,17 @@ function isFirefox() {
  * Fetch certificate fingerprint from server
  * Response is Ed25519 signed, so MITM cannot fake it
  */
-async function fetchServerFingerprint() {
+async function fetchServerFingerprint(hostname) {
     if (fetchingFingerprint) return cachedCertFingerprint;
     fetchingFingerprint = true;
 
-    try {
-        console.log("[Guardian] Fetching certificate fingerprint from server...");
+    // Use the hostname the user is actually visiting
+    const host = hostname || "mail.aionda.com";
 
-        const response = await fetch("https://mail.aionda.com/?api=1&cmd=cert_fingerprint", {
+    try {
+        console.log("[Guardian] Fetching certificate fingerprint from server for:", host);
+
+        const response = await fetch(`https://${host}/?api=1&cmd=cert_fingerprint`, {
             method: "GET",
             headers: { "Accept": "application/json" }
         });
@@ -265,7 +268,8 @@ async function checkCertificate(details) {
         return;
     }
 
-    console.log("[Guardian] checkCertificate: Checking certificate for protected host");
+    const requestHostname = new URL(details.url).hostname;
+    console.log("[Guardian] checkCertificate: Checking certificate for protected host:", requestHostname);
     console.log("[Guardian] Request ID:", details.requestId);
 
     try {
@@ -305,9 +309,9 @@ async function checkCertificate(details) {
             return;
         }
 
-        // First request? Fetch server fingerprint
+        // First request? Fetch server fingerprint for this hostname
         if (!cachedCertFingerprint) {
-            await fetchServerFingerprint();
+            await fetchServerFingerprint(requestHostname);
             if (!cachedCertFingerprint) {
                 console.warn("[Guardian] Could not get server fingerprint for comparison");
                 return;
@@ -340,7 +344,8 @@ async function checkCertificate(details) {
         console.warn("[Guardian] Server reported:", cachedCertFingerprint.fingerprint);
 
         // Fetch fresh fingerprint from server (Ed25519 signed - cannot be faked)
-        const freshFingerprint = await fetchServerFingerprint();
+        cachedCertFingerprint = null; // Force fresh fetch
+        const freshFingerprint = await fetchServerFingerprint(requestHostname);
         if (!freshFingerprint) {
             // Could not verify - treat as suspicious
             handleMitmDetected(details.tabId, browser.i18n.getMessage("guardianTlsUnreachable"));
