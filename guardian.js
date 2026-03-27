@@ -135,15 +135,15 @@ function isHashedAsset(url) {
 // ============================================================
 
 /**
- * Cached server certificate fingerprint
- * Format: { fingerprint: "sha256:...", timestamp: 123456789 }
+ * Cached server certificate fingerprints PER HOSTNAME
+ * Format: { "trashmail.com": { fingerprint: "sha256:...", timestamp: 123456789 }, ... }
  */
-let cachedCertFingerprint = null;
+const cachedCertFingerprints = {};
 
 /**
- * Flag to prevent concurrent fingerprint fetches
+ * Flag to prevent concurrent fingerprint fetches (per hostname)
  */
-let fetchingFingerprint = false;
+const fetchingFingerprints = {};
 
 /**
  * Check if we're running in Firefox (getSecurityInfo is Firefox-only)
@@ -154,20 +154,28 @@ function isFirefox() {
 }
 
 /**
- * Fetch certificate fingerprint from server
- * Response is Ed25519 signed, so MITM cannot fake it
+ * Fetch certificate fingerprint from server for a specific hostname.
+ * Per-hostname caching: trashmail.com and mail.aionda.com have different certs.
+ * Response is Ed25519 signed, so MITM cannot fake it.
  */
 async function fetchServerFingerprint(hostname) {
-    if (fetchingFingerprint) return cachedCertFingerprint;
-    fetchingFingerprint = true;
-
-    // Use the hostname the user is actually visiting
     const host = hostname || "mail.aionda.com";
+
+    // Return cached if available
+    if (cachedCertFingerprints[host]) return cachedCertFingerprints[host];
+
+    // Prevent concurrent fetches for same host
+    if (fetchingFingerprints[host]) return null;
+    fetchingFingerprints[host] = true;
 
     try {
         console.log("[Guardian] Fetching certificate fingerprint from server for:", host);
 
-        const response = await fetch(`https://${host}/?api=1&cmd=cert_fingerprint`, {
+        // Always call mail.aionda.com with hostname= param to avoid redirect issues.
+        // trashmail.com 308-redirects to mail.aionda.com, which would return the
+        // wrong fingerprint. By passing hostname=, the server checks the correct cert.
+        const apiUrl = `https://mail.aionda.com/?api=1&cmd=cert_fingerprint&hostname=${encodeURIComponent(host)}`;
+        const response = await fetch(apiUrl, {
             method: "GET",
             headers: { "Accept": "application/json" }
         });
@@ -183,14 +191,10 @@ async function fetchServerFingerprint(hostname) {
         const keyId = response.headers.get("x-aionda-key-id");
 
         const body = await response.text();
-        console.log("[Guardian] cert_fingerprint raw response:", body);
-
         const data = JSON.parse(body);
-        console.log("[Guardian] cert_fingerprint parsed data:", data);
 
         if (!data.success) {
             console.error("[Guardian] Server returned error:", data.error);
-            console.error("[Guardian] Full response data:", JSON.stringify(data));
             return null;
         }
 
@@ -199,27 +203,26 @@ async function fetchServerFingerprint(hostname) {
             const verification = await verifySignature(body, signature, parseInt(timestamp), keyId);
             if (!verification.valid) {
                 console.error("[Guardian] Fingerprint response signature INVALID:", verification.reason);
-                // CRITICAL: Don't trust unsigned/invalid fingerprint responses!
                 return null;
             }
-            console.log("[Guardian] Fingerprint response signature verified");
+            console.log("[Guardian] Fingerprint response signature verified for:", host);
         } else {
             console.warn("[Guardian] Fingerprint response not signed - skipping verification");
         }
 
-        cachedCertFingerprint = {
+        cachedCertFingerprints[host] = {
             fingerprint: data.fingerprint,
             timestamp: data.timestamp
         };
 
-        console.log("[Guardian] Server fingerprint cached:", data.fingerprint.substring(0, 20) + "...");
-        return cachedCertFingerprint;
+        console.log("[Guardian] Server fingerprint cached for", host + ":", data.fingerprint.substring(0, 30) + "...");
+        return cachedCertFingerprints[host];
 
     } catch (err) {
         console.error("[Guardian] Error fetching fingerprint:", err);
         return null;
     } finally {
-        fetchingFingerprint = false;
+        fetchingFingerprints[host] = false;
     }
 }
 
@@ -309,21 +312,20 @@ async function checkCertificate(details) {
             return;
         }
 
-        // First request? Fetch server fingerprint for this hostname
-        if (!cachedCertFingerprint) {
-            await fetchServerFingerprint(requestHostname);
-            if (!cachedCertFingerprint) {
-                console.warn("[Guardian] Could not get server fingerprint for comparison");
+        // Fetch server fingerprint for THIS hostname (per-hostname cache)
+        let cached = cachedCertFingerprints[requestHostname];
+        if (!cached) {
+            cached = await fetchServerFingerprint(requestHostname);
+            if (!cached) {
+                console.warn("[Guardian] Could not get server fingerprint for:", requestHostname);
                 return;
             }
         }
 
         // Compare fingerprints
-        if (browserFingerprint === cachedCertFingerprint.fingerprint) {
-            // Fingerprints match - all good!
-            console.log("[Guardian] Certificate fingerprint OK:", browserFingerprint);
+        if (browserFingerprint === cached.fingerprint) {
+            console.log("[Guardian] Certificate fingerprint OK for", requestHostname + ":", browserFingerprint);
 
-            // Store TLS verification status
             let status = tabSecurityStatus.get(details.tabId) || {
                 status: "PROTECTED",
                 verified: 0,
@@ -334,31 +336,25 @@ async function checkCertificate(details) {
             status.tlsVerified = true;
             status.tlsFingerprint = browserFingerprint;
             tabSecurityStatus.set(details.tabId, status);
-
             return;
         }
 
-        // MISMATCH! But don't panic yet - certificate might have been renewed
-        console.warn("[Guardian] Certificate fingerprint MISMATCH!");
+        // MISMATCH — certificate might have been renewed, fetch fresh
+        console.warn("[Guardian] Certificate fingerprint MISMATCH for:", requestHostname);
         console.warn("[Guardian] Browser sees:", browserFingerprint);
-        console.warn("[Guardian] Server reported:", cachedCertFingerprint.fingerprint);
+        console.warn("[Guardian] Server reported:", cached.fingerprint);
 
-        // Fetch fresh fingerprint from server (Ed25519 signed - cannot be faked)
-        cachedCertFingerprint = null; // Force fresh fetch
+        // Force fresh fetch
+        delete cachedCertFingerprints[requestHostname];
         const freshFingerprint = await fetchServerFingerprint(requestHostname);
         if (!freshFingerprint) {
-            // Could not verify - treat as suspicious
             handleMitmDetected(details.tabId, browser.i18n.getMessage("guardianTlsUnreachable"));
             return;
         }
 
-        // Compare fresh server fingerprint with what browser sees
         if (browserFingerprint === freshFingerprint.fingerprint) {
-            // OK! Certificate was renewed, our cache was outdated
-            console.log("[Guardian] Certificate was renewed - fingerprints now match");
-            cachedCertFingerprint = freshFingerprint;
+            console.log("[Guardian] Certificate was renewed for", requestHostname, "- fingerprints now match");
 
-            // Store TLS verification status
             let status = tabSecurityStatus.get(details.tabId) || {
                 status: "PROTECTED",
                 verified: 0,
@@ -369,14 +365,11 @@ async function checkCertificate(details) {
             status.tlsVerified = true;
             status.tlsFingerprint = browserFingerprint;
             tabSecurityStatus.set(details.tabId, status);
-
             return;
         }
 
         // MITM DETECTED!
-        // Browser sees different certificate than server reports
-        // And server response is Ed25519 signed, so it cannot be faked
-        console.error("[Guardian] ⚠️ MITM DETECTED! Certificate mismatch after fresh fetch!");
+        console.error("[Guardian] MITM DETECTED for", requestHostname + "! Mismatch after fresh fetch!");
         console.error("[Guardian] Browser sees:", browserFingerprint);
         console.error("[Guardian] Server says:", freshFingerprint.fingerprint);
 
