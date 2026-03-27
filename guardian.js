@@ -312,71 +312,112 @@ async function checkCertificate(details) {
             return;
         }
 
-        // Fetch server fingerprint for THIS hostname (per-hostname cache)
-        let cached = cachedCertFingerprints[requestHostname];
-        if (!cached) {
-            cached = await fetchServerFingerprint(requestHostname);
-            if (!cached) {
-                console.warn("[Guardian] Could not get server fingerprint for:", requestHostname);
+        // MITM Detection Strategy:
+        // CloudFlare serves DIFFERENT leaf certificates at different edge servers,
+        // so exact fingerprint comparison is unreliable.
+        // Instead, we compare the ISSUER — corporate MITM proxies (ZScaler, Netskope,
+        // Fortinet, etc.) ALWAYS use their own CA, which has a different issuer than
+        // Google Trust Services / Cloudflare / Let's Encrypt.
+        //
+        // Additionally, we verify the cert subject covers the expected domain.
+
+        // Trusted issuers for our domains (CloudFlare uses these CAs)
+        const TRUSTED_ISSUERS = [
+            "Google Trust Services",
+            "Cloudflare",
+            "Let's Encrypt",
+            "DigiCert",
+            "Sectigo",
+        ];
+
+        // Known MITM proxy issuers
+        const KNOWN_MITM_ISSUERS = [
+            "ZScaler",
+            "Zscaler",
+            "Netskope",
+            "Fortinet",
+            "Palo Alto",
+            "Blue Coat",
+            "Symantec",
+            "Check Point",
+            "Barracuda",
+            "Sophos",
+            "WatchGuard",
+            "Cisco Umbrella",
+        ];
+
+        const browserIssuer = cert.issuer || "";
+        const browserSubject = cert.subject || "";
+        console.log("[Guardian] Cert issuer:", browserIssuer);
+        console.log("[Guardian] Cert subject:", browserSubject);
+
+        // Check 1: Is the issuer a known MITM proxy?
+        const isMitmIssuer = KNOWN_MITM_ISSUERS.some(m => browserIssuer.toLowerCase().includes(m.toLowerCase()));
+        if (isMitmIssuer) {
+            console.error("[Guardian] MITM DETECTED! Known proxy issuer:", browserIssuer);
+            const mitmMsg = browser.i18n.getMessage("guardianTlsMitmDetected") + "\n\n" +
+                browser.i18n.getMessage("guardianTlsBrowserCert") + ": " + browserFingerprint.substring(0, 30) + "...\n" +
+                browser.i18n.getMessage("guardianTlsIssuer") + ": " + browserIssuer + "\n\n" +
+                browser.i18n.getMessage("guardianTlsProxyWarning");
+            handleMitmDetected(details.tabId, mitmMsg);
+            return;
+        }
+
+        // Check 2: Is the issuer trusted?
+        const isTrustedIssuer = TRUSTED_ISSUERS.some(t => browserIssuer.includes(t));
+
+        // Check 3: Does the cert subject cover our domain?
+        const expectedDomains = ["aionda.com", "trashmail.com", "byom.de"];
+        const subjectMatchesDomain = expectedDomains.some(d => browserSubject.toLowerCase().includes(d));
+
+        if (isTrustedIssuer && subjectMatchesDomain) {
+            // Trusted issuer + correct domain = OK
+            console.log("[Guardian] Certificate OK — trusted issuer:", browserIssuer, "subject:", browserSubject);
+
+            let status = tabSecurityStatus.get(details.tabId) || {
+                status: "PROTECTED",
+                verified: 0,
+                unsigned: 0,
+                failed: [],
+                deprecated: false
+            };
+            status.tlsVerified = true;
+            status.tlsFingerprint = browserFingerprint;
+            tabSecurityStatus.set(details.tabId, status);
+            return;
+        }
+
+        // Check 4: Unknown issuer — verify against server (Ed25519 signed)
+        // Fetch the server's issuer info for comparison
+        const serverInfo = await fetchServerFingerprint(requestHostname);
+        if (serverInfo && serverInfo.issuer) {
+            // Compare issuer organization
+            const serverIssuerOrg = serverInfo.issuer.match(/O\s*=\s*([^,]+)/)?.[1]?.trim() || "";
+            const browserIssuerOrg = browserIssuer.match(/O\s*=\s*([^,]+)/)?.[1]?.trim() || "";
+
+            if (serverIssuerOrg && browserIssuerOrg && serverIssuerOrg === browserIssuerOrg && subjectMatchesDomain) {
+                // Same issuer org + correct domain = OK (different CloudFlare edge cert)
+                console.log("[Guardian] Certificate OK — issuer org matches server:", browserIssuerOrg);
+
+                let status = tabSecurityStatus.get(details.tabId) || {
+                    status: "PROTECTED",
+                    verified: 0,
+                    unsigned: 0,
+                    failed: [],
+                    deprecated: false
+                };
+                status.tlsVerified = true;
+                status.tlsFingerprint = browserFingerprint;
+                tabSecurityStatus.set(details.tabId, status);
                 return;
             }
         }
 
-        // Compare fingerprints
-        if (browserFingerprint === cached.fingerprint) {
-            console.log("[Guardian] Certificate fingerprint OK for", requestHostname + ":", browserFingerprint);
-
-            let status = tabSecurityStatus.get(details.tabId) || {
-                status: "PROTECTED",
-                verified: 0,
-                unsigned: 0,
-                failed: [],
-                deprecated: false
-            };
-            status.tlsVerified = true;
-            status.tlsFingerprint = browserFingerprint;
-            tabSecurityStatus.set(details.tabId, status);
-            return;
-        }
-
-        // MISMATCH — certificate might have been renewed, fetch fresh
-        console.warn("[Guardian] Certificate fingerprint MISMATCH for:", requestHostname);
-        console.warn("[Guardian] Browser sees:", browserFingerprint);
-        console.warn("[Guardian] Server reported:", cached.fingerprint);
-
-        // Force fresh fetch
-        delete cachedCertFingerprints[requestHostname];
-        const freshFingerprint = await fetchServerFingerprint(requestHostname);
-        if (!freshFingerprint) {
-            handleMitmDetected(details.tabId, browser.i18n.getMessage("guardianTlsUnreachable"));
-            return;
-        }
-
-        if (browserFingerprint === freshFingerprint.fingerprint) {
-            console.log("[Guardian] Certificate was renewed for", requestHostname, "- fingerprints now match");
-
-            let status = tabSecurityStatus.get(details.tabId) || {
-                status: "PROTECTED",
-                verified: 0,
-                unsigned: 0,
-                failed: [],
-                deprecated: false
-            };
-            status.tlsVerified = true;
-            status.tlsFingerprint = browserFingerprint;
-            tabSecurityStatus.set(details.tabId, status);
-            return;
-        }
-
-        // MITM DETECTED!
-        console.error("[Guardian] MITM DETECTED for", requestHostname + "! Mismatch after fresh fetch!");
-        console.error("[Guardian] Browser sees:", browserFingerprint);
-        console.error("[Guardian] Server says:", freshFingerprint.fingerprint);
-
-        const issuerInfo = securityInfo.certificates[0].issuer || "Unknown issuer";
+        // Untrusted issuer + no match = MITM
+        console.error("[Guardian] MITM suspected! Untrusted issuer:", browserIssuer);
+        const issuerInfo = browserIssuer || "Unknown issuer";
         const mitmMsg = browser.i18n.getMessage("guardianTlsMitmDetected") + "\n\n" +
             browser.i18n.getMessage("guardianTlsBrowserCert") + ": " + browserFingerprint.substring(0, 30) + "...\n" +
-            browser.i18n.getMessage("guardianTlsExpected") + ": " + freshFingerprint.fingerprint.substring(0, 30) + "...\n\n" +
             browser.i18n.getMessage("guardianTlsIssuer") + ": " + issuerInfo + "\n\n" +
             browser.i18n.getMessage("guardianTlsProxyWarning");
         handleMitmDetected(details.tabId, mitmMsg);
