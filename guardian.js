@@ -62,7 +62,9 @@ const GUARDIAN_CONFIG = {
         "www.trashmail.com",
         "dev.trashmail.com",
         "byom.de",
-        "www.byom.de"
+        "www.byom.de",
+        "s.aionda.com",
+        "dev.s.aionda.com"
     ],
     // Maximum age of a timestamp in seconds
     maxTimestampAge: 300, // 5 minutes
