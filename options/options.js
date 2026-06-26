@@ -141,31 +141,56 @@ function addressManager() {
     var progress = document.getElementById("progress");
     progress.style.display = "inline-block";
 
-    browser.storage.sync.get(["username", "password"]).then(function (storage) {
-        var data = {
-            "cmd": "login",
-            "fe-login-user": storage["username"],
-            "fe-login-pass": storage["password"]
-        };
-
-        callAPI(data).then(function (login_details) {
-            // Use API_BASE_URL for manager link
-            const url = API_BASE_URL + "/?cmd=manager";
-            let params = new URLSearchParams({
-                "lang": browser.i18n.getUILanguage().substr(0, 2),
-                "session_id": login_details["session_id"]
-            });
-            browser.tabs.create({"url": url.concat("&", params.toString())}).then(function () {
-                progress.style.display = "none";
-            });
-        }).catch(function (error) {
-            let error_msg = document.getElementById("error_msg");
-            error_msg.textContent = error;
-            error_msg.style.display = "block";
-            progress.style.display = "none";
+    function openManager(sessionId) {
+        const url = API_BASE_URL + "/?cmd=manager";
+        let params = new URLSearchParams({
+            "lang": browser.i18n.getUILanguage().substr(0, 2)
         });
+        // Re-use the existing logged-in session. Passing the stored session_id
+        // restores the session in the new tab without a fresh login.
+        if (sessionId)
+            params.append("session_id", sessionId);
+        return browser.tabs.create({"url": url.concat("&", params.toString())});
+    }
 
-    });
+    function showError(error) {
+        let error_msg = document.getElementById("error_msg");
+        error_msg.textContent = error.message || error;
+        error_msg.style.display = "block";
+        progress.style.display = "none";
+    }
+
+    Promise.all([
+        browser.storage.sync.get(["username", "password"]),
+        browser.storage.local.get(["session_id"])
+    ]).then(function (results) {
+        var [sync, local] = results;
+
+        // OPAQUE accounts store a Personal Access Token (tmpat_...). Such a token
+        // can NOT be verified via a classic `cmd=login` request: it lives in
+        // mail_opaque_access_tokens and is only verifiable through the OPAQUE
+        // challenge-response, not a password hash. A classic login therefore fails
+        // with "Username not registered or invalid password". Instead re-use the
+        // session_id that the OPAQUE/PAT login already stored (same as background.js).
+        if (isPAT(sync["password"])) {
+            if (!local["session_id"]) {
+                throw new Error(browser.i18n.getMessage("errorSessionExpired") ||
+                    "Your session has expired. Please use \"Switch login\" to log in again.");
+            }
+            return openManager(local["session_id"]);
+        }
+
+        // Classic password account: legacy login to obtain a fresh session_id.
+        return callAPI({
+            "cmd": "login",
+            "fe-login-user": sync["username"],
+            "fe-login-pass": sync["password"]
+        }).then(function (login_details) {
+            return openManager(login_details["session_id"]);
+        });
+    }).then(function () {
+        progress.style.display = "none";
+    }).catch(showError);
 }
 document.getElementById("btn-address-manager").addEventListener("click", addressManager);
 
