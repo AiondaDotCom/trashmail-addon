@@ -1,64 +1,344 @@
 body {
-    background: #EEE;
+    margin: 0;
+    padding: 36px 16px 48px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-button, input[type="submit"] {
-    padding: 3px 15px;
+.page {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.brand {
+    text-align: center;
+    padding: 4px 0 24px;
+}
+.brand img {
+    height: 40px;
+}
+
+.panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 h1 {
-    font-size: 1.17em;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 0 0 12px;
 }
 
-#welcome-panel {
-    padding-left: 400px;
-    padding-top: 30px;
-    background: url('../images/welcome@2x.png') no-repeat 46px 10px;
-    background-size: 298px 132px;
+#welcome-panel p {
+    color: #475569;
+    line-height: 1.55;
+    margin: 0 0 22px;
+}
+
+/* Buttons */
+button, input[type="submit"] {
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    color: #0f172a;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+button:hover, input[type="submit"]:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+input[type="submit"], #btn-show-register {
+    color: #fff;
+    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+    border-color: #0e7490;
+    box-shadow: 0 2px 8px rgba(14, 116, 144, 0.25);
+}
+input[type="submit"]:hover, #btn-show-register:hover {
+    background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+    border-color: #155e75;
 }
 
 #welcome-panel button {
+    display: block;
     width: 100%;
     margin-bottom: 10px;
 }
-
-#register-panel {
-    padding-left: 300px;
-    padding-top: 30px;
-    background: url('../images/register.png') no-repeat 30px 30px;
+#welcome-panel button:last-child {
+    margin-bottom: 0;
 }
 
-#login-panel {
-    padding-left: 300px;
-    padding-top: 30px;
-    background: url('../images/login.png') no-repeat 100px 20px;
-}
-
-#lost-password-panel {
-    padding-left: 300px;
-    padding-top: 30px;
-    background: url('../images/login.png') no-repeat 100px 20px;
-}
-
+/* Formulare: Label über dem Feld */
 form div {
-    padding: 8px 0px;
+    padding: 0 0 16px;
 }
 
 form label {
-    width: 190px !important;
-    font-weight: bold;
+    display: block;
+    width: auto !important;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #0f172a;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    outline: none;
+    background: #fff;
+    border-color: #0891b2;
+    box-shadow: 0 0 0 4px rgba(14, 116, 144, 0.1);
+}
+
+/* Checkbox-Zeilen (z.B. Newsletter): Häkchen links vom Text */
+form div:has(input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+form div:has(input[type="checkbox"]) label {
+    order: 2;
+    margin: 0;
+    font-weight: 400;
+    color: #0f172a;
+    font-size: 14px;
+}
+form div:has(input[type="checkbox"]) input[type="checkbox"] {
+    order: 1;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: #0e7490;
 }
 
 form div.buttons {
-    padding: 7px 0px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 4px 0 0;
+}
+
+#lost-password {
+    display: inline-block;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: #0e7490;
+}
+
+/* Passwort-Feld mit Anzeigen-Toggle (Auge) */
+.pw-field {
+    position: relative;
+}
+.pw-field input {
+    padding-right: 44px !important;
+}
+.pw-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: none;
+}
+.pw-toggle:hover {
+    background: #f1f5f9;
+    border: none;
+}
+.pw-toggle[aria-pressed="true"] {
+    color: #0e7490;
+}
+
+/* Interaktive Richtlinien-Checkliste */
+.pw-checklist {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    font-size: 12px;
+    color: #64748b;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+}
+.pw-checklist li::before {
+    content: "\25CB";  /* ○ */
+    display: inline-block;
+    width: 18px;
+    color: #94a3b8;
+}
+.pw-checklist li.met {
+    color: #166534;
+}
+.pw-checklist li.met::before {
+    content: "\2713";  /* ✓ */
+    color: #16a34a;
+    font-weight: 700;
+}
+
+/* Username-Verfuegbarkeit + Vorschlaege */
+.field-hint.ok {
+    color: #166534;
+}
+.suggestion-btn {
+    padding: 2px 8px !important;
+    margin: 2px 6px 0 0;
+    font-size: 12px !important;
+    color: #0e7490;
+    background: #ecfeff;
+    border: 1px solid #a5f3fc !important;
+    border-radius: 999px !important;
+}
+.suggestion-btn:hover {
+    background: #cffafe;
+    border-color: #67e8f9 !important;
+}
+.suggestion-prefix {
+    color: #64748b;
+}
+
+/* Interaktive Passwort-Staerke (gleiche Richtlinie wie die Webseite) */
+.pw-strength {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+.pw-strength-track {
+    flex: 1;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+#register-pw-strength-bar {
+    height: 100%;
+    width: 0;
+    border-radius: 3px;
+    transition: width 0.3s, background 0.3s;
+}
+#register-pw-strength-label {
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 52px;
     text-align: right;
 }
 
+.field-hint {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.45;
+    margin: 6px 0 0;
+}
+.field-hint.invalid {
+    color: #b91c1c;
+}
+
+#register-panel .hint {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.5;
+    margin: 0 0 16px;
+}
+
 .important {
-    padding: 20px 20px 20px 72px;
-    margin-bottom: 15px;
-    border: 1px solid #008;
-    border-radius: 7px;
-    background: #eef url('../images/info-32.png') no-repeat 20px center;
-    color: #008;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    color: #075985;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Moderne Alert-Boxen (Fehler/Erfolg) mit Icon und sanftem Einblenden */
+.success, .error {
+    position: relative;
+    padding: 12px 14px 12px 42px !important;
+    font-size: 13px;
+    line-height: 1.5;
+    border-radius: 10px;
+    animation: alert-in 0.25s ease-out;
+}
+.success::before, .error::before {
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 11px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+}
+.error {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.08);
+}
+.error::before {
+    content: "!";
+    background: #ef4444;
+}
+.success {
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    box-shadow: 0 4px 12px rgba(22, 101, 52, 0.08);
+}
+.success::before {
+    content: "\2713";
+    background: #22c55e;
+}
+.success:empty, .error:empty {
+    display: none;
+}
+@keyframes alert-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

@@ -4,142 +4,363 @@
 	<meta charset="utf-8" />
     <script src="../translate.js" defer></script>
     <script src="../api.js" defer></script>
+    <script src="../libopaque.js" defer></script>
+    <script src="../opaque-client.js" defer></script>
     <script src="options.js" defer></script>
+    <link rel="stylesheet" type="text/css" href="../common.css" />
     <style>
-        div {
-            padding-bottom: 10px;
+        body {
+            margin: 0;
+            padding: 20px 16px 32px;
+            background: #f1f5f9;
+            color: #0f172a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .page {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        .brand {
+            text-align: center;
+            padding: 4px 0 20px;
+        }
+        .brand img {
+            height: 34px;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .card h1 {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin: 0 0 16px;
+        }
+        .card > div {
+            padding-bottom: 0;
+        }
+
+        /* Account */
+        .account-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
         }
         #username {
-	        color: #46B;
-	        font-weight: bold;
-	        font-size: x-large;
-	        display: block;
-	        padding-bottom: 15px;
+            color: #0e7490;
+            font-weight: 600;
+            font-size: 20px;
+            display: block;
+            width: auto;
+            padding: 0;
         }
-        #btn-address-manager, #undo {
+
+        /* Settings rows */
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 7px 0;
+        }
+        .row label {
+            width: auto !important;
+            flex: 1;
+            min-width: 180px;
+        }
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            min-width: 200px;
+            padding: 8px 32px 8px 12px;
+            font-size: 14px;
+            color: #0f172a;
+            background-color: #fff;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+        }
+        select:disabled {
+            background-color: #f8fafc;
+            color: #94a3b8;
+        }
+        select:focus {
+            outline: 2px solid #0e7490;
+            outline-offset: 1px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #64748b;
+            margin: 8px 0;
+            padding-bottom: 0;
+        }
+
+        /* Checkboxes */
+        .check {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 7px 0;
+        }
+        .check input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 2px 0 0;
+            flex-shrink: 0;
+            accent-color: #0e7490;
+        }
+        .check label {
+            width: auto !important;
+            flex: 1;
+        }
+
+        /* Buttons */
+        button, input[type="submit"] {
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            color: #0f172a;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        button:hover, input[type="submit"]:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+        input[type="submit"] {
+            color: #fff;
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            border-color: #0e7490;
+        }
+        input[type="submit"]:hover {
+            background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 4px 0 16px;
+        }
+        .actions button, .actions input[type="submit"] {
+            flex: 1 1 auto;
+            text-align: center;
+        }
+        #btn-address-manager {
+            float: none;
+        }
+
+        /* Moderne Alert-Boxen mit Icon und sanftem Einblenden */
+        .success, .error {
+            position: relative;
+            padding: 12px 14px 12px 42px;
+            font-size: 13px;
+            line-height: 1.5;
+            border-radius: 10px;
+            animation: alert-in 0.25s ease-out;
+        }
+        .success::before, .error::before {
+            content: "";
+            position: absolute;
+            left: 12px;
+            top: 11px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 20px;
+            text-align: center;
+        }
+        .success {
+            color: #166534;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            box-shadow: 0 4px 12px rgba(22, 101, 52, 0.08);
+        }
+        .success::before {
+            content: "\2713";
+            background: #22c55e;
+        }
+        .error {
+            color: #991b1b;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            box-shadow: 0 4px 12px rgba(185, 28, 28, 0.08);
+        }
+        .error::before {
+            content: "!";
+            background: #ef4444;
+        }
+        @keyframes alert-in {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        #undo {
             float: right;
+            color: #166534;
+            font-weight: 500;
+        }
+
+        a {
+            color: #0e7490;
         }
     </style>
-    <link rel="stylesheet" type="text/css" href="../common.css" />
 </head>
 <body>
-    <h1 data-i18n="optionsCurrentAccount"></h1>
+    <div class="page">
+        <div class="brand">
+            <img src="../images/menu@1x.png" alt="Aionda Mail" />
+        </div>
 
-    <div>
-        <label id="username">…</label>
-        <button id="btn-switch-login" type="button" data-i18n="optionsSwitchLoginButton"></button>
-    </div>
+        <section class="card">
+            <h1 data-i18n="optionsCurrentAccount"></h1>
+            <div class="account-row">
+                <label id="username">…</label>
+                <button id="btn-switch-login" type="button" data-i18n="optionsSwitchLoginButton"></button>
+            </div>
+        </section>
 
-    <h1 data-i18n="optionsSettingsTitle"></h1>
+        <form>
+            <section class="card">
+                <h1 data-i18n="optionsSettingsTitle"></h1>
+                <div id="options-default">
+                    <div class="row">
+                        <label for="default_email" data-i18n="optionsRealAddress"></label>
+                        <select id="default_email" name="default_email" disabled></select>
+                    </div>
 
-    <form>
-        <div id="options-default">
-            <div>
-                <label for="default_email" data-i18n="optionsRealAddress"></label>
-                <select id="default_email" name="default_email" disabled></select>
+                    <div class="row">
+                        <label for="default_domain" data-i18n="optionsDomain"></label>
+                        <select id="default_domain" name="default_domain" disabled></select>
+                    </div>
+
+                    <div class="row">
+                        <label for="default_forwards" data-i18n="optionsForwards"></label>
+                        <select id="default_forwards" name="default_forwards" disabled>
+                            <option value="1" data-i18n="#1"></option>
+                            <option value="2" data-i18n="#2"></option>
+                            <option value="3" data-i18n="#3"></option>
+                            <option value="4" data-i18n="#4"></option>
+                            <option value="5" data-i18n="#5"></option>
+                            <option value="10" data-i18n="#10" selected></option>
+                            <option value="100" data-i18n="#100*"></option>
+                            <option value="1000" data-i18n="#1000*"></option>
+                            <option value="-1" data-i18n="unlimited?*"></option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <label for="default_expire" data-i18n="optionsLifespan"></label>
+                        <select id="default_expire" name="default_expire" disabled>
+                            <option value="1" data-i18n="1day#"></option>
+                            <option value="2" data-i18n="ndays#?2"></option>
+                            <option value="3" data-i18n="ndays#?3"></option>
+                            <option value="4" data-i18n="ndays#?4"></option>
+                            <option value="5" data-i18n="ndays#?5"></option>
+                            <option value="6" data-i18n="ndays#?6"></option>
+                            <option value="7" data-i18n="1week#"></option>
+                            <option value="14" data-i18n="nweeks#?2"></option>
+                            <option value="21" data-i18n="nweeks#?3"></option>
+                            <option value="30" data-i18n="1month#" selected></option>
+                            <option value="60" data-i18n="nmonths#?2?*"></option>
+                            <option value="90" data-i18n="nmonths#?3?*"></option>
+                            <option value="120" data-i18n="nmonths#?4?*"></option>
+                            <option value="150" data-i18n="nmonths#?5?*"></option>
+                            <option value="180" data-i18n="nmonths#?6?*"></option>
+                            <option value="-1" data-i18n="never?*"></option>
+                        </select>
+                    </div>
+
+                    <p class="hint" data-i18n="optionsPlusInfo"></p>
+
+                    <div class="check">
+                        <input type="checkbox" id="default_masq" name="default_masq" value="1" checked disabled />
+                        <label for="default_masq" data-i18n="optionsMasquerade"></label>
+                    </div>
+
+                    <div class="check">
+                        <input type="checkbox" id="default_notify" name="default_notify" value="1" checked disabled />
+                        <label for="default_notify" data-i18n="optionsNotifyExpired"></label>
+                    </div>
+
+                    <div class="check">
+                        <input type="checkbox" id="default_send" name="default_send" data-i18n="optionsSendURLTooltip|title" value="1" checked disabled />
+                        <label for="default_send" data-i18n="optionsSendURL"></label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="check">
+                    <input type="checkbox" id="guardian_enabled" name="guardian_enabled" value="1" />
+                    <label for="guardian_enabled" data-i18n="optionsGuardianEnable"></label>
+                </div>
+                <p class="hint" data-i18n="optionsGuardianTooltip"></p>
+            </section>
+
+            <div class="actions">
+                <input type="submit" data-i18n="buttonSave|value" />
+                <button id="btn-reset" type="button" data-i18n="buttonReset"></button>
+                <button id="btn-address-manager" type="button" data-i18n="buttonAddressManager"></button>
+                <progress id="progress" style="display: none">Connecting…</progress>
             </div>
 
-            <div>
-                <label for="default_domain" data-i18n="optionsDomain"></label>
-                <select id="default_domain" name="default_domain" disabled></select>
+            <div id="saved_msg" class="success" style="display: none">
+                <span data-i18n="saved"></span>
+                <a id="undo" href="#" data-i18n="undo"></a>
             </div>
 
+            <div id="error_msg" class="error" style="display: none"></div>
+        </form>
+
+        <section class="card">
+            <h1 data-i18n="optionsContactTitle"></h1>
+            <p data-i18n="optionsContact"></p>
+        </section>
+
+        <!-- Hidden Debug Panel - Click title 5 times to reveal -->
+        <div id="debug-panel" style="display: none; margin-top: 20px; padding: 15px; border: 2px dashed #f00; background: #fff0f0; border-radius: 12px;">
+            <h2 style="color: #c00; margin-top: 0;">🔧 Debug Mode</h2>
             <div>
-                <label for="default_forwards" data-i18n="optionsForwards"></label>
-                <select id="default_forwards" name="default_forwards" disabled>
-                    <option value="1" data-i18n="#1"></option>
-                    <option value="2" data-i18n="#2"></option>
-                    <option value="3" data-i18n="#3"></option>
-                    <option value="4" data-i18n="#4"></option>
-                    <option value="5" data-i18n="#5"></option>
-                    <option value="10" data-i18n="#10"></option>
-                    <option value="100" data-i18n="#100*"></option>
-                    <option value="1000" data-i18n="#1000*"></option>
-                    <option value="-1" data-i18n="unlimited?*"></option>
+                <label for="debug_api_url">API URL:</label>
+                <select id="debug_api_url" style="width: 100%; margin-top: 5px;">
+                    <option value="https://mail.aionda.com">Production (mail.aionda.com)</option>
+                    <option value="https://dev.mail.aionda.com">Development (dev.mail.aionda.com)</option>
                 </select>
             </div>
-
-            <div>
-                <label for="default_expire" data-i18n="optionsLifespan"></label>
-                <select id="default_expire" name="default_expire" disabled>
-                    <option value="1" data-i18n="1day#"></option>
-                    <option value="2" data-i18n="ndays#?2"></option>
-                    <option value="3" data-i18n="ndays#?3"></option>
-                    <option value="4" data-i18n="ndays#?4"></option>
-                    <option value="5" data-i18n="ndays#?5"></option>
-                    <option value="6" data-i18n="ndays#?6"></option>
-                    <option value="7" data-i18n="1week#"></option>
-                    <option value="14" data-i18n="nweeks#?2"></option>
-                    <option value="21" data-i18n="nweeks#?3"></option>
-                    <option value="30" data-i18n="1month#"></option>
-                    <option value="60" data-i18n="nmonths#?2?*"></option>
-                    <option value="90" data-i18n="nmonths#?3?*"></option>
-                    <option value="120" data-i18n="nmonths#?4?*"></option>
-                    <option value="150" data-i18n="nmonths#?5?*"></option>
-                    <option value="180" data-i18n="nmonths#?6?*"></option>
-                    <option value="-1" data-i18n="never?*"></option>
-                </select>
+            <div style="margin-top: 10px;">
+                <button id="btn-save-debug" type="button" style="background: #c00; color: #fff;">Save Debug Settings</button>
+                <button id="btn-reset-debug" type="button">Reset to Production</button>
             </div>
-
-            <div data-i18n="optionsPlusInfo"></div>
-
-            <div>
-                <input type="checkbox" id="default_challenge" name="default_challenge" value="1" disabled />
-                <label for="default_challenge" data-i18n="optionsChallengeResponse"></label>
-            </div>
-
-            <div>
-                <input type="checkbox" id="default_masq" name="default_masq" value="1" checked disabled />
-                <label for="default_masq" data-i18n="optionsMasquerade"></label>
-            </div>
-
-            <div>
-                <input type="checkbox" id="default_notify" name="default_notify" value="1" checked disabled />
-                <label for="default_notify" data-i18n="optionsNotifyExpired"></label>
-            </div>
-
-            <div>
-                <input type="checkbox" id="default_send" name="default_send" data-i18n="optionsSendURLTooltip|title" value="1" checked disabled />
-                <label for="default_send" data-i18n="optionsSendURL"></label>
-            </div>
+            <p id="debug-status" style="margin-top: 10px; font-style: italic;"></p>
         </div>
-
-        <div>
-            <input type="submit" data-i18n="buttonSave|value" />
-            <button id="btn-reset" type="button" data-i18n="buttonReset"></button>
-            <button id="btn-address-manager" type="button" data-i18n="buttonAddressManager"></button>
-            <progress id="progress" style="display: none">Connecting…</progress>
-        </div>
-
-        <div id="saved_msg" class="success" style="display: none">
-            <span data-i18n="saved"></span>
-            <a id="undo" href="#" data-i18n="undo"></a>
-        </div>
-
-        <div id="error_msg" class="error" style="display: none"></div>
-    </form>
-
-
-    <div>
-        <h1 data-i18n="optionsContactTitle"></h1>
-        <p data-i18n="optionsContact"></p>
-    </div>
-
-    <!-- Hidden Debug Panel - Click title 5 times to reveal -->
-    <div id="debug-panel" style="display: none; margin-top: 20px; padding: 15px; border: 2px dashed #f00; background: #fff0f0;">
-        <h2 style="color: #c00; margin-top: 0;">🔧 Debug Mode</h2>
-        <div>
-            <label for="debug_api_url">API URL:</label>
-            <select id="debug_api_url" style="width: 100%; margin-top: 5px;">
-                <option value="https://mail.aionda.com">Production (mail.aionda.com)</option>
-                <option value="https://dev.mail.aionda.com">Development (dev.mail.aionda.com)</option>
-            </select>
-        </div>
-        <div style="margin-top: 10px;">
-            <button id="btn-save-debug" type="button" style="background: #c00; color: #fff;">Save Debug Settings</button>
-            <button id="btn-reset-debug" type="button">Reset to Production</button>
-        </div>
-        <p id="debug-status" style="margin-top: 10px; font-style: italic;"></p>
     </div>
 </body>
 </html>

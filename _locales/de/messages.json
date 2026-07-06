@@ -1,45 +1,59 @@
 {
-    "extensionName": {"message": "TrashMail.com: Wegwerf-E-Mail erstellen"},
-    "extensionDescription": {"message": "Wegwerfbare E-Mail-Adressen erstellen."},
+    "errorSessionExpired": {"message": "Deine Sitzung ist abgelaufen. Bitte öffne die Erweiterungs-Einstellungen und melde dich erneut an."},
+    "errorGenericServer": {"message": "Der Server hat einen Fehler zurückgegeben. Bitte öffne die Erweiterungs-Einstellungen und melde dich erneut an."},
+    "extensionName": {"message": "Aionda Mail (TrashMail): Temp & Wegwerf-Mail"},
+    "extensionDescription": {"message": "Temp Mail: Wegwerf-E-Mail-Adressen mit einem Klick erstellen und deine echte Adresse vor Spam schützen. Früher TrashMail.com."},
 
     "optionsSettingsTitle": {"message": "Einstellungen"},
     "optionsCurrentAccount": {"message": "Jetziger Benutzer"},
     "optionsForwards": {"message": "Anzahl an Weiterleitungen:"},
     "optionsLifespan": {"message": "Gültigkeitsdauer:"},
     "optionsSwitchLoginButton": {"message": "Benutzer wechseln"},
+    "optionsNotLoggedIn": {"message": "Nicht angemeldet"},
+    "optionsLoginButton": {"message": "Anmelden"},
     "optionsRealAddress": {"message": "Ihre E-Mail-Adresse:"},
     "optionsAddressPrefix": {"message": "E-Mail-Adress-Präfix:"},
     "optionsRandomLength": {"message": "Länge vom Zufalls-Decknamen:"},
     "optionsDomain": {"message": "E-Mail-Adress-Domainname:"},
-    "optionsChallengeResponse": {"message": "CAPTCHA für eingehende Nachrichten"},
     "optionsMasquerade": {"message": "Antwort-Maskierung"},
     "optionsNotifyExpired": {"message": "Automatische Benachrichtigung, wenn Adresse abgelaufen ist"},
-    "optionsSendURL": {"message": "Sende URL an TrashMail Server"},
-    "optionsSendURLTooltip": {"message": "Sendet aktuelle URL zum TrashMail-Server beim erstellen einer wegwerfbaren E-Mail-Adresse."},
-    "optionsPlusInfo": {"message": "* benötigt TrashMail Plus"},
+    "optionsSendURL": {"message": "Sende URL an Aionda Mail Server"},
+    "optionsSendURLTooltip": {"message": "Sendet aktuelle URL zum Aionda-Mail-Server beim erstellen einer wegwerfbaren E-Mail-Adresse."},
+    "optionsPlusInfo": {"message": "* benötigt Aionda Mail Plus"},
 
     "optionsContactTitle": {"message": "Kontaktieren Sie uns"},
     "optionsContact": {
         "message": "Bitte senden Sie Fehler und Erweiterungswünsche an $MAILTO$",
         "placeholders": {
-            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=TrashMail'>support@aionda.com</a>"}
+            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=Aionda%20Mail'>support@aionda.com</a>"}
         }
     },
 
-    "welcomeTitle": {"message": "Willkommen zum TrashMail.com Add-On"},
-    "welcomeInfo": {"message": "Um wegwerfbare E-Mail-Adressen zu erstellen benötigen Sie eine TrashMail-Benutzerkennung. Mit dieser Benutzerkennung können Sie das Add-On auf mehreren Computern und Browsern nutzen."},
-    "welcomeLostPassword": {"message": "Passwort verloren?"},
-    "registerConfirm": {"message": "Passswort bestätigen"},
+    "welcomeTitle": {"message": "Willkommen zum Aionda Mail Add-On"},
+    "welcomeRegisterTitle": {"message": "Konto erstellen"},
+    "registerUsernameIdeas": {"message": "Vorschläge:"},
+    "registerUsernameIdeasMore": {"message": "Neue Vorschläge"},
+    "registerIntro": {"message": "Benutzerkennung wählen, Passwort setzen, echte E-Mail-Adresse angeben - fertig. Du bist danach direkt angemeldet."},
+    "registerShowPassword": {"message": "Passwort anzeigen"},
+    "registerPwCritLen8": {"message": "Mindestens 8 Zeichen"},
+    "registerPwCritLen12": {"message": "12+ Zeichen (empfohlen)"},
+    "registerPwCritCase": {"message": "Gross- und Kleinbuchstaben"},
+    "registerPwCritDigit": {"message": "Mindestens eine Zahl"},
+    "registerPwCritSpecial": {"message": "Sonderzeichen (!?#...)"},
+    "registerUsernameAvailable": {"message": "✓ Verfügbar"},
+    "registerUsernameTaken": {"message": "Diese Benutzerkennung ist bereits vergeben."},
+    "registerUsernameSuggestion": {"message": "Wie wäre es mit:"},
+    "registerPwWeak": {"message": "Schwach"},
+    "registerPwOk": {"message": "Ok"},
+    "registerPwGood": {"message": "Gut"},
+    "registerPwStrong": {"message": "Stark"},
+    "registerPasswordTooWeak": {"message": "Passwort zu schwach: mindestens 8 Zeichen; mehr Länge, Gross-/Kleinschreibung, Zahlen und Sonderzeichen erhöhen die Stärke."},
+    "registerUsernameRules": {"message": "3-30 Zeichen: nur Kleinbuchstaben, Zahlen, Punkte und Bindestriche (nicht am Anfang/Ende, nicht doppelt)."},
     "registerEmail": {"message": "Echte E-Mail-Adresse"},
-    "registerNewsletter": {"message": "Mitteilungsschreiben"},
-    "registerSuccess": {
-        "message": "$PBEGIN$Eine E-Mail mit einem Bestätigungslink wurde an folgende E-Mail-Adresse geschickt: '$EMAIL$'.$PEND$$PBEGIN$Bitte bestätigen Sie den Link um die Registrierung abzuschliessen.$PEND$$PBEGIN$Sie können jetzt das Fenster schließen.$PEND$",
-        "placeholders": {
-            "email": {"content": "$1"},
-            "pbegin": {"content": "<p>"},
-            "pend": {"content": "</p>"}
-        }
-    },
+    "registerEmailInfo": {"message": "An diese Adresse werden deine Wegwerf-Adressen weitergeleitet. Du erhältst eine Bestätigungs-E-Mail."},
+    "buttonRegister": {"message": "Konto erstellen"},
+    "welcomeInfo": {"message": "Um wegwerfbare E-Mail-Adressen zu erstellen benötigen Sie eine Aionda-Mail-Benutzerkennung. Mit dieser Benutzerkennung können Sie das Add-On auf mehreren Computern und Browsern nutzen."},
+    "welcomeLostPassword": {"message": "Passwort verloren?"},
     "lostPasswordInfo": {"message": "Wenn das Passwort verloren wurde, dann muss das Passwort erneut gesetzt werden. Bitte geben Sie Ihre echte E-Mail-Adresse ein die Ihrer Benutzerkennung zugewiesen ist."},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Ein Passwort-Reset Link wurde an Ihre E-Mail-Adresse '$EMAIL$' geschickt.$PEND$$PBEGIN$Bitte überprüfen Sie Ihr E-Mail-Postfach über einen erhaltenen Passwort-Reset Link.$PEND$",
@@ -58,11 +72,10 @@
     "buttonLogin": {"message": "Anmelden"},
     "buttonToLogin": {"message": "Benutzerkennung und Passwort eingeben"},
     "buttonSave": {"message": "Speichern"},
-    "buttonRegister": {"message": "Benutzerkennung registrieren"},
     "buttonToRegister": {"message": "Neue Benutzerkennung registrieren"},
     "buttonReset": {"message": "Standard-Einstellungen wiederherstellen"},
     "buttonResetPassword": {"message": "Passwort zurücksetzen"},
-    "buttonAddressManager": {"message": "TrashMail-Address-Manager"},
+    "buttonAddressManager": {"message": "Aionda-Mail-Address-Manager"},
     "buttonAddressManagerShort": {"message": "Address-Manager"},
     "buttonSettings": {"message": "Einstellungen"},
     "buttonCreateAddress": {"message": "Erstelle Adresse"},
@@ -83,7 +96,7 @@
     "undo": {"message": "Widerrufen"},
 
     "optionsInternalMailbox": {"message": "Im internen Postfach speichern"},
-    "optionsInternalMailboxTooltip": {"message": "E-Mails im TrashMail-Vault speichern statt weiterzuleiten"},
+    "optionsInternalMailboxTooltip": {"message": "E-Mails im Aionda-Mail-Vault speichern statt weiterzuleiten"},
 
     "1day": {"message": "1 Tag"},
     "ndays": {
@@ -139,7 +152,7 @@
     "guardianLoading": {"message": "Lädt..."},
     "guardianNotInitialized": {"message": "Nicht initialisiert"},
     "guardianFailedToLoad": {"message": "Guardian-Modul konnte nicht geladen werden"},
-    "guardianVisitToActivate": {"message": "Besuche TrashMail.com zum Aktivieren"},
+    "guardianVisitToActivate": {"message": "Besuche Aionda Mail zum Aktivieren"},
     "guardianProtected": {"message": "Geschützt"},
     "guardianVerified": {"message": "Verifiziert"},
     "guardianResponseVerified": {"message": "1 Antwort verifiziert"},
@@ -170,7 +183,7 @@
     "guardianSecurityErrorMismatch": {"message": "Signatur-Verifikation fehlgeschlagen. Möglicher MITM-Angriff!"},
 
     "guardianInfoTitle": {"message": "MITM-Schutz"},
-    "guardianInfoText": {"message": "Diese Funktion schützt dich vor Man-in-the-Middle (MITM) Angriffen. Firmen-Proxies wie ZScaler oder bösartige Netzwerke könnten deine Verbindung abfangen und deine Daten lesen oder verändern. TrashMail signiert jede Antwort mit einer kryptografischen Signatur, die diese Erweiterung überprüft. Wenn jemand die Daten manipuliert, stimmt die Signatur nicht überein und du wirst sofort gewarnt."},
+    "guardianInfoText": {"message": "Diese Funktion schützt dich vor Man-in-the-Middle (MITM) Angriffen. Firmen-Proxies wie ZScaler oder bösartige Netzwerke könnten deine Verbindung abfangen und deine Daten lesen oder verändern. Aionda Mail signiert jede Antwort mit einer kryptografischen Signatur, die diese Erweiterung überprüft. Wenn jemand die Daten manipuliert, stimmt die Signatur nicht überein und du wirst sofort gewarnt."},
     "guardianInfoCurrentStatus": {"message": "Aktueller Status:"},
     "guardianFeature1": {"message": "Ed25519 kryptografische Signaturen verifizieren jede Server-Antwort"},
     "guardianFeature2": {"message": "Erkennt Manipulation oder Header-Entfernung durch Proxies (ZScaler, Fortinet, etc.)"},
@@ -199,7 +212,11 @@
     "guardianMissingSignatureReason2": {"message": "Eine Server-Fehlkonfiguration"},
     "guardianMissingSignatureReason3": {"message": "Ein transparenter Proxy, der Antworten verändert"},
 
-    "guardianNotificationTitle": {"message": "TrashMail Sicherheitswarnung"},
+    "guardianNotificationTitle": {"message": "Aionda Mail Sicherheitswarnung"},
+    "guardianDisabled": {"message": "MITM-Schutz deaktiviert"},
+    "guardianEnableInOptions": {"message": "In den Einstellungen aktivierbar"},
+    "optionsGuardianEnable": {"message": "MITM-Schutz (Guardian) aktivieren"},
+    "optionsGuardianTooltip": {"message": "Warnt, wenn Server-Antworten manipuliert wurden. Antiviren-Software oder Firmen-Proxies mit HTTPS-Scanning können Fehlalarme auslösen."},
     "guardianNotificationMitm": {"message": "Deine Verbindung wird möglicherweise abgefangen! Klicke für Details."},
     "guardianNotificationMissing": {"message": "Antwort-Signatur fehlt! Deine Verbindung könnte kompromittiert sein."},
 

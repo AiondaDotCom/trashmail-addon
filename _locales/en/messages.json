@@ -1,45 +1,59 @@
 {
-    "extensionName": {"message": "TrashMail.com: Create disposable address"},
-    "extensionDescription": {"message": "Create disposable email addresses."},
+    "errorSessionExpired": {"message": "Your session has expired. Please open the extension options and log in again."},
+    "errorGenericServer": {"message": "The server returned an error. Please open the extension options and log in again."},
+    "extensionName": {"message": "Aionda Mail (TrashMail): Disposable Temp Mail"},
+    "extensionDescription": {"message": "Temp mail: create disposable email addresses in one click and protect your real address from spam. Formerly TrashMail.com."},
 
     "optionsSettingsTitle": {"message": "Settings"},
     "optionsCurrentAccount": {"message": "Current Account"},
     "optionsForwards": {"message": "Number of forwards:"},
     "optionsLifespan": {"message": "Life span:"},
     "optionsSwitchLoginButton": {"message": "Switch login"},
+    "optionsNotLoggedIn": {"message": "Not signed in"},
+    "optionsLoginButton": {"message": "Sign in"},
     "optionsRealAddress": {"message": "Your real email address:"},
     "optionsAddressPrefix": {"message": "Email address prefix:"},
     "optionsRandomLength": {"message": "Random alias length:"},
     "optionsDomain": {"message": "Email address domain:"},
-    "optionsChallengeResponse": {"message": "Challenge-Response System"},
     "optionsMasquerade": {"message": "Reply-Masquerading"},
     "optionsNotifyExpired": {"message": "Notify me when my account has expired"},
-    "optionsSendURL": {"message": "Send URL to TrashMail server"},
-    "optionsSendURLTooltip": {"message": "Sends the current URL of your browser to the TrashMail server when requesting a new disposable email address"},
-    "optionsPlusInfo": {"message": "* requires TrashMail Plus"},
+    "optionsSendURL": {"message": "Send URL to Aionda Mail server"},
+    "optionsSendURLTooltip": {"message": "Sends the current URL of your browser to the Aionda Mail server when requesting a new disposable email address"},
+    "optionsPlusInfo": {"message": "* requires Aionda Mail Plus"},
 
     "optionsContactTitle": {"message": "Contact Us"},
     "optionsContact": {
         "message": "Send bug reports and feature requests to $MAILTO$",
         "placeholders": {
-            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=TrashMail'>support@aionda.com</a>"}
+            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=Aionda%20Mail'>support@aionda.com</a>"}
         }
     },
 
-    "welcomeTitle": {"message": "Welcome to the TrashMail.com Add-on"},
-    "welcomeInfo": {"message": "To create disposable email addresses, you will require a TrashMail account. With this account you will be able to use this add-on on multiple computers and browsers."},
+    "welcomeTitle": {"message": "Welcome to the Aionda Mail Add-on"},
+    "welcomeRegisterTitle": {"message": "Create account"},
+    "registerUsernameIdeas": {"message": "Suggestions:"},
+    "registerUsernameIdeasMore": {"message": "More suggestions"},
+    "registerIntro": {"message": "Pick a username, set a password, enter your real email address - done. You will be signed in right away."},
+    "registerShowPassword": {"message": "Show password"},
+    "registerPwCritLen8": {"message": "At least 8 characters"},
+    "registerPwCritLen12": {"message": "12+ characters (recommended)"},
+    "registerPwCritCase": {"message": "Upper and lower case"},
+    "registerPwCritDigit": {"message": "At least one digit"},
+    "registerPwCritSpecial": {"message": "Special character (!?#...)"},
+    "registerUsernameAvailable": {"message": "✓ Available"},
+    "registerUsernameTaken": {"message": "This username is already taken."},
+    "registerUsernameSuggestion": {"message": "How about:"},
+    "registerPwWeak": {"message": "Weak"},
+    "registerPwOk": {"message": "Ok"},
+    "registerPwGood": {"message": "Good"},
+    "registerPwStrong": {"message": "Strong"},
+    "registerPasswordTooWeak": {"message": "Password too weak: at least 8 characters; more length, mixed case, digits and special characters increase the strength."},
+    "registerUsernameRules": {"message": "3-30 characters: lowercase letters, digits, dots and hyphens only (not at the start/end, no doubles)."},
+    "registerEmail": {"message": "Real email address"},
+    "registerEmailInfo": {"message": "Your disposable addresses will forward to this address. You will receive a confirmation email."},
+    "buttonRegister": {"message": "Create account"},
+    "welcomeInfo": {"message": "To create disposable email addresses, you will require a Aionda Mail account. With this account you will be able to use this add-on on multiple computers and browsers."},
     "welcomeLostPassword": {"message": "Lost your password?"},
-    "registerConfirm": {"message": "Confirm Password"},
-    "registerEmail": {"message": "Real Email Address"},
-    "registerNewsletter": {"message": "Newsletter"},
-    "registerSuccess": {
-        "message": "$PBEGIN$An email with a confirmation link has been sent to your email address '$EMAIL$'.$PEND$$PBEGIN$Please confirm your address by clicking the link to complete the registration.$PEND$$PBEGIN$You may now close this window.$PEND$",
-        "placeholders": {
-            "email": {"content": "$1"},
-            "pbegin": {"content": "<p>"},
-            "pend": {"content": "</p>"}
-        }
-    },
     "lostPasswordInfo": {"message": "If your password has been lost, then a password reset will be necessary. Please enter your real email address which is associated with your username:"},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Password reset link sent to '$EMAIL$'.$PEND$$PBEGIN$Please check your inbox for the password reset link.$PEND$",
@@ -58,11 +72,10 @@
     "buttonLogin": {"message": "Login"},
     "buttonToLogin": {"message": "Enter your username and password"},
     "buttonSave": {"message": "Save"},
-    "buttonRegister": {"message": "Register Account"},
     "buttonToRegister": {"message": "Register a new account"},
     "buttonReset": {"message": "Reset To Default Settings"},
     "buttonResetPassword": {"message": "Reset password"},
-    "buttonAddressManager": {"message": "TrashMail Address Manager"},
+    "buttonAddressManager": {"message": "Aionda Mail Address Manager"},
     "buttonAddressManagerShort": {"message": "Address Manager"},
     "buttonSettings": {"message": "Settings"},
     "buttonCreateAddress": {"message": "Create address"},
@@ -83,7 +96,7 @@
     "undo": {"message": "Undo"},
 
     "optionsInternalMailbox": {"message": "Store in internal mailbox"},
-    "optionsInternalMailboxTooltip": {"message": "Store emails in your TrashMail vault instead of forwarding them"},
+    "optionsInternalMailboxTooltip": {"message": "Store emails in your Aionda Mail vault instead of forwarding them"},
 
     "1day": {"message": "1 day"},
     "ndays": {
@@ -126,7 +139,7 @@
     "error2FAInvalidCode": {"message": "Please enter a 6-digit code."},
 
     "error2FARequired": {
-        "message": "$STRONG$Two-Factor Authentication Required$STRONGEND$$BR$$BR$Your account has 2FA enabled. To use the browser extension, you need to create a Personal Access Token:$BR$$BR$1. Click the button below to open TrashMail$BR$2. Go to $STRONG$Account → Personal Access Tokens$STRONGEND$$BR$3. Create a new token and copy it$BR$4. Your $STRONG$username stays the same$STRONGEND$, only paste the token as your \"Password\"$BR$$BR$$BUTTON$",
+        "message": "$STRONG$Two-Factor Authentication Required$STRONGEND$$BR$$BR$Your account has 2FA enabled. To use the browser extension, you need to create a Personal Access Token:$BR$$BR$1. Click the button below to open Aionda Mail$BR$2. Go to $STRONG$Account → Personal Access Tokens$STRONGEND$$BR$3. Create a new token and copy it$BR$4. Your $STRONG$username stays the same$STRONGEND$, only paste the token as your \"Password\"$BR$$BR$$BUTTON$",
         "placeholders": {
             "strong": {"content": "<strong>"},
             "strongend": {"content": "</strong>"},
@@ -139,7 +152,7 @@
     "guardianLoading": {"message": "Loading..."},
     "guardianNotInitialized": {"message": "Not Initialized"},
     "guardianFailedToLoad": {"message": "Guardian module failed to load"},
-    "guardianVisitToActivate": {"message": "Visit TrashMail.com to activate"},
+    "guardianVisitToActivate": {"message": "Visit Aionda Mail to activate"},
     "guardianProtected": {"message": "Protected"},
     "guardianVerified": {"message": "Verified"},
     "guardianResponseVerified": {"message": "1 response verified"},
@@ -170,7 +183,7 @@
     "guardianSecurityErrorMismatch": {"message": "Signature verification failed. Possible MITM attack!"},
 
     "guardianInfoTitle": {"message": "MITM Protection"},
-    "guardianInfoText": {"message": "This feature protects you against Man-in-the-Middle (MITM) attacks. Corporate proxies like ZScaler or malicious networks could intercept your connection and read or modify your data. TrashMail signs every response with a cryptographic signature that this extension verifies. If someone tampers with the data, the signature won't match and you'll be warned immediately."},
+    "guardianInfoText": {"message": "This feature protects you against Man-in-the-Middle (MITM) attacks. Corporate proxies like ZScaler or malicious networks could intercept your connection and read or modify your data. Aionda Mail signs every response with a cryptographic signature that this extension verifies. If someone tampers with the data, the signature won't match and you'll be warned immediately."},
     "guardianInfoCurrentStatus": {"message": "Current status:"},
     "guardianFeature1": {"message": "Ed25519 cryptographic signatures verify every server response"},
     "guardianFeature2": {"message": "Detects tampering or header stripping by proxies (ZScaler, Fortinet, etc.)"},
@@ -199,7 +212,11 @@
     "guardianMissingSignatureReason2": {"message": "A server misconfiguration"},
     "guardianMissingSignatureReason3": {"message": "A transparent proxy modifying responses"},
 
-    "guardianNotificationTitle": {"message": "TrashMail Security Warning"},
+    "guardianNotificationTitle": {"message": "Aionda Mail Security Warning"},
+    "guardianDisabled": {"message": "MITM protection disabled"},
+    "guardianEnableInOptions": {"message": "Can be enabled in the settings"},
+    "optionsGuardianEnable": {"message": "Enable MITM protection (Guardian)"},
+    "optionsGuardianTooltip": {"message": "Warns when server responses have been tampered with. Antivirus software or corporate proxies that scan HTTPS traffic can trigger false alarms."},
     "guardianNotificationMitm": {"message": "Your connection may be intercepted! Click for details."},
     "guardianNotificationMissing": {"message": "Response signature missing! Your connection may be compromised."},
 

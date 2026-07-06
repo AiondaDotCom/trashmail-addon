@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <script src="../translate.js" defer></script>
     <script src="../api.js" defer></script>
+    <script src="../libopaque.js" defer></script>
+    <script src="../opaque-client.js" defer></script>
     <script src="popup.js" defer></script>
     <style>
         * {
@@ -17,13 +19,13 @@
             background: #fff;
         }
         .header {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            background: #fff;
             padding: 12px;
             text-align: center;
+            border-bottom: 1px solid #e2e8f0;
         }
         .header img {
             height: 32px;
-            filter: brightness(0) invert(1);
         }
         .content {
             padding: 12px;
@@ -52,7 +54,7 @@
             color: white;
         }
         #security-status.protected {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
             color: white;
         }
         #security-status.warning {
@@ -103,13 +105,13 @@
             transition: all 0.15s ease;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
             color: white;
-            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.3);
         }
         .btn-primary:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+            box-shadow: 0 4px 12px rgba(14, 116, 144, 0.4);
         }
         .btn-primary:active {
             transform: translateY(0);
@@ -148,7 +150,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="../images/menu@1x.png" alt="TrashMail" />
+        <img src="../images/menu@1x.png" alt="Aionda Mail" />
     </div>
 
     <div class="content">

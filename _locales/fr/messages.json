@@ -1,45 +1,59 @@
 {
-    "extensionName": {"message": "TrashMail.com: Créez une adresse jetable"},
-    "extensionDescription": {"message": "Créez des adresses courriel jetable."},
+    "errorSessionExpired": {"message": "Votre session a expiré. Veuillez ouvrir les options de l'extension et vous reconnecter."},
+    "errorGenericServer": {"message": "Le serveur a renvoyé une erreur. Veuillez ouvrir les options de l'extension et vous reconnecter."},
+    "extensionName": {"message": "Aionda Mail (TrashMail) : E-mail jetable"},
+    "extensionDescription": {"message": "E-mails jetables en un clic : protégez votre vraie adresse contre le spam. Anciennement TrashMail.com."},
 
     "optionsSettingsTitle": {"message": "Paramètres"},
     "optionsCurrentAccount": {"message": "Compte courant"},
     "optionsForwards": {"message": "Nombre de transferts :"},
     "optionsLifespan": {"message": "Durée de validité :"},
     "optionsSwitchLoginButton": {"message": "Changer d'utilisateur"},
+    "optionsNotLoggedIn": {"message": "Non connecté"},
+    "optionsLoginButton": {"message": "Se connecter"},
     "optionsRealAddress": {"message": "Votre adresse courrielle réelle :"},
     "optionsAddressPrefix": {"message": "Préfixe de l'adresse courrielle :"},
     "optionsRandomLength": {"message": "Longueur du pseudonyme aléatoire :"},
     "optionsDomain": {"message": "Nom du domaine de l'adresse courrielle :"},
-    "optionsChallengeResponse": {"message": "CAPTCHA pour messages entrants"},
     "optionsMasquerade": {"message": "Masquer la réponse"},
     "optionsNotifyExpired": {"message": "Alerter quand l'adresse sera effacée"},
-    "optionsSendURL": {"message": "Envoyer l'URL à TrashMail"},
-    "optionsSendURLTooltip": {"message": "Envoi l'URL de votre navigateur au serveur TrashMail quand une adresse jetable est créée."},
-    "optionsPlusInfo": {"message": "* nécessite TrashMail Plus"},
+    "optionsSendURL": {"message": "Envoyer l'URL à Aionda Mail"},
+    "optionsSendURLTooltip": {"message": "Envoi l'URL de votre navigateur au serveur Aionda Mail quand une adresse jetable est créée."},
+    "optionsPlusInfo": {"message": "* nécessite Aionda Mail Plus"},
 
     "optionsContactTitle": {"message": "Contactez-nous"},
     "optionsContact": {
         "message": "Envoyez s.v.p. les erreurs et des voeux pour des nouvelles fonctionalitées à $MAILTO$",
         "placeholders": {
-            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=TrashMail'>support@aionda.com</a>"}
+            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=Aionda%20Mail'>support@aionda.com</a>"}
         }
     },
 
-    "welcomeTitle": {"message": "Bienvenu à l'extension de TrashMail.com"},
-    "welcomeInfo": {"message": "Pour créer des adresses jetables vous avez besoin d'un compte TrashMail. Avec ce compte vous pouvez utiliser cette extension sur plusieurs ordinateurs et navigateurs."},
+    "welcomeTitle": {"message": "Bienvenu à l'extension de Aionda Mail"},
+    "welcomeRegisterTitle": {"message": "Créer un compte"},
+    "registerUsernameIdeas": {"message": "Suggestions :"},
+    "registerUsernameIdeasMore": {"message": "D'autres suggestions"},
+    "registerIntro": {"message": "Choisissez un nom d'utilisateur, un mot de passe et votre adresse e-mail réelle - c'est tout. Vous serez connecté immédiatement."},
+    "registerShowPassword": {"message": "Afficher le mot de passe"},
+    "registerPwCritLen8": {"message": "Au moins 8 caractères"},
+    "registerPwCritLen12": {"message": "12+ caractères (recommandé)"},
+    "registerPwCritCase": {"message": "Majuscules et minuscules"},
+    "registerPwCritDigit": {"message": "Au moins un chiffre"},
+    "registerPwCritSpecial": {"message": "Caractère spécial (!?#...)"},
+    "registerUsernameAvailable": {"message": "✓ Disponible"},
+    "registerUsernameTaken": {"message": "Ce nom d'utilisateur est déjà pris."},
+    "registerUsernameSuggestion": {"message": "Et si tu essayais :"},
+    "registerPwWeak": {"message": "Faible"},
+    "registerPwOk": {"message": "Ok"},
+    "registerPwGood": {"message": "Bien"},
+    "registerPwStrong": {"message": "Fort"},
+    "registerPasswordTooWeak": {"message": "Mot de passe trop faible : au moins 8 caractères ; plus de longueur, majuscules/minuscules, chiffres et caractères spéciaux augmentent la force."},
+    "registerUsernameRules": {"message": "3-30 caractères : uniquement minuscules, chiffres, points et tirets (pas au début/à la fin, pas doublés)."},
+    "registerEmail": {"message": "Adresse e-mail réelle"},
+    "registerEmailInfo": {"message": "Vos adresses jetables seront transférées vers cette adresse. Vous recevrez un e-mail de confirmation."},
+    "buttonRegister": {"message": "Créer un compte"},
+    "welcomeInfo": {"message": "Pour créer des adresses jetables vous avez besoin d'un compte Aionda Mail. Avec ce compte vous pouvez utiliser cette extension sur plusieurs ordinateurs et navigateurs."},
     "welcomeLostPassword": {"message": "Mot de passe perdu ?"},
-    "registerConfirm": {"message": "Confirmez le mot de passe"},
-    "registerEmail": {"message": "Adresse courielle réelle"},
-    "registerNewsletter": {"message": "Lettres d'informations"},
-    "registerSuccess": {
-        "message": "$PBEGIN$Un couriel avec un lien d'activation a été envoyé à votre adresse courielle '$EMAIL$'.$PEND$$PBEGIN$Veuillez confirmer ce lien pour compléter l'enregistrement.$PEND$$PBEGIN$Vous pouvez maintenant fermer cette fenêtre.$PEND$",
-        "placeholders": {
-            "email": {"content": "$1"},
-            "pbegin": {"content": "<p>"},
-            "pend": {"content": "</p>"}
-        }
-    },
     "lostPasswordInfo": {"message": "Si le mot de passe a été perdu, il est nécessaire de générer un nouveau mot de passe. Veuillez svp entrer l'adresse courielle réelle associée avec votre nom d'utilisateur."},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Un lien pour générer un nouveau mot de passe vous a été envoyé à '$EMAIL$'.$PEND$$PBEGIN$Veuillez vérifier svp votre boîte à lettres.$PEND$",
@@ -58,11 +72,10 @@
     "buttonLogin": {"message": "Loguer"},
     "buttonToLogin": {"message": "Entrez votre nom de login et votre mot de passe"},
     "buttonSave": {"message": "Sauvegarder"},
-    "buttonRegister": {"message": "Enregistrer un nouveau compte"},
     "buttonToRegister": {"message": "Enregistrer un nouveau compte"},
     "buttonReset": {"message": "Réinitialiser les paramètres par défaut"},
     "buttonResetPassword": {"message": "Nouveau mot de passe"},
-    "buttonAddressManager": {"message": "Manager d'adresses TrashMail"},
+    "buttonAddressManager": {"message": "Manager d'adresses Aionda Mail"},
     "buttonAddressManagerShort": {"message": "Manager d'adresses"},
     "buttonSettings": {"message": "Paramètres"},
     "buttonCreateAddress": {"message": "Créer d'adresse"},
@@ -83,7 +96,7 @@
     "undo": {"message": "Annuler"},
 
     "optionsInternalMailbox": {"message": "Stocker dans la boîte interne"},
-    "optionsInternalMailboxTooltip": {"message": "Stocker les emails dans votre coffre TrashMail au lieu de les transférer"},
+    "optionsInternalMailboxTooltip": {"message": "Stocker les emails dans votre coffre Aionda Mail au lieu de les transférer"},
 
     "1day": {"message": "1 jour"},
     "ndays": {
@@ -139,7 +152,7 @@
     "guardianLoading": {"message": "Chargement..."},
     "guardianNotInitialized": {"message": "Non initialisé"},
     "guardianFailedToLoad": {"message": "Le module Guardian n'a pas pu être chargé"},
-    "guardianVisitToActivate": {"message": "Visitez TrashMail.com pour activer"},
+    "guardianVisitToActivate": {"message": "Visitez Aionda Mail pour activer"},
     "guardianProtected": {"message": "Protégé"},
     "guardianVerified": {"message": "Vérifié"},
     "guardianResponseVerified": {"message": "1 réponse vérifiée"},
@@ -170,7 +183,7 @@
     "guardianSecurityErrorMismatch": {"message": "Échec de la vérification de signature. Attaque MITM possible !"},
 
     "guardianInfoTitle": {"message": "Protection MITM"},
-    "guardianInfoText": {"message": "Cette fonction vous protège contre les attaques Man-in-the-Middle (MITM). Les proxies d'entreprise comme ZScaler ou les réseaux malveillants pourraient intercepter votre connexion et lire ou modifier vos données. TrashMail signe chaque réponse avec une signature cryptographique que cette extension vérifie. Si quelqu'un manipule les données, la signature ne correspondra pas et vous serez immédiatement averti."},
+    "guardianInfoText": {"message": "Cette fonction vous protège contre les attaques Man-in-the-Middle (MITM). Les proxies d'entreprise comme ZScaler ou les réseaux malveillants pourraient intercepter votre connexion et lire ou modifier vos données. Aionda Mail signe chaque réponse avec une signature cryptographique que cette extension vérifie. Si quelqu'un manipule les données, la signature ne correspondra pas et vous serez immédiatement averti."},
     "guardianInfoCurrentStatus": {"message": "Statut actuel :"},
     "guardianFeature1": {"message": "Les signatures cryptographiques Ed25519 vérifient chaque réponse du serveur"},
     "guardianFeature2": {"message": "Détecte la manipulation ou la suppression d'en-têtes par les proxies (ZScaler, Fortinet, etc.)"},
@@ -199,7 +212,11 @@
     "guardianMissingSignatureReason2": {"message": "Une mauvaise configuration du serveur"},
     "guardianMissingSignatureReason3": {"message": "Un proxy transparent modifiant les réponses"},
 
-    "guardianNotificationTitle": {"message": "Alerte de sécurité TrashMail"},
+    "guardianNotificationTitle": {"message": "Alerte de sécurité Aionda Mail"},
+    "guardianDisabled": {"message": "Protection MITM désactivée"},
+    "guardianEnableInOptions": {"message": "Activable dans les paramètres"},
+    "optionsGuardianEnable": {"message": "Activer la protection MITM (Guardian)"},
+    "optionsGuardianTooltip": {"message": "Avertit lorsque les réponses du serveur ont été manipulées. Les antivirus ou proxys d'entreprise qui analysent le trafic HTTPS peuvent déclencher de fausses alertes."},
     "guardianNotificationMitm": {"message": "Votre connexion pourrait être interceptée ! Cliquez pour plus de détails."},
     "guardianNotificationMissing": {"message": "Signature de réponse manquante ! Votre connexion pourrait être compromise."},
 

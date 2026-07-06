@@ -454,6 +454,8 @@ class AddonSrpClient {
         const lang = browser.i18n.getUILanguage().substr(0, 2);
 
         const response = await fetch(baseUrl + '/?api=1&cmd=' + cmd + '&lang=' + lang, {
+            // Keine Webapp-Cookies mitschicken - das Addon arbeitet nur mit session_id.
+            credentials: "omit",
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

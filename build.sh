@@ -18,6 +18,9 @@ VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['versi
 EXCLUDE=(
     "manifest_firefox.json"
     "manifest_chrome.json"
+    "ts"
+    "tests"
+    "tsconfig.json"
     "build.sh"
     "BUILD_README.md"
     "SOURCE_README.md"
@@ -28,16 +31,19 @@ EXCLUDE=(
     ".DS_Store"
 )
 
-build_exclude_args() {
-    local args=""
-    for item in "${EXCLUDE[@]}"; do
-        args="$args -x ./$item"
-    done
-    echo "$args"
-}
+# Build the -x exclude arguments as a real array. The patterns MUST stay
+# quoted when passed to zip: an unquoted ./.git/* gets glob-expanded by the
+# shell (non-recursively) before zip ever sees it, which is why .git used to
+# leak into the package. As array elements they reach zip verbatim and zip
+# does the (recursive) matching itself.
+EXCLUDE_ARGS=()
+for item in "${EXCLUDE[@]}"; do
+    # Exclude the entry itself AND, for directories, its whole contents.
+    EXCLUDE_ARGS+=( -x "./$item" -x "./$item/*" )
+done
 
 build_chrome() {
-    local outfile="trashmail-chrome-${VERSION}.zip"
+    local outfile="aionda-mail-chrome-${VERSION}.zip"
     echo "Building Chrome ZIP: $outfile"
 
     # Current manifest.json is Chrome (service_worker)
@@ -55,12 +61,12 @@ build_chrome() {
 
     rm -f "$outfile"
     cd "$SCRIPT_DIR"
-    zip -r "$outfile" . $(build_exclude_args) -x "./trashmail-*.zip"
+    zip -r "$outfile" . "${EXCLUDE_ARGS[@]}" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip"
     echo "  Created: $SCRIPT_DIR/$outfile"
 }
 
 build_firefox() {
-    local outfile="trashmail-firefox-${VERSION}.zip"
+    local outfile="aionda-mail-firefox-${VERSION}.zip"
     echo "Building Firefox ZIP: $outfile"
 
     # Save current manifest
@@ -80,7 +86,7 @@ build_firefox() {
 
     rm -f "$outfile"
     cd "$SCRIPT_DIR"
-    zip -r "$outfile" . $(build_exclude_args) -x "./trashmail-*.zip" -x "./manifest.json.bak" -x "./manifest_chrome.json"
+    zip -r "$outfile" . "${EXCLUDE_ARGS[@]}" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip" -x "./manifest.json.bak" -x "./manifest_chrome.json"
     echo "  Created: $SCRIPT_DIR/$outfile"
 
     # Restore original manifest
@@ -89,12 +95,12 @@ build_firefox() {
 }
 
 build_source() {
-    local outfile="trashmail-source-${VERSION}.zip"
+    local outfile="aionda-mail-source-${VERSION}.zip"
     echo "Building Source ZIP: $outfile (for AMO review)"
 
     rm -f "$outfile"
     cd "$SCRIPT_DIR"
-    zip -r "$outfile" . -x "./.git/*" -x "./.DS_Store" -x "./trashmail-*.zip" -x "./manifest.json.bak"
+    zip -r "$outfile" . -x "./.git/*" -x "./.DS_Store" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip" -x "./manifest.json.bak"
     echo "  Created: $SCRIPT_DIR/$outfile"
 }
 
@@ -113,8 +119,8 @@ case "${1:-all}" in
         build_firefox
         echo ""
         echo "Done! Upload:"
-        echo "  Chrome:  $SCRIPT_DIR/trashmail-chrome-${VERSION}.zip  → Chrome Web Store"
-        echo "  Firefox: $SCRIPT_DIR/trashmail-firefox-${VERSION}.zip → addons.mozilla.org"
+        echo "  Chrome:  $SCRIPT_DIR/aionda-mail-chrome-${VERSION}.zip  → Chrome Web Store"
+        echo "  Firefox: $SCRIPT_DIR/aionda-mail-firefox-${VERSION}.zip → addons.mozilla.org"
         ;;
     *)
         echo "Usage: $0 {chrome|firefox|source|all}"

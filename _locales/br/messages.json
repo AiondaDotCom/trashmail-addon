@@ -1,45 +1,57 @@
 {
-    "extensionName": {"message": "TrashMail.com: Criar endereço descartável"},
-    "extensionDescription": {"message": "Cria endereços de e-mail descartáveis."},
+    "extensionName": {"message": "Aionda Mail (TrashMail): Email temporário"},
+    "extensionDescription": {"message": "Crie emails temporários e descartáveis com um clique e proteja seu endereço real do spam. Antes TrashMail.com."},
 
     "optionsSettingsTitle": {"message": "Configurações"},
     "optionsCurrentAccount": {"message": "Conta atual"},
     "optionsForwards": {"message": "Número de encaminhamentos:"},
     "optionsLifespan": {"message": "Tempo de vida:"},
     "optionsSwitchLoginButton": {"message": "Trocar conta"},
+    "optionsNotLoggedIn": {"message": "Não conectado"},
+    "optionsLoginButton": {"message": "Entrar"},
     "optionsRealAddress": {"message": "Seu endereço de e-mail real:"},
     "optionsAddressPrefix": {"message": "Prefixo do endereço de e-mail:"},
     "optionsRandomLength": {"message": "Comprimento do alias aleatório:"},
     "optionsDomain": {"message": "Domínio do endereço de e-mail:"},
-    "optionsChallengeResponse": {"message": "Sistema de Desafio-Resposta"},
     "optionsMasquerade": {"message": "Mascaramento de resposta"},
     "optionsNotifyExpired": {"message": "Notificar-me quando minha conta expirar"},
-    "optionsSendURL": {"message": "Enviar URL ao servidor TrashMail"},
-    "optionsSendURLTooltip": {"message": "Envia o URL atual do seu navegador ao servidor TrashMail ao solicitar um novo endereço de e-mail descartável"},
-    "optionsPlusInfo": {"message": "* requer TrashMail Plus"},
+    "optionsSendURL": {"message": "Enviar URL ao servidor Aionda Mail"},
+    "optionsSendURLTooltip": {"message": "Envia o URL atual do seu navegador ao servidor Aionda Mail ao solicitar um novo endereço de e-mail descartável"},
+    "optionsPlusInfo": {"message": "* requer Aionda Mail Plus"},
 
     "optionsContactTitle": {"message": "Fale conosco"},
     "optionsContact": {
         "message": "Envie relatórios de erros e pedidos de funcionalidades para $MAILTO$",
         "placeholders": {
-            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=TrashMail'>support@aionda.com</a>"}
+            "mailto": {"content": "<a href='mailto:support@aionda.com?subject=Aionda%20Mail'>support@aionda.com</a>"}
         }
     },
 
-    "welcomeTitle": {"message": "Bem-vindo ao Add-on do TrashMail.com"},
-    "welcomeInfo": {"message": "Para criar endereços de e-mail descartáveis, você precisará de uma conta TrashMail. Com essa conta, você poderá usar este add-on em vários computadores e navegadores."},
-    "welcomeLostPassword": {"message": "Esqueceu sua senha?"},
-    "registerConfirm": {"message": "Confirmar senha"},
+    "welcomeTitle": {"message": "Bem-vindo ao Add-on do Aionda Mail"},
+    "welcomeRegisterTitle": {"message": "Criar conta"},
+    "registerUsernameIdeas": {"message": "Sugestões:"},
+    "registerUsernameIdeasMore": {"message": "Mais sugestões"},
+    "registerIntro": {"message": "Escolha um nome de usuário, defina uma senha e informe seu e-mail real - pronto. Você já estará conectado."},
+    "registerShowPassword": {"message": "Mostrar senha"},
+    "registerPwCritLen8": {"message": "Pelo menos 8 caracteres"},
+    "registerPwCritLen12": {"message": "12+ caracteres (recomendado)"},
+    "registerPwCritCase": {"message": "Maiúsculas e minúsculas"},
+    "registerPwCritDigit": {"message": "Pelo menos um número"},
+    "registerPwCritSpecial": {"message": "Caractere especial (!?#...)"},
+    "registerUsernameAvailable": {"message": "✓ Disponível"},
+    "registerUsernameTaken": {"message": "Este nome de usuário já está em uso."},
+    "registerUsernameSuggestion": {"message": "Que tal:"},
+    "registerPwWeak": {"message": "Fraca"},
+    "registerPwOk": {"message": "Ok"},
+    "registerPwGood": {"message": "Boa"},
+    "registerPwStrong": {"message": "Forte"},
+    "registerPasswordTooWeak": {"message": "Senha muito fraca: pelo menos 8 caracteres; mais comprimento, maiúsculas/minúsculas, números e caracteres especiais aumentam a força."},
+    "registerUsernameRules": {"message": "3-30 caracteres: apenas minúsculas, números, pontos e hífens (não no início/fim, não seguidos)."},
     "registerEmail": {"message": "Endereço de e-mail real"},
-    "registerNewsletter": {"message": "Newsletter"},
-    "registerSuccess": {
-        "message": "$PBEGIN$Um e-mail com um link de confirmação foi enviado para o seu endereço '$EMAIL$'.$PEND$$PBEGIN$Por favor, confirme seu endereço clicando no link para concluir o cadastro.$PEND$$PBEGIN$Você pode fechar esta janela agora.$PEND$",
-        "placeholders": {
-            "email": {"content": "$1"},
-            "pbegin": {"content": "<p>"},
-            "pend": {"content": "</p>"}
-        }
-    },
+    "registerEmailInfo": {"message": "Seus endereços descartáveis serão encaminhados para este endereço. Você receberá um e-mail de confirmação."},
+    "buttonRegister": {"message": "Criar conta"},
+    "welcomeInfo": {"message": "Para criar endereços de e-mail descartáveis, você precisará de uma conta Aionda Mail. Com essa conta, você poderá usar este add-on em vários computadores e navegadores."},
+    "welcomeLostPassword": {"message": "Esqueceu sua senha?"},
     "lostPasswordInfo": {"message": "Se você perdeu sua senha, será necessário redefini-la. Por favor, insira seu endereço de e-mail real associado ao seu nome de usuário:"},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Link de redefinição de senha enviado para '$EMAIL$'.$PEND$$PBEGIN$Por favor, verifique sua caixa de entrada pelo link de redefinição.$PEND$",
@@ -58,11 +70,10 @@
     "buttonLogin": {"message": "Entrar"},
     "buttonToLogin": {"message": "Insira seu nome de usuário e senha"},
     "buttonSave": {"message": "Salvar"},
-    "buttonRegister": {"message": "Criar conta"},
     "buttonToRegister": {"message": "Criar uma nova conta"},
     "buttonReset": {"message": "Restaurar configurações padrão"},
     "buttonResetPassword": {"message": "Redefinir senha"},
-    "buttonAddressManager": {"message": "Gerenciador de endereços TrashMail"},
+    "buttonAddressManager": {"message": "Gerenciador de endereços Aionda Mail"},
     "buttonAddressManagerShort": {"message": "Gerenciador de endereços"},
     "buttonSettings": {"message": "Configurações"},
     "buttonCreateAddress": {"message": "Criar endereço"},
@@ -83,7 +94,7 @@
     "undo": {"message": "Desfazer"},
 
     "optionsInternalMailbox": {"message": "Armazenar na caixa de entrada interna"},
-    "optionsInternalMailboxTooltip": {"message": "Armazena os e-mails no seu vault TrashMail em vez de encaminhá-los"},
+    "optionsInternalMailboxTooltip": {"message": "Armazena os e-mails no seu vault Aionda Mail em vez de encaminhá-los"},
 
     "1day": {"message": "1 dia"},
     "ndays": {
@@ -126,7 +137,7 @@
     "error2FAInvalidCode": {"message": "Por favor, insira um código de 6 dígitos."},
 
     "error2FARequired": {
-        "message": "$STRONG$Autenticação de dois fatores obrigatória$STRONGEND$$BR$$BR$Sua conta tem 2FA ativada. Para usar a extensão do navegador, você precisa criar um Token de Acesso Pessoal:$BR$$BR$1. Clique no botão abaixo para abrir o TrashMail$BR$2. Vá em $STRONG$Conta → Tokens de Acesso Pessoal$STRONGEND$$BR$3. Crie um novo token e copie-o$BR$4. Seu $STRONG$nome de usuário permanece o mesmo$STRONGEND$, apenas cole o token como sua \"Senha\"$BR$$BR$$BUTTON$",
+        "message": "$STRONG$Autenticação de dois fatores obrigatória$STRONGEND$$BR$$BR$Sua conta tem 2FA ativada. Para usar a extensão do navegador, você precisa criar um Token de Acesso Pessoal:$BR$$BR$1. Clique no botão abaixo para abrir o Aionda Mail$BR$2. Vá em $STRONG$Conta → Tokens de Acesso Pessoal$STRONGEND$$BR$3. Crie um novo token e copie-o$BR$4. Seu $STRONG$nome de usuário permanece o mesmo$STRONGEND$, apenas cole o token como sua \"Senha\"$BR$$BR$$BUTTON$",
         "placeholders": {
             "strong": {"content": "<strong>"},
             "strongend": {"content": "</strong>"},
@@ -139,7 +150,7 @@
     "guardianLoading": {"message": "Carregando..."},
     "guardianNotInitialized": {"message": "Não inicializado"},
     "guardianFailedToLoad": {"message": "Falha ao carregar o módulo Guardian"},
-    "guardianVisitToActivate": {"message": "Acesse o TrashMail.com para ativar"},
+    "guardianVisitToActivate": {"message": "Acesse o Aionda Mail para ativar"},
     "guardianProtected": {"message": "Protegido"},
     "guardianVerified": {"message": "Verificado"},
     "guardianResponseVerified": {"message": "1 resposta verificada"},
@@ -170,7 +181,7 @@
     "guardianSecurityErrorMismatch": {"message": "Falha na verificação da assinatura. Possível ataque MITM!"},
 
     "guardianInfoTitle": {"message": "Proteção MITM"},
-    "guardianInfoText": {"message": "Este recurso protege você contra ataques de Homem no Meio (MITM). Proxies corporativos como o ZScaler ou redes maliciosas podem interceptar sua conexão e ler ou modificar seus dados. O TrashMail assina cada resposta com uma assinatura criptográfica que esta extensão verifica. Se alguém adulterar os dados, a assinatura não vai corresponder e você será avisado imediatamente."},
+    "guardianInfoText": {"message": "Este recurso protege você contra ataques de Homem no Meio (MITM). Proxies corporativos como o ZScaler ou redes maliciosas podem interceptar sua conexão e ler ou modificar seus dados. O Aionda Mail assina cada resposta com uma assinatura criptográfica que esta extensão verifica. Se alguém adulterar os dados, a assinatura não vai corresponder e você será avisado imediatamente."},
     "guardianInfoCurrentStatus": {"message": "Status atual:"},
     "guardianFeature1": {"message": "Assinaturas criptográficas Ed25519 verificam cada resposta do servidor"},
     "guardianFeature2": {"message": "Detecta adulteração ou remoção de cabeçalhos por proxies (ZScaler, Fortinet, etc.)"},
@@ -199,7 +210,11 @@
     "guardianMissingSignatureReason2": {"message": "Uma configuração incorreta do servidor"},
     "guardianMissingSignatureReason3": {"message": "Um proxy transparente modificando respostas"},
 
-    "guardianNotificationTitle": {"message": "Aviso de segurança TrashMail"},
+    "guardianNotificationTitle": {"message": "Aviso de segurança Aionda Mail"},
+    "guardianDisabled": {"message": "Proteção MITM desativada"},
+    "guardianEnableInOptions": {"message": "Pode ser ativada nas configurações"},
+    "optionsGuardianEnable": {"message": "Ativar proteção MITM (Guardian)"},
+    "optionsGuardianTooltip": {"message": "Avisa quando as respostas do servidor foram manipuladas. Antivírus ou proxies corporativos que analisam o tráfego HTTPS podem provocar falsos alarmes."},
     "guardianNotificationMitm": {"message": "Sua conexão pode estar sendo interceptada! Clique para mais detalhes."},
     "guardianNotificationMissing": {"message": "Assinatura de resposta ausente! Sua conexão pode estar comprometida."},
 

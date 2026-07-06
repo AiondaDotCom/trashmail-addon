@@ -1,28 +1,13 @@
 "use strict";
-
-// Compatibility layer for browser and chrome
-if (typeof browser === "undefined") {
-    var browser = chrome;
-}
-
-/**
- * Show MITM warning overlay
- * Called when Guardian detects a certificate mismatch
- * @param {string} message - The warning message
- * @param {string} title - The dialog title (localized)
- * @param {string} dismissText - The dismiss button text (localized)
- */
-function showMitmWarning(message, title, dismissText) {
-    // Don't show multiple warnings
+(() => {
+  // trashmail-addon/ts/content-script.ts
+  var browser = globalThis.browser ?? chrome;
+  function showMitmWarning(message, title, dismissText) {
     if (document.getElementById("trashmail-mitm-warning")) {
-        return;
+      return;
     }
-
-    // Use localized strings or fallback to English
     const dialogTitle = title || "Security Warning";
     const continueText = dismissText || "Dismiss";
-
-    // Create warning overlay
     const overlay = document.createElement("div");
     overlay.id = "trashmail-mitm-warning";
     overlay.style.cssText = `
@@ -38,7 +23,6 @@ function showMitmWarning(message, title, dismissText) {
         justify-content: center;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     `;
-
     const dialog = document.createElement("div");
     dialog.style.cssText = `
         background: #1a1a2e;
@@ -49,10 +33,9 @@ function showMitmWarning(message, title, dismissText) {
         color: white;
         box-shadow: 0 0 50px rgba(239, 68, 68, 0.5);
     `;
-
     dialog.innerHTML = `
         <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
+            <div style="font-size: 64px; margin-bottom: 16px;">\u26A0\uFE0F</div>
             <h1 style="color: #ef4444; font-size: 24px; margin: 0 0 8px 0;">
                 ${escapeHtml(dialogTitle)}
             </h1>
@@ -71,55 +54,47 @@ function showMitmWarning(message, title, dismissText) {
             ">${escapeHtml(continueText)}</button>
         </div>
     `;
-
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
-
-    // Event handlers
     document.getElementById("trashmail-mitm-close").addEventListener("click", () => {
-        overlay.remove();
+      overlay.remove();
     });
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
+  }
+  function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
-}
-
-browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // Guardian MITM warning
+  }
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.action === "guardian_warning") {
-        showMitmWarning(message.message, message.title, message.dismissText);
-        sendResponse({ received: true });
-        return true;
+      const warning = message;
+      showMitmWarning(warning.message, warning.title, warning.dismissText);
+      sendResponse({ received: true });
+      return true;
     }
-
     if (message === "check_editable") {
-        let activeElement = document.activeElement;
-        let is_input = activeElement && "selectionStart" in activeElement && !activeElement.readOnly;
-        sendResponse(is_input || (activeElement && activeElement.isContentEditable));
-        return true; // Asynchrone Antwort erlauben
-    } else {  // Paste email address
-        let e = document.activeElement;
-        if (e) {
-            if ("selectionStart" in e) {
-                // input/textarea elements
-                let start = e.selectionStart;
-                let end = e.selectionEnd;
-                e.value = e.value.substring(0, start) + message + e.value.substring(end);
-                e.setSelectionRange(start + message.length, start + message.length); // Cursor setzen
-            } else if (e.isContentEditable) {
-                // contentEditable elements
-                let selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    selection.deleteFromDocument();
-                    selection.getRangeAt(0).insertNode(document.createTextNode(message));
-                }
-            }
+      const activeElement = document.activeElement;
+      const isInput = activeElement && "selectionStart" in activeElement && !activeElement.readOnly;
+      sendResponse(isInput || activeElement && activeElement.isContentEditable);
+      return true;
+    } else {
+      const pasteText = message;
+      const e = document.activeElement;
+      if (e) {
+        if ("selectionStart" in e) {
+          const input = e;
+          const start = input.selectionStart;
+          const end = input.selectionEnd;
+          input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
+          input.setSelectionRange(start + pasteText.length, start + pasteText.length);
+        } else if (e.isContentEditable) {
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            selection.deleteFromDocument();
+            selection.getRangeAt(0).insertNode(document.createTextNode(pasteText));
+          }
         }
+      }
     }
-});
+  });
+})();

@@ -17,6 +17,11 @@
     <script src="welcome.js" defer></script>
 </head>
 <body>
+    <div class="page">
+    <div class="brand">
+        <img src="../images/menu@1x.png" alt="Aionda Mail" />
+    </div>
+
     <!-- Welcome Panel -->
     <div id="welcome-panel" class="panel">
         <h1 data-i18n="welcomeTitle"></h1>
@@ -27,32 +32,44 @@
         <button id="btn-show-login" data-i18n="buttonToLogin"></button>
     </div>
 
-    <!-- Register Panel -->
+    <!-- Register Panel (register_account_v2: OPAQUE + Captcha-Spiel, keine E-Mail noetig) -->
     <div id="register-panel" class="panel" style="display: none">
+        <h1 data-i18n="welcomeRegisterTitle"></h1>
+        <p class="hint" data-i18n="registerIntro"></p>
         <form id="form-register">
             <div>
                 <label for="register-username" data-i18n="username"></label>
-                <input id="register-username" type="text" name="username" autocomplete="username" inputmode="verbatim" required />
+                <input id="register-username" type="text" name="username" autocomplete="username" inputmode="verbatim" minlength="3" maxlength="30" required />
+                <p class="field-hint" id="register-username-hint" data-i18n="registerUsernameRules"></p>
+                <p class="field-hint" id="register-username-ideas" style="display: none"></p>
+                <p class="field-hint" id="register-username-availability" style="display: none"></p>
             </div>
 
             <div>
                 <label for="register-password" data-i18n="password"></label>
-                <input id="register-password" type="password" name="password" autocomplete="new-password" minlength="6" required />
-            </div>
-
-            <div>
-                <label for="register-confirm" data-i18n="registerConfirm"></label>
-                <input id="register-confirm" type="password" name="confirm" autocomplete="new-password" minlength="6" required />
+                <div class="pw-field">
+                    <input id="register-password" type="password" name="password" autocomplete="new-password" minlength="8" required />
+                    <button type="button" id="register-toggle-pw" class="pw-toggle" data-i18n="registerShowPassword|title" aria-pressed="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+                <div class="pw-strength">
+                    <div class="pw-strength-track"><div id="register-pw-strength-bar"></div></div>
+                    <span id="register-pw-strength-label"></span>
+                </div>
+                <ul class="pw-checklist" id="register-pw-checklist">
+                    <li data-crit="len8" data-i18n="registerPwCritLen8"></li>
+                    <li data-crit="len12" data-i18n="registerPwCritLen12"></li>
+                    <li data-crit="case" data-i18n="registerPwCritCase"></li>
+                    <li data-crit="digit" data-i18n="registerPwCritDigit"></li>
+                    <li data-crit="special" data-i18n="registerPwCritSpecial"></li>
+                </ul>
             </div>
 
             <div>
                 <label for="register-email" data-i18n="registerEmail"></label>
                 <input id="register-email" type="email" name="email" autocomplete="email" required />
-            </div>
-
-            <div>
-                <label for="register-newsletter" data-i18n="registerNewsletter"></label>
-                <input id="register-newsletter" type="checkbox" name="newsletter" value="1" checked />
+                <p class="field-hint" data-i18n="registerEmailInfo"></p>
             </div>
 
             <div id="register-error" class="error" style="display: none"></div>
@@ -109,6 +126,7 @@
                 <button type="button" id="btn-lost-cancel" data-i18n="buttonCancel"></button>
             </div>
         </form>
+    </div>
     </div>
 </body>
 </html>

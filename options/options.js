@@ -1,274 +1,233 @@
 "use strict";
-
-// Compatibility layer for browser and chrome
-if (typeof browser === "undefined") {
-    var browser = chrome;
-}
-
-// Open welcome screen on switch login button.
-document.getElementById("btn-switch-login").onclick = function () {
-    var options = {"url": browser.runtime.getURL("options/welcome.html"), "width": 950, "height": 420, "type": "popup"};
-    browser.windows.create(options).then(function (welcomeWindow) {
-        browser.windows.onRemoved.addListener(function (id) {
-            if (id == welcomeWindow.id)
-                window.location.reload();
-        });
+(() => {
+  // trashmail-addon/ts/options/options.ts
+  var browser = globalThis.browser ?? chrome;
+  function elById(id) {
+    const el = document.getElementById(id);
+    if (el === null) {
+      throw new Error(`Element #${id} not found`);
+    }
+    return el;
+  }
+  elById("btn-switch-login").onclick = function() {
+    const width = 600;
+    const height = 720;
+    browser.windows.getCurrent().then((current) => {
+      const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
+      const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
+      return browser.windows.create({
+        "url": browser.runtime.getURL("options/welcome.html"),
+        "width": width,
+        "height": height,
+        "left": left,
+        "top": top,
+        "type": "popup"
+      });
+    }).then((welcomeWindow) => {
+      browser.windows.onRemoved.addListener((id) => {
+        if (id === welcomeWindow.id) {
+          window.location.reload();
+        }
+      });
     });
-}
-
-function restoreOptions() {
+  };
+  function restoreOptions() {
     function setCurrentOptions(result) {
-        var [sync, local] = result;
-
-        document.getElementById("username").textContent = sync["username"] || "Not logged in";
-
-        const pairs = [["real_emails","default_email"], ["domains","default_domain"]];
-        for (const [list, prop] of pairs) {
-            let select = document.getElementById(prop);
-            const items = local[list] || [];
-            for (const item of items) {
-                let option = document.createElement("option");
-                option.value = option.text = item;
-
-                if (item == sync[prop])
-                    option.selected = true;
-
-                select.add(option);
-            }
+      const [sync, local] = result;
+      const isLoggedIn = Boolean(sync["username"]);
+      elById("username").textContent = isLoggedIn ? String(sync["username"]) : browser.i18n.getMessage("optionsNotLoggedIn");
+      elById("btn-switch-login").textContent = browser.i18n.getMessage(
+        isLoggedIn ? "optionsSwitchLoginButton" : "optionsLoginButton"
+      );
+      const pairs = [["real_emails", "default_email"], ["domains", "default_domain"]];
+      for (const [list, prop] of pairs) {
+        const select = elById(prop);
+        const raw = local[list];
+        const items = Array.isArray(raw) ? raw : Object.keys(raw || {});
+        for (const item of items) {
+          const option = document.createElement("option");
+          option.value = option.text = item;
+          if (item === sync[prop]) {
+            option.selected = true;
+          }
+          select.add(option);
         }
-
-        var props = ["default_forwards", "default_expire"];
-        for (const prop of props) {
-            if (sync.hasOwnProperty(prop))
-                document.getElementById(prop).value = sync[prop];
+      }
+      let props = ["default_forwards", "default_expire"];
+      for (const prop of props) {
+        if (Object.prototype.hasOwnProperty.call(sync, prop)) {
+          elById(prop).value = String(sync[prop]);
         }
-
-        props = ["default_challenge", "default_masq", "default_notify",
-            "default_send"];
-        for (const prop of props) {
-            if (sync.hasOwnProperty(prop))
-                document.getElementById(prop).checked = sync[prop];
+      }
+      props = [
+        "default_masq",
+        "default_notify",
+        "default_send",
+        "guardian_enabled"
+      ];
+      for (const prop of props) {
+        if (Object.prototype.hasOwnProperty.call(sync, prop)) {
+          elById(prop).checked = Boolean(sync[prop]);
         }
-
-        // Enable access to default options if logged in.
-        if ("username" in sync) {
-            const selector = "#options-default input, #options-default select";
-            for (const elem of document.querySelectorAll(selector))
-                elem.disabled = false;
+      }
+      if ("username" in sync) {
+        const selector = "#options-default input, #options-default select";
+        for (const elem of document.querySelectorAll(selector)) {
+          elem.disabled = false;
         }
+      }
     }
-
-    var p1 = browser.storage.sync.get();
-    var p2 = browser.storage.local.get(["real_emails", "domains"]);
+    const p1 = browser.storage.sync.get();
+    const p2 = browser.storage.local.get(["real_emails", "domains"]);
     Promise.all([p1, p2]).then(setCurrentOptions);
-
-    // Display the saved message after a page reload.
     if (sessionStorage !== null && sessionStorage.getItem("reset")) {
-        var msg = document.getElementById("saved_msg");
-        msg.style.display = "block";
-        sessionStorage.removeItem("reset");
+      const msg = elById("saved_msg");
+      msg.style.display = "block";
+      sessionStorage.removeItem("reset");
     }
-}
-document.addEventListener("DOMContentLoaded", restoreOptions);
-
-
-function saveOptions(e) {
+  }
+  document.addEventListener("DOMContentLoaded", restoreOptions);
+  function saveOptions(e) {
     e.preventDefault();
-    document.getElementById("saved_msg").style.display = "none";
-
-    var getter = browser.storage.sync.get();
-
-    var form = new FormData(e.target);
-
-    var form_obj = {};
-    for (const [key, value] of form)
-        form_obj[key] = value;
-
-    // Ensure any missing checkbox values are saved as disabled.
-    const checkboxes = ["default_challenge", "default_masq", "default_notify",
-        "default_send"];
+    elById("saved_msg").style.display = "none";
+    const getter = browser.storage.sync.get();
+    const form = new FormData(e.target);
+    const formObj = {};
+    for (const [key, value] of form) {
+      formObj[key] = value;
+    }
+    const checkboxes = [
+      "default_masq",
+      "default_notify",
+      "default_send",
+      "guardian_enabled"
+    ];
     for (const prop of checkboxes) {
-        if (!(prop in form_obj))
-            form_obj[prop] = false;
+      if (!(prop in formObj)) {
+        formObj[prop] = false;
+      }
     }
-
-    getter.then(function (storage) {
-        // Save current options, in case user wants to undo this action.
-        if (sessionStorage !== null)
-            sessionStorage.setItem("undo", JSON.stringify(storage));
-
-        browser.storage.sync.set(form_obj).then(function () {
-            var msg = document.getElementById("saved_msg");
-            msg.style.display = "block";
-
-            // If no sessionStorage, we are unable to undo, so remove option.
-            if (sessionStorage === null)
-                msg.querySelector("#undo").remove();
-        });
+    getter.then((storage) => {
+      if (sessionStorage !== null) {
+        sessionStorage.setItem("undo", JSON.stringify(storage));
+      }
+      browser.storage.sync.set(formObj).then(() => {
+        const msg = elById("saved_msg");
+        msg.style.display = "block";
+        if (sessionStorage === null) {
+          msg.querySelector("#undo").remove();
+        }
+      });
     });
-}
-document.querySelector("form").addEventListener("submit", saveOptions);
-
-function undoOptions() {
-    var undo = JSON.parse(sessionStorage.getItem("undo"));
-    browser.storage.sync.set(undo).then(function () {
-        window.location.reload();
+  }
+  document.querySelector("form").addEventListener("submit", saveOptions);
+  function undoOptions() {
+    const undo = JSON.parse(sessionStorage.getItem("undo"));
+    browser.storage.sync.set(undo).then(() => {
+      window.location.reload();
     });
-}
-document.getElementById("undo").addEventListener("click", undoOptions);
-
-function resetOptions() {
+  }
+  elById("undo").addEventListener("click", undoOptions);
+  function resetOptions() {
     const options = [
-        "default_email", "default_forwards", "default_expire",
-        "default_challenge", "default_masq", "default_notify", "default_send",
-        "default_domain"];
-    browser.storage.sync.get().then(function (storage) {
-        if (sessionStorage !== null) {
-            // Save current options, in case user wants to undo this action.
-            sessionStorage.setItem("undo", JSON.stringify(storage));
-
-            // When page is reloaded, restoreOptions() will display success/undo.
-            sessionStorage.setItem("reset", true);
-        }
-        browser.storage.sync.remove(options).then(function () {
-            window.location.reload(true);
-        });
+      "default_email",
+      "default_forwards",
+      "default_expire",
+      "default_masq",
+      "default_notify",
+      "default_send",
+      "default_domain"
+    ];
+    browser.storage.sync.get().then((storage) => {
+      if (sessionStorage !== null) {
+        sessionStorage.setItem("undo", JSON.stringify(storage));
+        sessionStorage.setItem("reset", String(true));
+      }
+      browser.storage.sync.remove(options).then(() => {
+        window.location.reload(true);
+      });
     });
-}
-document.getElementById("btn-reset").addEventListener("click", resetOptions);
-
-function addressManager() {
-    var progress = document.getElementById("progress");
+  }
+  elById("btn-reset").addEventListener("click", resetOptions);
+  function addressManager() {
+    const progress = elById("progress");
     progress.style.display = "inline-block";
-
-    function openManager(sessionId) {
-        const url = API_BASE_URL + "/?cmd=manager";
-        let params = new URLSearchParams({
-            "lang": browser.i18n.getUILanguage().substr(0, 2)
-        });
-        // Re-use the existing logged-in session. Passing the stored session_id
-        // restores the session in the new tab without a fresh login.
-        if (sessionId)
-            params.append("session_id", sessionId);
-        return browser.tabs.create({"url": url.concat("&", params.toString())});
-    }
-
-    function showError(error) {
-        let error_msg = document.getElementById("error_msg");
-        error_msg.textContent = error.message || error;
-        error_msg.style.display = "block";
-        progress.style.display = "none";
-    }
-
-    Promise.all([
-        browser.storage.sync.get(["username", "password"]),
-        browser.storage.local.get(["session_id"])
-    ]).then(function (results) {
-        var [sync, local] = results;
-
-        // OPAQUE accounts store a Personal Access Token (tmpat_...). Such a token
-        // can NOT be verified via a classic `cmd=login` request: it lives in
-        // mail_opaque_access_tokens and is only verifiable through the OPAQUE
-        // challenge-response, not a password hash. A classic login therefore fails
-        // with "Username not registered or invalid password". Instead re-use the
-        // session_id that the OPAQUE/PAT login already stored (same as background.js).
-        if (isPAT(sync["password"])) {
-            if (!local["session_id"]) {
-                throw new Error(browser.i18n.getMessage("errorSessionExpired") ||
-                    "Your session has expired. Please use \"Switch login\" to log in again.");
-            }
-            return openManager(local["session_id"]);
-        }
-
-        // Classic password account: legacy login to obtain a fresh session_id.
-        return callAPI({
-            "cmd": "login",
-            "fe-login-user": sync["username"],
-            "fe-login-pass": sync["password"]
-        }).then(function (login_details) {
-            return openManager(login_details["session_id"]);
-        });
-    }).then(function () {
-        progress.style.display = "none";
-    }).catch(showError);
-}
-document.getElementById("btn-address-manager").addEventListener("click", addressManager);
-
-// ============================================================
-// Hidden Debug Panel - Click title 5 times to reveal
-// ============================================================
-let debugClickCount = 0;
-let debugClickTimer = null;
-
-function initDebugPanel() {
+    openAddressManagerAuthenticated().then(() => {
+      progress.style.display = "none";
+    }).catch((error) => {
+      const errorMsg = elById("error_msg");
+      errorMsg.textContent = error.message || String(error);
+      errorMsg.style.display = "block";
+      progress.style.display = "none";
+    });
+  }
+  elById("btn-address-manager").addEventListener("click", addressManager);
+  var debugClickCount = 0;
+  var debugClickTimer;
+  function initDebugPanel() {
     const title = document.querySelector("h1");
-    if (!title) return;
-
+    if (!title) {
+      return;
+    }
     title.style.cursor = "pointer";
-    title.addEventListener("click", function() {
-        debugClickCount++;
-        console.log("[Debug] Click count:", debugClickCount);
-
-        // Reset counter after 2 seconds of no clicks
-        clearTimeout(debugClickTimer);
-        debugClickTimer = setTimeout(() => { debugClickCount = 0; }, 2000);
-
-        // Show debug panel after 5 clicks
-        if (debugClickCount >= 5) {
-            debugClickCount = 0;
-            console.log("[Debug] 5 clicks reached!");
-            const debugPanel = document.getElementById("debug-panel");
-            console.log("[Debug] Panel element:", debugPanel);
-            if (!debugPanel) {
-                console.error("[Debug] Panel not found!");
-                return;
-            }
-            const isHidden = !debugPanel.style.display || debugPanel.style.display === "none";
-            debugPanel.style.display = isHidden ? "block" : "none";
-            console.log("[Debug] Panel toggled:", isHidden ? "shown" : "hidden");
-
-            // Load current debug URL setting
-            browser.storage.local.get('debugApiUrl').then(function(result) {
-                const select = document.getElementById("debug_api_url");
-                if (result.debugApiUrl) {
-                    select.value = result.debugApiUrl;
-                } else {
-                    select.value = "https://mail.aionda.com";
-                }
-                updateDebugStatus();
-            });
+    title.addEventListener("click", () => {
+      debugClickCount++;
+      console.log("[Debug] Click count:", debugClickCount);
+      clearTimeout(debugClickTimer);
+      debugClickTimer = setTimeout(() => {
+        debugClickCount = 0;
+      }, 2e3);
+      if (debugClickCount >= 5) {
+        debugClickCount = 0;
+        console.log("[Debug] 5 clicks reached!");
+        const debugPanel = document.getElementById("debug-panel");
+        console.log("[Debug] Panel element:", debugPanel);
+        if (!debugPanel) {
+          console.error("[Debug] Panel not found!");
+          return;
         }
+        const isHidden = !debugPanel.style.display || debugPanel.style.display === "none";
+        debugPanel.style.display = isHidden ? "block" : "none";
+        console.log("[Debug] Panel toggled:", isHidden ? "shown" : "hidden");
+        browser.storage.local.get("debugApiUrl").then((result) => {
+          const select = elById("debug_api_url");
+          if (result.debugApiUrl) {
+            select.value = result.debugApiUrl;
+          } else {
+            select.value = "https://mail.aionda.com";
+          }
+          updateDebugStatus();
+        });
+      }
     });
-}
-document.addEventListener("DOMContentLoaded", initDebugPanel);
-
-function updateDebugStatus() {
-    const status = document.getElementById("debug-status");
-    browser.storage.local.get('debugApiUrl').then(function(result) {
-        if (result.debugApiUrl && result.debugApiUrl !== "https://mail.aionda.com") {
-            status.textContent = "⚠️ Debug mode active: " + result.debugApiUrl;
-            status.style.color = "#c00";
-        } else {
-            status.textContent = "✅ Using production server";
-            status.style.color = "#080";
-        }
+  }
+  document.addEventListener("DOMContentLoaded", initDebugPanel);
+  function updateDebugStatus() {
+    const status = elById("debug-status");
+    browser.storage.local.get("debugApiUrl").then((result) => {
+      if (result.debugApiUrl && result.debugApiUrl !== "https://mail.aionda.com") {
+        status.textContent = `\u26A0\uFE0F Debug mode active: ${result.debugApiUrl}`;
+        status.style.color = "#c00";
+      } else {
+        status.textContent = "\u2705 Using production server";
+        status.style.color = "#080";
+      }
     });
-}
-
-document.getElementById("btn-save-debug").addEventListener("click", function() {
-    const url = document.getElementById("debug_api_url").value;
-    browser.storage.local.set({ debugApiUrl: url }).then(function() {
-        API_BASE_URL = url;
-        updateDebugStatus();
-        alert("Debug settings saved! Please reload the extension or restart the browser for changes to take full effect.");
+  }
+  elById("btn-save-debug").addEventListener("click", () => {
+    const url = elById("debug_api_url").value;
+    browser.storage.local.set({ debugApiUrl: url }).then(() => {
+      globalThis.API_BASE_URL = url;
+      updateDebugStatus();
+      alert("Debug settings saved! Please reload the extension or restart the browser for changes to take full effect.");
     });
-});
-
-document.getElementById("btn-reset-debug").addEventListener("click", function() {
-    browser.storage.local.remove('debugApiUrl').then(function() {
-        API_BASE_URL = DEFAULT_API_URL;
-        document.getElementById("debug_api_url").value = "https://mail.aionda.com";
-        updateDebugStatus();
-        alert("Reset to production server!");
+  });
+  elById("btn-reset-debug").addEventListener("click", () => {
+    browser.storage.local.remove("debugApiUrl").then(() => {
+      globalThis.API_BASE_URL = DEFAULT_API_URL;
+      elById("debug_api_url").value = "https://mail.aionda.com";
+      updateDebugStatus();
+      alert("Reset to production server!");
     });
-});
+  });
+})();
