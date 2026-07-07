@@ -153,7 +153,9 @@ describe('create-address.ts', () => {
 
             const createCall = globals.callAPI.mock.calls.find((c) => (c[0] as { cmd?: string }).cmd === 'create_dea');
             expect((createCall![1] as { data: { vault: boolean; destination: string } }).data.vault).toBe(true);
-            expect((createCall![1] as { data: { destination: string } }).data.destination).toBe('');
+            // Vault-Ziel muss als "__VAULT__" gesendet werden (nicht leer, sonst
+            // ersetzt der Server es durch die Default-E-Mail).
+            expect((createCall![1] as { data: { destination: string } }).data.destination).toBe('__VAULT__');
             const prev = mock.storage.local.data.get('previous_addresses') as Record<string, unknown[]>;
             expect(prev['www.shop.com']).toHaveLength(2); // an bestehende Gruppe angehängt
         });
@@ -195,6 +197,31 @@ describe('create-address.ts', () => {
             expect(retry.at(-1)![0]).toMatchObject({ session_id: 'fresh-sid' });
             // Adresse landet trotz anfaenglichem Fehler im Parent-Tab.
             expect(mock.tabs.sentMessages).toContainEqual({ tabId: 42, message: 'myaddr@d.com' });
+
+            delete (globalThis as Record<string, unknown>)['addonOpaqueClient'];
+        });
+
+        it('re-auths and retries a vault DEA when the session expired (login-required code 2)', async () => {
+            mock.storage.sync.data.set('username', 'saf');
+            mock.storage.sync.data.set('password', 'tmpat_stalevault');
+            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 'fresh-vault' });
+            (globalThis as Record<string, unknown>)['addonOpaqueClient'] = { patOpaqueLogin };
+
+            // Vault-DEA ohne gueltige Session -> Server-Guard liefert Code 2.
+            globals.callAPI
+                .mockRejectedValueOnce(Object.assign(new Error('login required'), { errorCode: 2 }))
+                .mockResolvedValueOnce({});
+            await bootWithSession();
+            select('email').value = 'vault';
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(patOpaqueLogin).toHaveBeenCalledWith('saf', 'tmpat_stalevault');
+            const calls = globals.callAPI.mock.calls.filter((c) => (c[0] as { cmd?: string }).cmd === 'create_dea');
+            // Beide Versuche schicken das Vault-Ziel, der zweite mit frischer Session.
+            expect((calls.at(-1)![1] as { data: { destination: string } }).data.destination).toBe('__VAULT__');
+            expect(calls.at(-1)![0]).toMatchObject({ session_id: 'fresh-vault' });
 
             delete (globalThis as Record<string, unknown>)['addonOpaqueClient'];
         });

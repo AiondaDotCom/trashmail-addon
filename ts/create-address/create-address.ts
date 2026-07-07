@@ -36,10 +36,14 @@ function isPAT(password: unknown): boolean {
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
 }
 
-// Serverseitiger Fehlercode, wenn create_dea ohne gueltige Session laeuft und
-// still auf den anonymen Pfad zurueckfaellt ("Ziel-E-Mail nicht registriert").
-// Fuer uns das Signal, dass die gespeicherte session_id abgelaufen ist.
+// Serverseitige Fehlercodes, die anzeigen, dass die gespeicherte session_id
+// abgelaufen ist und create_dea auf den anonymen Pfad (accountId=0) zurueckfiel:
+//  - 25: echte Ziel-E-Mail ist "nicht registriert" (Real-Email-DEA)
+//  - 2 : nicht angemeldet - u.a. der Vault-Guard (Vault-DEA ohne Account)
+// In beiden Faellen einmal per PAT neu anmelden und wiederholen.
 const ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS = 25;
+const ERROR_CODE_NOT_LOGGED_IN = 2;
+const SESSION_EXPIRED_CODES = [ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS, ERROR_CODE_NOT_LOGGED_IN];
 
 /**
  * Holt eine frische Session, wenn die gespeicherte abgelaufen ist. OPAQUE-Konten
@@ -250,7 +254,10 @@ async function createAddress(e: Event) {
             "data": {
                 "disposable_name": form.get("disposable_name"),
                 "disposable_domain": form.get("domain"),
-                "destination": isVault ? "" : destination,
+                // Vault-Ziel: der Server erkennt "__VAULT__" in destination als
+                // internes Postfach. NICHT leer lassen - sonst ersetzt der Server
+                // es durch die Default-E-Mail (dann landet die DEA nicht im Vault).
+                "destination": isVault ? "__VAULT__" : destination,
                 "forwards": form.get("forwards"),
                 "expire": form.get("expire"),
                 // CAPTCHA-Option (Challenge-Response) wurde aus dem Addon entfernt
@@ -266,10 +273,11 @@ async function createAddress(e: Event) {
         try {
             await callAPI(data, json);
         } catch (err) {
-            // create_dea faellt bei ungueltiger Session still auf anonym zurueck
-            // (Code 25). In dem Fall einmal per PAT neu anmelden und wiederholen.
+            // create_dea faellt bei ungueltiger Session still auf anonym zurueck.
+            // Bei den bekannten Session-Codes (25 Real-Email, 2 Vault-Guard)
+            // einmal per PAT neu anmelden und wiederholen.
             const code = (err as { errorCode?: number }).errorCode;
-            if (code === ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS) {
+            if (typeof code === "number" && SESSION_EXPIRED_CODES.includes(code)) {
                 data.session_id = await reauthAndGetSession();
                 await callAPI(data, json);
             } else {

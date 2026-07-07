@@ -15,6 +15,8 @@
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
   }
   var ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS = 25;
+  var ERROR_CODE_NOT_LOGGED_IN = 2;
+  var SESSION_EXPIRED_CODES = [ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS, ERROR_CODE_NOT_LOGGED_IN];
   async function reauthAndGetSession() {
     const sync = await browser.storage.sync.get(["username", "password"]);
     const username = sync["username"];
@@ -169,7 +171,10 @@
         "data": {
           "disposable_name": form.get("disposable_name"),
           "disposable_domain": form.get("domain"),
-          "destination": isVault ? "" : destination,
+          // Vault-Ziel: der Server erkennt "__VAULT__" in destination als
+          // internes Postfach. NICHT leer lassen - sonst ersetzt der Server
+          // es durch die Default-E-Mail (dann landet die DEA nicht im Vault).
+          "destination": isVault ? "__VAULT__" : destination,
           "forwards": form.get("forwards"),
           "expire": form.get("expire"),
           // CAPTCHA-Option (Challenge-Response) wurde aus dem Addon entfernt
@@ -185,7 +190,7 @@
         await callAPI(data, json);
       } catch (err) {
         const code = err.errorCode;
-        if (code === ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS) {
+        if (typeof code === "number" && SESSION_EXPIRED_CODES.includes(code)) {
           data.session_id = await reauthAndGetSession();
           await callAPI(data, json);
         } else {
