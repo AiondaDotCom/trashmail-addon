@@ -104,7 +104,8 @@ describe('context menu bootstrap', () => {
 });
 
 describe('contextMenus.onClicked', () => {
-    it('opens the create-address popup window for the paste-email item', async () => {
+    it('opens the create-address popup window for the paste-email item when logged in', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'tmpat_x' });
         await importBackground();
         mock.contextMenus.onClicked.trigger(
             { menuItemId: 'paste-email', frameId: 0 },
@@ -113,6 +114,19 @@ describe('contextMenus.onClicked', () => {
         await flush();
         expect(mock.windows.created.length).toBe(1);
         expect(mock.windows.created[0]!['type']).toBe('popup');
+        expect(String(mock.windows.created[0]!['url'])).toContain('create-address');
+    });
+
+    it('opens the login window instead of the broken form when logged out', async () => {
+        // Kein username/password -> nach Logout darf nicht das leere Formular kommen.
+        await importBackground();
+        mock.contextMenus.onClicked.trigger(
+            { menuItemId: 'paste-email', frameId: 0 },
+            { id: 7, url: 'https://site.test/', windowId: 1 },
+        );
+        await flush();
+        expect(mock.windows.created.length).toBe(1);
+        expect(String(mock.windows.created[0]!['url'])).toContain('welcome.html');
     });
 
     it('pastes a previous address by sending the menu id to the tab', async () => {
@@ -126,6 +140,7 @@ describe('contextMenus.onClicked', () => {
     });
 
     it('forwards the parent context to the popup once its tab finishes loading', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'tmpat_x' });
         await importBackground();
         mock.contextMenus.onClicked.trigger(
             { menuItemId: 'paste-email', frameId: 0 },

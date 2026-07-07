@@ -65,7 +65,29 @@ async function createContextMenu() {
 createContextMenu();
 
 
-function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number) {
+/** Angemeldet, wenn Zugangsdaten hinterlegt sind (nach Logout entfernt). */
+async function isLoggedIn(): Promise<boolean> {
+    const sync = await browser.storage.sync.get(["username", "password"]) as { username?: string; password?: string };
+    return Boolean(sync.username && sync.password);
+}
+
+/** Zentriert ueber dem zuletzt fokussierten Fenster ein Popup oeffnen. */
+function openCenteredPopup(url: string, width: number, height: number): void {
+    browser.windows.getLastFocused().then((focused) => {
+        const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
+        const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
+        browser.windows.create({ "url": url, "type": "popup", "width": width, "height": height, "left": left, "top": top });
+    });
+}
+
+async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): Promise<void> {
+    // Abgemeldet? Dann das Anmelde-Fenster oeffnen statt des leeren Formulars
+    // (ohne Session/Zugangsdaten kann keine DEA erstellt werden).
+    if (!(await isLoggedIn())) {
+        openCenteredPopup(browser.runtime.getURL("options/welcome.html"), 600, 720);
+        return;
+    }
+
     const width = 750;
     const height = 720;
     // Zentriert ueber dem zuletzt fokussierten Browserfenster oeffnen

@@ -38,7 +38,22 @@
     }
   }
   createContextMenu();
-  function openCreateAddress(parentTab, frameId) {
+  async function isLoggedIn() {
+    const sync = await browser.storage.sync.get(["username", "password"]);
+    return Boolean(sync.username && sync.password);
+  }
+  function openCenteredPopup(url, width, height) {
+    browser.windows.getLastFocused().then((focused) => {
+      const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
+      const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
+      browser.windows.create({ "url": url, "type": "popup", "width": width, "height": height, "left": left, "top": top });
+    });
+  }
+  async function openCreateAddress(parentTab, frameId) {
+    if (!await isLoggedIn()) {
+      openCenteredPopup(browser.runtime.getURL("options/welcome.html"), 600, 720);
+      return;
+    }
     const width = 750;
     const height = 720;
     browser.windows.getLastFocused().then((focused) => {
