@@ -2,6 +2,7 @@
 (() => {
   // trashmail-addon/ts/background.ts
   var browser = globalThis.browser ?? chrome;
+  console.log("[Background] Service Worker gestartet - build: resume-v3 (auth_completed + race-fix)");
   if (typeof importScripts === "function") {
     importScripts("api.js", "publicsuffixlist.js", "guardian.js");
   }

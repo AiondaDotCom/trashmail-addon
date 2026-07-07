@@ -1,6 +1,12 @@
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
+// Build-Marker: erscheint beim Service-Worker-Start in der Konsole. Damit laesst
+// sich zweifelsfrei pruefen, ob Chrome den NEUEN Build geladen hat (MV3 cached
+// den Service Worker gern). Bei jeder relevanten background/welcome-Aenderung
+// hochzaehlen.
+console.log("[Background] Service Worker gestartet - build: resume-v3 (auth_completed + race-fix)");
+
 // Import additional scripts (Service Worker only - Chrome)
 // Firefox with background.scripts loads these via manifest
 if (typeof importScripts === "function") {
