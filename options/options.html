@@ -49,6 +49,18 @@
         }
 
         /* Account */
+        .account-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        #btn-logout {
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+        #btn-logout:hover {
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
         .account-row {
             display: flex;
             align-items: center;
@@ -243,7 +255,10 @@
             <h1 data-i18n="optionsCurrentAccount"></h1>
             <div class="account-row">
                 <label id="username">…</label>
-                <button id="btn-switch-login" type="button" data-i18n="optionsSwitchLoginButton"></button>
+                <span class="account-buttons">
+                    <button id="btn-switch-login" type="button" data-i18n="optionsSwitchLoginButton"></button>
+                    <button id="btn-logout" type="button" style="display: none" data-i18n="optionsLogoutButton"></button>
+                </span>
             </div>
         </section>
 

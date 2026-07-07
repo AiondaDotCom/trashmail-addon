@@ -7,6 +7,7 @@
     "optionsForwards": {"message": "Número de reencaminhamentos:"},
     "optionsLifespan": {"message": "Tempo de vida:"},
     "optionsSwitchLoginButton": {"message": "Mudar sessão"},
+    "optionsLogoutButton": {"message": "Terminar sessão"},
     "optionsNotLoggedIn": {"message": "Sessão não iniciada"},
     "optionsLoginButton": {"message": "Iniciar sessão"},
     "optionsRealAddress": {"message": "O teu endereço de e-mail real:"},

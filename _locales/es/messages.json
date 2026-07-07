@@ -9,6 +9,7 @@
     "optionsForwards": {"message": "Número de reenvíos:"},
     "optionsLifespan": {"message": "Tiempo de vida:"},
     "optionsSwitchLoginButton": {"message": "Cambiar inicio de sesión"},
+    "optionsLogoutButton": {"message": "Cerrar sesión"},
     "optionsNotLoggedIn": {"message": "Sesión no iniciada"},
     "optionsLoginButton": {"message": "Iniciar sesión"},
     "optionsRealAddress": {"message": "Tu dirección de correo real:"},

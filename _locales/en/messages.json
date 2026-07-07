@@ -9,6 +9,7 @@
     "optionsForwards": {"message": "Number of forwards:"},
     "optionsLifespan": {"message": "Life span:"},
     "optionsSwitchLoginButton": {"message": "Switch login"},
+    "optionsLogoutButton": {"message": "Sign out"},
     "optionsNotLoggedIn": {"message": "Not signed in"},
     "optionsLoginButton": {"message": "Sign in"},
     "optionsRealAddress": {"message": "Your real email address:"},

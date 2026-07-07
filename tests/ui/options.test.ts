@@ -80,6 +80,15 @@ describe('options.ts', () => {
             await tick();
             expect($('username').textContent).toBe('bob');
             expect($('btn-switch-login').textContent).toBe('Benutzer wechseln');
+            // Abmelden-Button nur im eingeloggten Zustand sichtbar
+            expect($('btn-logout').style.display).not.toBe('none');
+        });
+
+        it('hides the logout button when not logged in', async () => {
+            await importOptions();
+            fireDomReady();
+            await tick();
+            expect($('btn-logout').style.display).toBe('none');
         });
 
         it('REGRESSION: local.domains stored as an OBJECT (legacy) does not throw and yields options', async () => {
@@ -204,6 +213,38 @@ describe('options.ts', () => {
 
             // Closing the welcome window triggers a reload.
             await mock.windows.remove(500);
+            expect(nav.reload).toHaveBeenCalled();
+        });
+    });
+
+    describe('logout', () => {
+        it('ends both sessions, clears the stored credentials and reloads', async () => {
+            mock.storage.sync.data.set('username', 'bob');
+            mock.storage.sync.data.set('password', 'tmpat_secret123');
+            mock.storage.local.data.set('session_id', 'sess-1');
+            mock.storage.local.data.set('is_opaque_account', true);
+            mock.storage.local.data.set('real_emails', ['r@e.com']);
+            globals.callAPI.mockResolvedValue({ success: true });
+            const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ success: true }), text: async () => '{}' }));
+            vi.stubGlobal('fetch', fetchMock);
+            await importOptions();
+            fireDomReady();
+            await tick();
+
+            $('btn-logout').dispatchEvent(new MouseEvent('click'));
+            await tick();
+            await tick();
+
+            // Addon-Session serverseitig beendet
+            expect(globals.callAPI).toHaveBeenCalledWith(expect.objectContaining({ cmd: 'logout', session_id: 'sess-1' }));
+            // Browser-Session (Cookie) ebenfalls beendet
+            const cookieLogout = fetchMock.mock.calls.find((c) => String(c[0]).includes('cmd=logout'))!;
+            expect((cookieLogout[1] as { credentials?: string }).credentials).toBe('include');
+            // Zugangsdaten geloescht
+            expect(mock.storage.sync.data.has('username')).toBe(false);
+            expect(mock.storage.sync.data.has('password')).toBe(false);
+            expect(mock.storage.local.data.has('session_id')).toBe(false);
+            expect(mock.storage.local.data.has('is_opaque_account')).toBe(false);
             expect(nav.reload).toHaveBeenCalled();
         });
     });

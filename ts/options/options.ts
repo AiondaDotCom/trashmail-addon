@@ -55,6 +55,33 @@ elById("btn-switch-login").onclick = function () {
     });
 };
 
+/**
+ * Abmelden: beendet die Addon-Session UND die Browser-Session (Cookie vom
+ * Manager-Login) serverseitig, leert die gespeicherten Zugangsdaten und
+ * laedt die Seite neu (zeigt dann "Nicht angemeldet" + "Anmelden").
+ */
+function logout() {
+    browser.storage.local.get(["session_id"]).then((local) => {
+        const sessionId = (local as LocalStorage)["session_id"];
+        const requests: Promise<unknown>[] = [];
+        if (sessionId) {
+            requests.push(callAPI({ "cmd": "logout", "session_id": sessionId }).catch(() => undefined));
+        }
+        // Browser-Session-Cookie (falls der Manager geoeffnet wurde) mit beenden
+        requests.push(fetch(`${API_BASE_URL}/?api=1&cmd=logout`, {
+            method: "POST",
+            credentials: "include",
+        }).catch(() => undefined));
+        return Promise.all(requests);
+    }).then(() => Promise.all([
+        browser.storage.sync.remove(["username", "password"]),
+        browser.storage.local.remove(["session_id", "is_opaque_account", "real_emails", "domains", "previous_addresses"]),
+    ])).then(() => {
+        window.location.reload();
+    });
+}
+elById("btn-logout").addEventListener("click", logout);
+
 function restoreOptions() {
     function setCurrentOptions(result: [SyncStorage, LocalStorage]) {
         const [sync, local] = result;
@@ -66,6 +93,8 @@ function restoreOptions() {
         // Ohne Login gibt es nichts zu "wechseln" - Button heisst dann "Anmelden"
         elById("btn-switch-login").textContent = browser.i18n.getMessage(
             isLoggedIn ? "optionsSwitchLoginButton" : "optionsLoginButton");
+        // Abmelden nur anbieten, wenn jemand angemeldet ist
+        elById("btn-logout").style.display = isLoggedIn ? "" : "none";
 
         const pairs: [string, string][] = [["real_emails", "default_email"], ["domains", "default_domain"]];
         for (const [list, prop] of pairs) {

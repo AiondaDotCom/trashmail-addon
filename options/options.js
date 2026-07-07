@@ -31,6 +31,26 @@
       });
     });
   };
+  function logout() {
+    browser.storage.local.get(["session_id"]).then((local) => {
+      const sessionId = local["session_id"];
+      const requests = [];
+      if (sessionId) {
+        requests.push(callAPI({ "cmd": "logout", "session_id": sessionId }).catch(() => void 0));
+      }
+      requests.push(fetch(`${API_BASE_URL}/?api=1&cmd=logout`, {
+        method: "POST",
+        credentials: "include"
+      }).catch(() => void 0));
+      return Promise.all(requests);
+    }).then(() => Promise.all([
+      browser.storage.sync.remove(["username", "password"]),
+      browser.storage.local.remove(["session_id", "is_opaque_account", "real_emails", "domains", "previous_addresses"])
+    ])).then(() => {
+      window.location.reload();
+    });
+  }
+  elById("btn-logout").addEventListener("click", logout);
   function restoreOptions() {
     function setCurrentOptions(result) {
       const [sync, local] = result;
@@ -39,6 +59,7 @@
       elById("btn-switch-login").textContent = browser.i18n.getMessage(
         isLoggedIn ? "optionsSwitchLoginButton" : "optionsLoginButton"
       );
+      elById("btn-logout").style.display = isLoggedIn ? "" : "none";
       const pairs = [["real_emails", "default_email"], ["domains", "default_domain"]];
       for (const [list, prop] of pairs) {
         const select = elById(prop);

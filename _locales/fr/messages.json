@@ -9,6 +9,7 @@
     "optionsForwards": {"message": "Nombre de transferts :"},
     "optionsLifespan": {"message": "Durée de validité :"},
     "optionsSwitchLoginButton": {"message": "Changer d'utilisateur"},
+    "optionsLogoutButton": {"message": "Se déconnecter"},
     "optionsNotLoggedIn": {"message": "Non connecté"},
     "optionsLoginButton": {"message": "Se connecter"},
     "optionsRealAddress": {"message": "Votre adresse courrielle réelle :"},
