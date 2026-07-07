@@ -261,6 +261,65 @@ class AddonOpaqueClient {
     }
 
     /**
+     * Schliesst eine schwebende 2FA-Anmeldung im Addon ab (kein Umweg ueber die
+     * Webseite). Voraussetzung: passwordOpaqueLogin({ establishBrowserSession:
+     * true }) wurde vorher aufgerufen und lieferte requires_2fa - dadurch haelt
+     * die Cookie-Session den 2fa_pending-Zustand. Der Code wird server-seitig
+     * geprueft (kein Geheimnis im Addon), deshalb funktioniert das - anders als
+     * WebAuthn/Passkeys - problemlos aus dem Erweiterungs-Kontext.
+     *
+     * @param {string} code - 6-stelliger TOTP-Code
+     * @param {boolean} trustDevice - Geraet 30 Tage als vertrauenswuerdig merken
+     * @returns {Promise<{success: boolean}>}
+     */
+    async verifyTotpLogin(code, trustDevice = false) {
+        return this._completePending2fa('totp_verify', { code, trust_device: !!trustDevice });
+    }
+
+    /**
+     * Wie verifyTotpLogin, nutzt aber einen Wiederherstellungscode als Fallback,
+     * wenn der Authenticator nicht verfuegbar ist.
+     *
+     * @param {string} code - Wiederherstellungscode (XXXX-XXXX-XXXX)
+     * @returns {Promise<{success: boolean}>}
+     */
+    async useRecoveryCode(code) {
+        return this._completePending2fa('totp_recovery_use', { code });
+    }
+
+    /**
+     * Gemeinsamer Aufruf fuer die 2FA-Abschluss-Endpoints. credentials:include
+     * ist Pflicht, damit das Cookie mit der 2fa_pending-Session mitgeht.
+     * @private
+     */
+    async _completePending2fa(cmd, body) {
+        await this.initialize();
+        const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
+        const lang = browser.i18n.getUILanguage().substr(0, 2);
+
+        const response = await fetch(baseUrl + '/?api=1&cmd=' + cmd + '&lang=' + lang, {
+            credentials: "include",
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            const error = new Error(result.msg || '2FA verification failed');
+            error.errorCode = result.error_code;
+            // Bei Rate-Limit liefert der Server die Restsperre in Sekunden mit.
+            const data = result.data || {};
+            if (typeof data.locked_for === 'number') {
+                error.lockedFor = data.locked_for;
+            }
+            throw error;
+        }
+
+        return { success: true };
+    }
+
+    /**
      * Register a new account via register_account_v2 (OPAQUE, no email).
      *
      * Flow: opaque.client.startRegistration -> opaque_register_init ->

@@ -536,7 +536,9 @@ describe('welcome.ts', () => {
             expect(mock.storage.local.data.get('domains')).toEqual(['a.com', 'b.com']);
         });
 
-        it('shows the PAT-required panel when the account uses 2FA', async () => {
+        it('shows the in-addon 2FA panel when the account uses 2FA', async () => {
+            // OPAQUE-Client ist in der echten Erweiterung immer geladen (opaque-client.js).
+            setOpaqueClient({ checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: false, srp_enabled: false }) });
             // Real callAPI REJECTS with a requires_2fa error (see api.js).
             globals.callAPI.mockImplementation(async (data: { cmd: string }) => {
                 if (data.cmd === 'login') {
@@ -553,8 +555,10 @@ describe('welcome.ts', () => {
             $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
             await tick(6);
 
-            expect(document.getElementById('pat-required-panel')).not.toBeNull();
-            expect(document.getElementById('pat-required-panel')!.style.display).toBe('block');
+            expect(document.getElementById('twofa-panel')).not.toBeNull();
+            expect(document.getElementById('twofa-panel')!.style.display).toBe('block');
+            // Echtes Eingabefeld statt Webseiten-Anleitung
+            expect(document.getElementById('twofa-code')).not.toBeNull();
         });
     });
 
@@ -620,7 +624,7 @@ describe('welcome.ts', () => {
             expect(windowsRemove).toHaveBeenCalled();
         });
 
-        it('shows a 2FA fallback (no OTP input) when the OPAQUE login requires 2FA', async () => {
+        it('shows the in-addon TOTP input when the OPAQUE login requires 2FA', async () => {
             setOpaqueClient({
                 checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
                 passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
@@ -633,7 +637,85 @@ describe('welcome.ts', () => {
             $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
             await tick(8);
 
-            expect(document.getElementById('pat-required-panel')).not.toBeNull();
+            expect(document.getElementById('twofa-panel')!.style.display).toBe('block');
+            expect(document.getElementById('twofa-code')).not.toBeNull();
+        });
+
+        it('completes 2FA in-addon: verifies TOTP, creates the PAT and logs in', async () => {
+            const verifyTotpLogin = vi.fn().mockResolvedValue({ success: true });
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_after2fa');
+            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 's-2fa', domain_name_list: [], real_email_list: {} });
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
+                createAccessTokenOpaque,
+                patOpaqueLogin,
+                verifyTotpLogin,
+                useRecoveryCode: vi.fn(),
+            });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : { success: true }));
+            const windowsRemove = vi.spyOn(mock.windows, 'remove');
+            await importWelcome();
+
+            await submitLogin('bob', 'plainpassword');
+
+            // TOTP-Code eingeben und bestaetigen
+            input('twofa-code').value = '123456';
+            input('twofa-trust').checked = true;
+            $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
+            await tick(8);
+
+            expect(verifyTotpLogin).toHaveBeenCalledWith('123456', true);
+            expect(createAccessTokenOpaque).toHaveBeenCalledWith('', expect.any(String));
+            expect(patOpaqueLogin).toHaveBeenCalledWith('bob', 'tmpat_after2fa');
+            expect(mock.storage.sync.data.get('password')).toBe('tmpat_after2fa');
+            expect(windowsRemove).toHaveBeenCalled();
+        });
+
+        it('rejects a malformed TOTP code without calling the server', async () => {
+            const verifyTotpLogin = vi.fn();
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
+                createAccessTokenOpaque: vi.fn(),
+                patOpaqueLogin: vi.fn(),
+                verifyTotpLogin,
+                useRecoveryCode: vi.fn(),
+            });
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            input('twofa-code').value = '12ab';
+            $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
+            await tick(2);
+
+            expect(verifyTotpLogin).not.toHaveBeenCalled();
+            expect($('twofa-error').style.display).toBe('block');
+        });
+
+        it('uses a recovery code after toggling the recovery link', async () => {
+            const useRecoveryCode = vi.fn().mockResolvedValue({ success: true });
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_rec');
+            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 's-rec', domain_name_list: [], real_email_list: {} });
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
+                createAccessTokenOpaque,
+                patOpaqueLogin,
+                verifyTotpLogin: vi.fn(),
+                useRecoveryCode,
+            });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : { success: true }));
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            $('twofa-recovery-toggle').dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+            input('twofa-code').value = 'ABCD-EFGH-IJKL';
+            $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
+            await tick(8);
+
+            expect(useRecoveryCode).toHaveBeenCalledWith('ABCD-EFGH-IJKL');
+            expect(patOpaqueLogin).toHaveBeenCalledWith('bob', 'tmpat_rec');
         });
     });
 
@@ -697,6 +779,7 @@ describe('welcome.ts', () => {
         });
 
         it('shows the 2FA panel when SRP reports requires_2fa', async () => {
+            setOpaqueClient({ checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: false, srp_enabled: true }) });
             setSrpClient({
                 checkSrpEnabled: vi.fn().mockResolvedValue({ success: true, srp_enabled: true }),
                 login: vi.fn().mockResolvedValue({ requires_2fa: true }),
@@ -706,7 +789,8 @@ describe('welcome.ts', () => {
 
             await submitLogin('bob', 'plainpw', 6);
 
-            expect(document.getElementById('pat-required-panel')).not.toBeNull();
+            expect(document.getElementById('twofa-panel')).not.toBeNull();
+            expect(document.getElementById('twofa-code')).not.toBeNull();
         });
 
         it('classic login migrates to SRP when the server offers migrate_to_srp', async () => {
@@ -731,6 +815,7 @@ describe('welcome.ts', () => {
         });
 
         it('async classic path shows the 2FA panel on requires_2fa', async () => {
+            setOpaqueClient({ checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: false, srp_enabled: false }) });
             setSrpClient({
                 checkSrpEnabled: vi.fn().mockResolvedValue({ success: true, srp_enabled: false }),
                 login: vi.fn(),
@@ -744,7 +829,7 @@ describe('welcome.ts', () => {
 
             await submitLogin('bob', 'plainpw', 6);
 
-            expect(document.getElementById('pat-required-panel')).not.toBeNull();
+            expect(document.getElementById('twofa-panel')).not.toBeNull();
         });
     });
 
@@ -842,8 +927,9 @@ describe('welcome.ts', () => {
             expect(input('btn-login').disabled).toBe(false);
         });
 
-        it('localises the 2FA panel to French', async () => {
-            mock.i18n.getUILanguage = () => 'fr-FR';
+        it('renders the 2FA panel title from the i18n message', async () => {
+            mock.i18n.messages.set('title2FA', 'Authentification à deux facteurs');
+            setOpaqueClient({ checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: false, srp_enabled: false }) });
             globals.callAPI.mockImplementation(async (d: { cmd: string }) => {
                 if (d.cmd === 'login') {
                     const err = new Error('2fa') as Error & { requires_2fa?: boolean };
@@ -856,7 +942,7 @@ describe('welcome.ts', () => {
 
             await submitLogin('bob', 'plainpw', 6);
 
-            expect(document.getElementById('pat-required-panel')!.innerHTML).toContain('Authentification à deux facteurs');
+            expect(document.getElementById('twofa-panel')!.innerHTML).toContain('Authentification à deux facteurs');
         });
 
         it.each([
@@ -892,12 +978,12 @@ describe('welcome.ts', () => {
         });
     });
 
-    describe('2FA fallback panel – localisation', () => {
+    describe('2FA panel – localisation', () => {
         it.each([
-            ['fr-FR', 'Authentification à deux facteurs active'],
-            ['en-US', 'Two-Factor Authentication Active'],
-        ])('renders the %s 2FA fallback text', async (uiLang, expectedTitle) => {
-            mock.i18n.getUILanguage = () => uiLang;
+            ['Authentification à deux facteurs'],
+            ['Zwei-Faktor-Authentifizierung'],
+        ])('renders the localised 2FA title "%s"', async (title) => {
+            mock.i18n.messages.set('title2FA', title);
             setOpaqueClient({
                 checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
                 passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
@@ -907,8 +993,7 @@ describe('welcome.ts', () => {
 
             await submitLogin('bob', 'plainpassword', 8);
 
-            const panel = document.getElementById('pat-required-panel')!;
-            expect(panel.innerHTML).toContain(expectedTitle);
+            expect(document.getElementById('twofa-panel')!.innerHTML).toContain(title);
         });
     });
 });

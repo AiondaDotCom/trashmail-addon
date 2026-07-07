@@ -233,5 +233,13 @@
 
     "guardianLimitedMode": {"message": "Protection limitée"},
     "guardianChromeNoTls": {"message": "Vérification du certificat TLS non disponible dans Chrome"},
-    "guardianEd25519NotSupported": {"message": "Ed25519 non supporté - Chrome 113+ requis"}
+    "guardianEd25519NotSupported": {"message": "Ed25519 non supporté - Chrome 113+ requis"},
+    "twofaCodePlaceholder": {"message": "123456"},
+    "twofaTrustDevice": {"message": "Faire confiance à cet appareil (30 jours)"},
+    "twofaUseRecovery": {"message": "Utiliser un code de récupération"},
+    "twofaUseAuthenticator": {"message": "Utiliser le code de l'authentificateur"},
+    "twofaRecoveryInfo": {"message": "Saisissez l'un de vos codes de récupération."},
+    "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
+    "twofaWebsiteFallback": {"message": "Créer plutôt un jeton sur le site web"},
+    "twofaProgress": {"message": "Finalisation de la connexion ..."}
 }

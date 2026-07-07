@@ -34,6 +34,10 @@ interface AddonOpaqueClient {
     registerAccountV2(username: string, password: string, gameSessionId: string): Promise<TmApiResponse>;
     /** Voller OPAQUE-Passwort-Login (v2-Konten sind OPAQUE-only, classic login geht nicht). */
     passwordOpaqueLogin(username: string, password: string, options?: { establishBrowserSession?: boolean }): Promise<TmApiResponse>;
+    /** Schliesst eine schwebende 2FA-Anmeldung per TOTP-Code ab (Cookie-Session). */
+    verifyTotpLogin(code: string, trustDevice?: boolean): Promise<{ success: boolean }>;
+    /** Wie verifyTotpLogin, nutzt aber einen Wiederherstellungscode als Fallback. */
+    useRecoveryCode(code: string): Promise<{ success: boolean }>;
 }
 
 /** SRP client instance exported by srp-client.js (`const addonSrpClient`). */

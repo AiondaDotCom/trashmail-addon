@@ -959,93 +959,144 @@ function performClassicLoginWithMigration(username: string, password: string, lo
 }
 
 /**
- * Show 2FA/SRP PAT required message
- * Instead of OTP input, we now show instructions to create a PAT
+ * 2FA-Abschluss direkt im Addon: Nach erfolgreicher Code-Pruefung ist die
+ * Cookie-Session authentifiziert. Wir legen den OPAQUE-PAT an (Zero-Knowledge),
+ * hinterlegen ihn statt des Passworts und melden uns damit final an. Danach ist
+ * der User eingeloggt - kein Umweg mehr ueber die Webseite noetig.
  */
-function show2FAInput(username: string, password: string) {
-    const loginPanel = elById("login-panel");
-    const progress = document.getElementById("progress-login");
-    const loginButton = document.getElementById("btn-login");
-    const cancelButton = document.getElementById("btn-login-cancel");
+function finish2faLogin(username: string): Promise<void> {
+    let pat = "";
+    return addonOpaqueClient!.createAccessTokenOpaque("", getBrowserName())
+        .then((token) => {
+            pat = token;
+            return addonOpaqueClient!.patOpaqueLogin(username, token);
+        })
+        .then((loginDetails) => handleLoginSuccess(username, pat, loginDetails, false))
+        .then((loginDetails) => loadDEAAndClose(loginDetails["session_id"] as string));
+}
 
-    // Hide progress
-    if (progress) {progress.style.display = "none";}
-    if (loginButton) {(loginButton as HTMLButtonElement).disabled = false;}
-    if (cancelButton) {(cancelButton as HTMLButtonElement).disabled = false;}
+/**
+ * Submit-Handler des 2FA-Panels. Der Code (TOTP oder Wiederherstellungscode)
+ * wird server-seitig geprueft - es liegt kein Geheimnis im Addon, daher geht
+ * das anders als bei Passkeys problemlos aus dem Erweiterungs-Kontext.
+ */
+function submit2fa(username: string, recoveryMode: boolean) {
+    const input = elById<HTMLInputElement>("twofa-code");
+    const trust = elById<HTMLInputElement>("twofa-trust");
+    const submitButton = elById<HTMLButtonElement>("twofa-submit");
+    const progress = elById("twofa-progress");
+    const errorBox = elById("twofa-error");
+    const code = input.value.trim();
 
-    // Create PAT info panel if it doesn't exist
-    let panelPat: HTMLElement | null = document.getElementById("pat-required-panel");
-    if (!panelPat) {
-        panelPat = document.createElement("div");
-        panelPat.id = "pat-required-panel";
-        panelPat.className = "panel";
+    errorBox.style.display = "none";
 
-        const lang = browser.i18n.getUILanguage().substr(0, 2);
-        let title, info, step1, step2, step3, step4, step5, btnOpen, btnCancel;
-
-        if (lang === "de") {
-            title = "Zwei-Faktor-Authentifizierung aktiv";
-            info = "Ihr Konto hat 2FA aktiviert. Browser-Erweiterungen unterstützen keine direkte 2FA-Eingabe. Bitte erstellen Sie ein Personal Access Token:";
-            step1 = "Öffnen Sie mail.aionda.com und melden Sie sich an";
-            step2 = "Klicken Sie im Adress-Manager rechts oben auf Ihren Benutzernamen";
-            step3 = "Wählen Sie <strong>Konto → Personal Access Tokens</strong>";
-            step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
-            step5 = "Kommen Sie hierher zurück: <strong>Benutzername bleibt gleich</strong>, aber im Feld <strong>\"Passwort\"</strong> geben Sie das kopierte Token ein";
-            btnOpen = "Aionda Mail öffnen";
-            btnCancel = "Abbrechen";
-        } else if (lang === "fr") {
-            title = "Authentification à deux facteurs active";
-            info = "Votre compte a 2FA activé. Les extensions de navigateur ne prennent pas en charge la saisie directe du 2FA. Veuillez créer un Personal Access Token :";
-            step1 = "Ouvrez mail.aionda.com et connectez-vous";
-            step2 = "Cliquez sur votre nom d'utilisateur en haut à droite du gestionnaire d'adresses";
-            step3 = "Sélectionnez <strong>Compte → Personal Access Tokens</strong>";
-            step4 = "Créez un nouveau token et copiez-le";
-            step5 = "Revenez ici : <strong>le nom d'utilisateur reste le même</strong>, mais dans le champ <strong>« Mot de passe »</strong> entrez le token copié";
-            btnOpen = "Ouvrir Aionda Mail";
-            btnCancel = "Annuler";
-        } else {
-            title = "Two-Factor Authentication Active";
-            info = "Your account has 2FA enabled. Browser extensions do not support direct 2FA input. Please create a Personal Access Token:";
-            step1 = "Open mail.aionda.com and log in";
-            step2 = "Click on your username in the top right of the Address Manager";
-            step3 = "Select <strong>Account → Personal Access Tokens</strong>";
-            step4 = "Create a new token and copy it";
-            step5 = "Come back here: <strong>Username stays the same</strong>, but in the <strong>\"Password\"</strong> field enter the copied token";
-            btnOpen = "Open Aionda Mail";
-            btnCancel = "Cancel";
-        }
-
-        panelPat.innerHTML = `
-            <h1>${title}</h1>
-            <p class="hint">${info}</p>
-            <ol class="pat-steps">
-                <li>${step1}</li>
-                <li>${step2}</li>
-                <li>${step3}</li>
-                <li>${step4}</li>
-                <li>${step5}</li>
-            </ol>
-            <div class="buttons">
-                <button type="button" id="btn-open-aionda">${btnOpen}</button>
-                <button type="button" id="btn-pat-cancel">${btnCancel}</button>
-            </div>
-        `;
-        loginPanel.parentNode!.insertBefore(panelPat, loginPanel.nextSibling);
-
-        // Der "Aionda Mail oeffnen"-Button ist der Primaeraktion (Teal)
-        elById("btn-open-aionda").classList.add("btn-primary");
-
-        // Add event listeners
-        elById("btn-open-aionda").onclick = function () {
-            browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
-        };
-        elById("btn-pat-cancel").onclick = function () {
-            changePanel("login-panel");
-        };
+    // Nur der TOTP-Code hat ein festes 6-stelliges Format.
+    const invalid = recoveryMode ? code.length === 0 : !/^\d{6}$/.test(code);
+    if (invalid) {
+        errorBox.textContent = browser.i18n.getMessage("error2FAInvalidCode");
+        errorBox.style.display = "block";
+        return;
     }
 
-    // Show PAT info panel
-    changePanel("pat-required-panel");
+    submitButton.disabled = true;
+    progress.style.display = "inline-block";
+
+    const verify = recoveryMode
+        ? addonOpaqueClient!.useRecoveryCode(code)
+        : addonOpaqueClient!.verifyTotpLogin(code, trust.checked);
+
+    verify
+        .then(() => finish2faLogin(username))
+        .catch((error: AppError) => {
+            progress.style.display = "none";
+            submitButton.disabled = false;
+            errorBox.textContent = error.message || String(error);
+            errorBox.style.display = "block";
+            input.select();
+        });
+}
+
+/**
+ * Zeigt das 2FA-Eingabefeld im Addon. Voraussetzung ist eine schwebende
+ * 2FA-Session (passwordOpaqueLogin mit establishBrowserSession lieferte
+ * requires_2fa). Wichtig: der Login-2FA-Gate feuert serverseitig NUR bei
+ * aktivem TOTP - Passkeys allein loesen keinen Login-Zweitfaktor aus (sie
+ * dienen dem Vault-Entsperren). Daher genuegt hier TOTP + Recovery-Fallback;
+ * ein Passkey wird an dieser Stelle nie verlangt (und liesse sich aus dem
+ * chrome-extension://-Kontext wegen der rpId-Bindung ohnehin nicht nutzen).
+ */
+function show2FAInput(username: string, _password: string) {
+    const loginProgress = document.getElementById("progress-login");
+    if (loginProgress) {loginProgress.style.display = "none";}
+
+    // Ohne OPAQUE-Client (praktisch nie) bleibt nur der Webseiten-Weg.
+    if (typeof addonOpaqueClient === "undefined") {
+        browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
+        return;
+    }
+
+    let panel = document.getElementById("twofa-panel");
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "twofa-panel";
+        panel.className = "panel";
+        panel.innerHTML = `
+            <h1>${browser.i18n.getMessage("title2FA")}</h1>
+            <p class="hint" id="twofa-info">${browser.i18n.getMessage("info2FA")}</p>
+            <div>
+                <input type="text" id="twofa-code" inputmode="numeric" autocomplete="one-time-code"
+                       maxlength="19" placeholder="${browser.i18n.getMessage("twofaCodePlaceholder")}">
+            </div>
+            <div id="twofa-trust-row">
+                <input type="checkbox" id="twofa-trust">
+                <label for="twofa-trust">${browser.i18n.getMessage("twofaTrustDevice")}</label>
+            </div>
+            <p class="error" id="twofa-error" style="display:none"></p>
+            <div class="buttons">
+                <span id="twofa-progress" class="confirm-spinner" style="display:none"></span>
+                <button type="button" id="twofa-submit" class="btn-primary">${browser.i18n.getMessage("buttonLogin")}</button>
+            </div>
+            <p class="field-hint"><a href="#" id="twofa-recovery-toggle">${browser.i18n.getMessage("twofaUseRecovery")}</a></p>
+            <p class="field-hint"><a href="#" id="twofa-website">${browser.i18n.getMessage("twofaWebsiteFallback")}</a></p>
+        `;
+        const loginPanel = elById("login-panel");
+        loginPanel.parentNode!.insertBefore(panel, loginPanel.nextSibling);
+    }
+
+    let recoveryMode = false;
+    const info = elById("twofa-info");
+    const input = elById<HTMLInputElement>("twofa-code");
+    const trustRow = elById("twofa-trust-row");
+    const toggle = elById("twofa-recovery-toggle");
+    const errorBox = elById("twofa-error");
+
+    const applyMode = () => {
+        info.textContent = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryInfo" : "info2FA");
+        input.placeholder = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryPlaceholder" : "twofaCodePlaceholder");
+        input.setAttribute("inputmode", recoveryMode ? "text" : "numeric");
+        trustRow.style.display = recoveryMode ? "none" : "flex";
+        toggle.textContent = browser.i18n.getMessage(recoveryMode ? "twofaUseAuthenticator" : "twofaUseRecovery");
+        input.value = "";
+        errorBox.style.display = "none";
+        input.focus();
+    };
+
+    elById("twofa-submit").onclick = () => submit2fa(username, recoveryMode);
+    input.onkeydown = (ev: KeyboardEvent) => {
+        if (ev.key === "Enter") {ev.preventDefault(); submit2fa(username, recoveryMode);}
+    };
+    toggle.onclick = (ev: Event) => {
+        ev.preventDefault();
+        recoveryMode = !recoveryMode;
+        applyMode();
+    };
+    elById("twofa-website").onclick = (ev: Event) => {
+        ev.preventDefault();
+        browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
+    };
+
+    changePanel("twofa-panel");
+    applyMode();
 }
 
 function resetPassword(e: Event) {

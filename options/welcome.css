@@ -402,3 +402,49 @@ form div.buttons {
         transform: translateY(0);
     }
 }
+
+/* 2FA-Eingabe im Addon (TOTP + Wiederherstellungscode) */
+.btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+    border-color: #0e7490;
+    box-shadow: 0 2px 8px rgba(14, 116, 144, 0.25);
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+    border-color: #155e75;
+}
+#twofa-code {
+    letter-spacing: 0.25em;
+    text-align: center;
+    font-size: 20px;
+}
+#twofa-trust-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 0 16px;
+}
+#twofa-trust-row label {
+    margin: 0;
+    font-weight: 400;
+    color: #0f172a;
+    font-size: 14px;
+}
+#twofa-trust {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: #0e7490;
+}
+#twofa-panel .field-hint {
+    margin: 6px 0 0;
+}
+#twofa-panel .field-hint a {
+    color: #0e7490;
+    text-decoration: none;
+}
+#twofa-panel .field-hint a:hover {
+    text-decoration: underline;
+}

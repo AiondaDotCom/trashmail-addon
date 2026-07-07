@@ -216,5 +216,16 @@
 
     "guardianLimitedMode": {"message": "Limigita Protekto"},
     "guardianChromeNoTls": {"message": "TLS-atesta kontrolado ne disponebla en Chrome"},
-    "guardianEd25519NotSupported": {"message": "Ed25519 ne subtenata - Chrome 113+ bezonata"}
+    "guardianEd25519NotSupported": {"message": "Ed25519 ne subtenata - Chrome 113+ bezonata"},
+    "title2FA": {"message": "Dufaktora aŭtentigo"},
+    "info2FA": {"message": "Enigu la 6-ciferan kodon el via aŭtentiga aplikaĵo."},
+    "error2FAInvalidCode": {"message": "Bonvolu enigi 6-ciferan kodon."},
+    "twofaCodePlaceholder": {"message": "123456"},
+    "twofaTrustDevice": {"message": "Fidi ĉi tiun aparaton (30 tagoj)"},
+    "twofaUseRecovery": {"message": "Uzi restarigan kodon"},
+    "twofaUseAuthenticator": {"message": "Uzi aŭtentigilan kodon"},
+    "twofaRecoveryInfo": {"message": "Enigu unu el viaj restarigaj kodoj."},
+    "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
+    "twofaWebsiteFallback": {"message": "Anstataŭe krei ĵetonon en la retejo"},
+    "twofaProgress": {"message": "Finfaranta ensaluton ..."}
 }
