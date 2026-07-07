@@ -537,6 +537,7 @@
         }
       }
       return browser.storage.local.set({ "previous_addresses": currentPrevAddresses }).then(() => {
+        browser.runtime.sendMessage({ "action": "auth_completed" }).catch(() => void 0);
         browser.windows.getCurrent().then((w) => {
           browser.windows.remove(w.id);
         });

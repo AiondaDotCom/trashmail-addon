@@ -117,7 +117,7 @@ describe('contextMenus.onClicked', () => {
         expect(String(mock.windows.created[0]!['url'])).toContain('create-address');
     });
 
-    it('opens the login window instead of the broken form when logged out', async () => {
+    it('opens the login window and remembers the intent when logged out', async () => {
         // Kein username/password -> nach Logout darf nicht das leere Formular kommen.
         await importBackground();
         mock.contextMenus.onClicked.trigger(
@@ -127,6 +127,41 @@ describe('contextMenus.onClicked', () => {
         await flush();
         expect(mock.windows.created.length).toBe(1);
         expect(String(mock.windows.created[0]!['url'])).toContain('welcome.html');
+        // Absicht gemerkt, damit sie nach dem Login fortgesetzt werden kann.
+        const pending = mock.storage.local.data.get('pending_create_address') as { url?: string; tabId?: number; frameId?: number; ts?: number };
+        expect(pending).toMatchObject({ url: 'https://site.test/', tabId: 7, frameId: 0 });
+        expect(typeof pending.ts).toBe('number');
+    });
+
+    it('resumes the pending create-address after auth_completed', async () => {
+        await mock.storage.local.set({ pending_create_address: { url: 'https://p.test/', windowId: 3, tabId: 7, frameId: 0, ts: Date.now() } });
+        await importBackground();
+
+        mock.runtime.onMessage.trigger({ action: 'auth_completed' }, {}, () => undefined);
+        await flush();
+
+        // Formular geoeffnet und Pending-Absicht verbraucht.
+        expect(mock.windows.created.length).toBe(1);
+        expect(String(mock.windows.created[0]!['url'])).toContain('create-address');
+        expect(mock.storage.local.data.has('pending_create_address')).toBe(false);
+
+        // Kontext wird an das neue Fenster durchgereicht.
+        const popupTabId = 100;
+        mock.tabs.onUpdated.trigger(popupTabId, { status: 'complete' }, { id: popupTabId, url: 'about:blank', windowId: 500 });
+        await flush();
+        expect(mock.tabs.sentMessages).toContainEqual({ tabId: popupTabId, message: ['https://p.test/', 3, 7, 0] });
+    });
+
+    it('does NOT resume a stale pending intent (older than 2 min)', async () => {
+        await mock.storage.local.set({ pending_create_address: { url: 'https://old.test/', windowId: 3, tabId: 7, frameId: 0, ts: Date.now() - 130_000 } });
+        await importBackground();
+
+        mock.runtime.onMessage.trigger({ action: 'auth_completed' }, {}, () => undefined);
+        await flush();
+
+        // Kein Formular, aber die veraltete Absicht ist aufgeraeumt.
+        expect(mock.windows.created.length).toBe(0);
+        expect(mock.storage.local.data.has('pending_create_address')).toBe(false);
     });
 
     it('pastes a previous address by sending the menu id to the tab', async () => {

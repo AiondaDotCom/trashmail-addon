@@ -80,14 +80,21 @@ function openCenteredPopup(url: string, width: number, height: number): void {
     });
 }
 
-async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): Promise<void> {
-    // Abgemeldet? Dann das Anmelde-Fenster oeffnen statt des leeren Formulars
-    // (ohne Session/Zugangsdaten kann keine DEA erstellt werden).
-    if (!(await isLoggedIn())) {
-        openCenteredPopup(browser.runtime.getURL("options/welcome.html"), 600, 720);
-        return;
-    }
+/** Eltern-Tab-Kontext fuer das Einfuegen der Adresse in das Formularfeld. */
+interface ParentContext {
+    url?: string;
+    windowId?: number;
+    tabId?: number;
+    frameId: number;
+}
 
+/** Gemerkte "Adresse einfuegen"-Absicht ueber einen Login hinweg. */
+interface PendingCreateAddress extends ParentContext {
+    ts: number;
+}
+
+/** Oeffnet das create-address-Formular und reicht den Eltern-Kontext durch. */
+function openCreateAddressForm(ctx: ParentContext): void {
     const width = 750;
     const height = 720;
     // Zentriert ueber dem zuletzt fokussierten Browserfenster oeffnen
@@ -104,12 +111,40 @@ async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): P
             if (tabId === window!.tabs![0]!.id && changeInfo.status === "complete") {
                 browser.tabs.onUpdated.removeListener(handler);
                 // Send the parent url and window ID through to the new window.
-                browser.tabs.sendMessage(
-                    tab.id!, [parentTab.url, parentTab.windowId, parentTab.id, frameId]);
+                browser.tabs.sendMessage(tab.id!, [ctx.url, ctx.windowId, ctx.tabId, ctx.frameId]);
             }
         };
         browser.tabs.onUpdated.addListener(handler);
     });
+}
+
+async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): Promise<void> {
+    const ctx: ParentContext = { url: parentTab.url, windowId: parentTab.windowId, tabId: parentTab.id, frameId };
+    // Abgemeldet? Absicht merken und Login zeigen - nach dem Login setzt der
+    // auth_completed-Handler das Einfuegen automatisch fort (kein "im Regen
+    // stehen lassen"). Ohne Session/Zugangsdaten kann keine DEA erstellt werden.
+    if (!(await isLoggedIn())) {
+        const pending: PendingCreateAddress = { ...ctx, ts: Date.now() };
+        await browser.storage.local.set({ "pending_create_address": pending });
+        openCenteredPopup(browser.runtime.getURL("options/welcome.html"), 600, 720);
+        return;
+    }
+    openCreateAddressForm(ctx);
+}
+
+/**
+ * Nach erfolgreichem Login im Welcome-Fenster: eine gemerkte "Adresse
+ * einfuegen"-Absicht fortsetzen, damit der User nicht erneut das Kontextmenue
+ * bemuehen muss. Nur frische Absichten (< 2 Min) fortsetzen, sonst wuerde nach
+ * einem spaeteren, regulaeren Login unerwartet ein Formular aufpoppen.
+ */
+async function resumePendingCreateAddress(): Promise<void> {
+    const stored = await browser.storage.local.get("pending_create_address") as { pending_create_address?: PendingCreateAddress };
+    const pending = stored.pending_create_address;
+    if (!pending) { return; }
+    await browser.storage.local.remove("pending_create_address");
+    if (typeof pending.ts !== "number" || Date.now() - pending.ts > 120000) { return; }
+    openCreateAddressForm(pending);
 }
 
 browser.contextMenus.onClicked.addListener((event, parentTab) => {
@@ -331,6 +366,12 @@ browser.storage.sync.get(["username", "password"]).then((storage) => {
 });
 
 browser.runtime.onMessage.addListener((message: BackgroundMessage, sender, sendResponse) => {
+    // Nach erfolgreichem Login: gemerkte "Adresse einfuegen"-Absicht fortsetzen.
+    if (message.action === "auth_completed") {
+        resumePendingCreateAddress();
+        return; // keine Antwort noetig
+    }
+
     // Handle update_menu
     if (message.action === "update_menu") {
         (async () => {

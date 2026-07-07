@@ -49,11 +49,7 @@
       browser.windows.create({ "url": url, "type": "popup", "width": width, "height": height, "left": left, "top": top });
     });
   }
-  async function openCreateAddress(parentTab, frameId) {
-    if (!await isLoggedIn()) {
-      openCenteredPopup(browser.runtime.getURL("options/welcome.html"), 600, 720);
-      return;
-    }
+  function openCreateAddressForm(ctx) {
     const width = 750;
     const height = 720;
     browser.windows.getLastFocused().then((focused) => {
@@ -72,14 +68,33 @@
       const handler = (tabId, changeInfo, tab) => {
         if (tabId === window.tabs[0].id && changeInfo.status === "complete") {
           browser.tabs.onUpdated.removeListener(handler);
-          browser.tabs.sendMessage(
-            tab.id,
-            [parentTab.url, parentTab.windowId, parentTab.id, frameId]
-          );
+          browser.tabs.sendMessage(tab.id, [ctx.url, ctx.windowId, ctx.tabId, ctx.frameId]);
         }
       };
       browser.tabs.onUpdated.addListener(handler);
     });
+  }
+  async function openCreateAddress(parentTab, frameId) {
+    const ctx = { url: parentTab.url, windowId: parentTab.windowId, tabId: parentTab.id, frameId };
+    if (!await isLoggedIn()) {
+      const pending = { ...ctx, ts: Date.now() };
+      await browser.storage.local.set({ "pending_create_address": pending });
+      openCenteredPopup(browser.runtime.getURL("options/welcome.html"), 600, 720);
+      return;
+    }
+    openCreateAddressForm(ctx);
+  }
+  async function resumePendingCreateAddress() {
+    const stored = await browser.storage.local.get("pending_create_address");
+    const pending = stored.pending_create_address;
+    if (!pending) {
+      return;
+    }
+    await browser.storage.local.remove("pending_create_address");
+    if (typeof pending.ts !== "number" || Date.now() - pending.ts > 12e4) {
+      return;
+    }
+    openCreateAddressForm(pending);
   }
   browser.contextMenus.onClicked.addListener((event, parentTab) => {
     if (event.menuItemId === "paste-email") {
@@ -239,6 +254,10 @@
     console.warn("[TrashMail] Auto-login failed:", err.message || err);
   });
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "auth_completed") {
+      resumePendingCreateAddress();
+      return;
+    }
     if (message.action === "update_menu") {
       (async () => {
         try {
