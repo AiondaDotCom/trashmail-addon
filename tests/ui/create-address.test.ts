@@ -170,6 +170,34 @@ describe('create-address.ts', () => {
             expect((document.getElementById('btn-create') as HTMLButtonElement).disabled).toBe(false);
             expect(mock.tabs.sentMessages).toHaveLength(0);
         });
+
+        it('re-auths via PAT and retries when the session expired (error code 25)', async () => {
+            // OPAQUE-Konto mit hinterlegtem PAT, aber serverseitig abgelaufener Session.
+            mock.storage.sync.data.set('username', 'saf');
+            mock.storage.sync.data.set('password', 'tmpat_stalesession');
+            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 'fresh-sid' });
+            (globalThis as Record<string, unknown>)['addonOpaqueClient'] = { patOpaqueLogin };
+
+            // Erster create_dea-Call scheitert mit Code 25 (anonymer Fallback),
+            // der zweite (nach Re-Auth) klappt.
+            globals.callAPI
+                .mockRejectedValueOnce(Object.assign(new Error('nicht registriert'), { errorCode: 25 }))
+                .mockResolvedValueOnce({});
+            await bootWithSession();
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(patOpaqueLogin).toHaveBeenCalledWith('saf', 'tmpat_stalesession');
+            expect(mock.storage.local.data.get('session_id')).toBe('fresh-sid');
+            // Zweiter Versuch mit frischer Session
+            const retry = globals.callAPI.mock.calls.filter((c) => (c[0] as { cmd?: string }).cmd === 'create_dea');
+            expect(retry.at(-1)![0]).toMatchObject({ session_id: 'fresh-sid' });
+            // Adresse landet trotz anfaenglichem Fehler im Parent-Tab.
+            expect(mock.tabs.sentMessages).toContainEqual({ tabId: 42, message: 'myaddr@d.com' });
+
+            delete (globalThis as Record<string, unknown>)['addonOpaqueClient'];
+        });
     });
 
     describe('addressManager button', () => {

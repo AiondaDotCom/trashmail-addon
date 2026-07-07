@@ -36,6 +36,49 @@ function isPAT(password: unknown): boolean {
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
 }
 
+// Serverseitiger Fehlercode, wenn create_dea ohne gueltige Session laeuft und
+// still auf den anonymen Pfad zurueckfaellt ("Ziel-E-Mail nicht registriert").
+// Fuer uns das Signal, dass die gespeicherte session_id abgelaufen ist.
+const ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS = 25;
+
+/**
+ * Holt eine frische Session, wenn die gespeicherte abgelaufen ist. OPAQUE-Konten
+ * (PAT hinterlegt) melden sich per patOpaqueLogin an - dafuer sind libopaque.js
+ * und opaque-client.js in create-address.html eingebunden. Klassische Konten
+ * nutzen den Passwort-Login. Die neue session_id wird persistiert und
+ * zurueckgegeben.
+ */
+async function reauthAndGetSession(): Promise<string> {
+    const sync = await browser.storage.sync.get(["username", "password"]) as CreateAddressSync;
+    const username = sync["username"];
+    const password = sync["password"];
+    if (!username || !password) {
+        throw new Error(browser.i18n.getMessage("errorSessionExpired")
+            || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
+    }
+
+    if (isPAT(password)) {
+        if (typeof addonOpaqueClient === "undefined") {
+            throw new Error(browser.i18n.getMessage("errorSessionExpired")
+                || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
+        }
+        const login = await addonOpaqueClient.patOpaqueLogin(username, password);
+        const sessionId = String(login["session_id"]);
+        await browser.storage.local.set({ "session_id": sessionId });
+        return sessionId;
+    }
+
+    // Klassisches Konto: Passwort-Login
+    const response = await callAPI({
+        "cmd": "login",
+        "fe-login-user": username,
+        "fe-login-pass": password,
+    }) as unknown as { session_id?: string };
+    const sessionId = String(response.session_id);
+    await browser.storage.local.set({ "session_id": sessionId });
+    return sessionId;
+}
+
 let parentUrl: string | undefined;
 let parentId: number | undefined;
 let tabId: number | undefined;
@@ -126,16 +169,17 @@ const loginDetails: Promise<TmApiResponse> = Promise.all([p1, p2]).then((result:
 }).then((result: [CreateAddressSync, CreateAddressLocal]) => {
     const [sync, local] = result;
 
-    // If we have a stored session_id, use it directly
+    // If we have a stored session_id, use it directly. Falls sie serverseitig
+    // abgelaufen ist, faengt der Retry in createAddress() das ab (create_dea
+    // liefert dann Code 25) und meldet per PAT neu an.
     if (local.session_id) {
         console.log("[TrashMail] Using stored session_id");
         return { session_id: local.session_id };
     }
 
-    // Check if this is an OPAQUE account (PAT stored)
+    // OPAQUE-Konto (PAT hinterlegt): frische Session direkt im Popup per PAT holen.
     if (isPAT(sync["password"])) {
-        // Can't do OPAQUE login here, throw error to redirect user
-        throw new Error("Session expired. Please log in again via Options.");
+        return reauthAndGetSession().then((sessionId) => ({ session_id: sessionId }));
     }
 
     // For non-OPAQUE accounts, use classic login
@@ -194,7 +238,7 @@ async function createAddress(e: Event) {
         // Login-Daten abrufen
         const login = await loginDetails;
 
-        const data = {
+        const data: { cmd: string; session_id: unknown } = {
             "cmd": "create_dea",
             "session_id": login["session_id"],
         };
@@ -219,7 +263,19 @@ async function createAddress(e: Event) {
             },
         };
 
-        await callAPI(data, json);
+        try {
+            await callAPI(data, json);
+        } catch (err) {
+            // create_dea faellt bei ungueltiger Session still auf anonym zurueck
+            // (Code 25). In dem Fall einmal per PAT neu anmelden und wiederholen.
+            const code = (err as { errorCode?: number }).errorCode;
+            if (code === ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS) {
+                data.session_id = await reauthAndGetSession();
+                await callAPI(data, json);
+            } else {
+                throw err;
+            }
+        }
 
         const address: [string, string | undefined] = [`${String(form.get("disposable_name"))}@${String(form.get("domain"))}`, parentUrl];
 

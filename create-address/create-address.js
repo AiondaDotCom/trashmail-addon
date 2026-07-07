@@ -14,6 +14,32 @@
   function isPAT(password) {
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
   }
+  var ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS = 25;
+  async function reauthAndGetSession() {
+    const sync = await browser.storage.sync.get(["username", "password"]);
+    const username = sync["username"];
+    const password = sync["password"];
+    if (!username || !password) {
+      throw new Error(browser.i18n.getMessage("errorSessionExpired") || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
+    }
+    if (isPAT(password)) {
+      if (typeof addonOpaqueClient === "undefined") {
+        throw new Error(browser.i18n.getMessage("errorSessionExpired") || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
+      }
+      const login = await addonOpaqueClient.patOpaqueLogin(username, password);
+      const sessionId2 = String(login["session_id"]);
+      await browser.storage.local.set({ "session_id": sessionId2 });
+      return sessionId2;
+    }
+    const response = await callAPI({
+      "cmd": "login",
+      "fe-login-user": username,
+      "fe-login-pass": password
+    });
+    const sessionId = String(response.session_id);
+    await browser.storage.local.set({ "session_id": sessionId });
+    return sessionId;
+  }
   var parentUrl;
   var parentId;
   var tabId;
@@ -89,7 +115,7 @@
       return { session_id: local.session_id };
     }
     if (isPAT(sync["password"])) {
-      throw new Error("Session expired. Please log in again via Options.");
+      return reauthAndGetSession().then((sessionId) => ({ session_id: sessionId }));
     }
     const data = {
       "cmd": "login",
@@ -155,7 +181,17 @@
           "website": form.get("send") ? parentUrl : ""
         }
       };
-      await callAPI(data, json);
+      try {
+        await callAPI(data, json);
+      } catch (err) {
+        const code = err.errorCode;
+        if (code === ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS) {
+          data.session_id = await reauthAndGetSession();
+          await callAPI(data, json);
+        } else {
+          throw err;
+        }
+      }
       const address = [`${String(form.get("disposable_name"))}@${String(form.get("domain"))}`, parentUrl];
       const [storage, suffixesResponse] = await Promise.all([
         browser.storage.local.get("previous_addresses"),
