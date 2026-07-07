@@ -2,7 +2,6 @@
 (() => {
   // trashmail-addon/ts/background.ts
   var browser = globalThis.browser ?? chrome;
-  console.log("[Background] Service Worker gestartet - build: resume-v3 (auth_completed + race-fix)");
   if (typeof importScripts === "function") {
     importScripts("api.js", "publicsuffixlist.js", "guardian.js");
   }
@@ -89,15 +88,12 @@
     const stored = await browser.storage.local.get("pending_create_address");
     const pending = stored.pending_create_address;
     if (!pending) {
-      console.log("[Background] auth_completed: keine gemerkte Adresse-Absicht");
       return;
     }
     await browser.storage.local.remove("pending_create_address");
     if (typeof pending.ts !== "number" || Date.now() - pending.ts > 12e4) {
-      console.log("[Background] auth_completed: Absicht veraltet, verworfen");
       return;
     }
-    console.log("[Background] auth_completed: setze Adresse-Einfuegen fort", pending);
     openCreateAddressForm(pending);
   }
   browser.contextMenus.onClicked.addListener((event, parentTab) => {
@@ -259,7 +255,6 @@
   });
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "auth_completed") {
-      console.log("[Background] auth_completed empfangen");
       resumePendingCreateAddress();
       return;
     }

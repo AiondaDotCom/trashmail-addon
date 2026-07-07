@@ -1,12 +1,6 @@
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
-// Build-Marker: erscheint beim Service-Worker-Start in der Konsole. Damit laesst
-// sich zweifelsfrei pruefen, ob Chrome den NEUEN Build geladen hat (MV3 cached
-// den Service Worker gern). Bei jeder relevanten background/welcome-Aenderung
-// hochzaehlen.
-console.log("[Background] Service Worker gestartet - build: resume-v3 (auth_completed + race-fix)");
-
 // Import additional scripts (Service Worker only - Chrome)
 // Firefox with background.scripts loads these via manifest
 if (typeof importScripts === "function") {
@@ -147,16 +141,9 @@ async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): P
 async function resumePendingCreateAddress(): Promise<void> {
     const stored = await browser.storage.local.get("pending_create_address") as { pending_create_address?: PendingCreateAddress };
     const pending = stored.pending_create_address;
-    if (!pending) {
-        console.log("[Background] auth_completed: keine gemerkte Adresse-Absicht");
-        return;
-    }
+    if (!pending) { return; }
     await browser.storage.local.remove("pending_create_address");
-    if (typeof pending.ts !== "number" || Date.now() - pending.ts > 120000) {
-        console.log("[Background] auth_completed: Absicht veraltet, verworfen");
-        return;
-    }
-    console.log("[Background] auth_completed: setze Adresse-Einfuegen fort", pending);
+    if (typeof pending.ts !== "number" || Date.now() - pending.ts > 120000) { return; }
     openCreateAddressForm(pending);
 }
 
@@ -381,7 +368,6 @@ browser.storage.sync.get(["username", "password"]).then((storage) => {
 browser.runtime.onMessage.addListener((message: BackgroundMessage, sender, sendResponse) => {
     // Nach erfolgreichem Login: gemerkte "Adresse einfuegen"-Absicht fortsetzen.
     if (message.action === "auth_completed") {
-        console.log("[Background] auth_completed empfangen");
         resumePendingCreateAddress();
         return; // undefined -> Kanal schliesst sofort, Welcome-Fenster kann schliessen
     }
