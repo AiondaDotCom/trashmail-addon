@@ -103,15 +103,18 @@
     if (!response.ok) {
       let serverMessage = "";
       let serverErrorCode;
+      let serverRemaining;
       try {
         const errorBody = JSON.parse(await response.text());
         serverMessage = errorBody.msg ?? "";
         serverErrorCode = errorBody.error_code;
+        serverRemaining = errorBody.remaining_seconds;
       } catch {
       }
       const error2 = new Error(serverMessage || `${response.status} ${response.statusText} Error occurred.`);
       error2.errorCode = serverErrorCode;
       error2.httpStatus = response.status;
+      error2.remainingSeconds = serverRemaining;
       throw error2;
     }
     const signature = response.headers.get("x-aionda-signature");

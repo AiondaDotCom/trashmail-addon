@@ -31,6 +31,8 @@
 
     "welcomeTitle": {"message": "Bonvenon al la Aionda Mail aldonaĵo"},
     "welcomeRegisterTitle": {"message": "Krei konton"},
+    "confirmResendInMinutes": {"message": "Resendi post $1 min"},
+    "confirmResendInSeconds": {"message": "Resendi post $1 s"},
     "confirmTitle": {"message": "Preskaŭ preta: konfirmu vian retadreson"},
     "confirmSentTo": {"message": "Ni sendis konfirman retmesaĝon al $1. Malfermu ĝin kaj klaku la ligilon - ni atendas ĉi tie."},
     "confirmWaiting": {"message": "Atendante vian konfirmon…"},

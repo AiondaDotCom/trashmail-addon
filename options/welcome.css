@@ -268,6 +268,21 @@ form div.buttons {
     color: #b91c1c;
 }
 
+/* Schrittanleitung im 2FA-Fallback-Panel */
+.pat-steps {
+    margin: 4px 0 18px;
+    padding-left: 22px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #334155;
+}
+.pat-steps li {
+    padding: 2px 0;
+}
+.pat-steps strong {
+    color: #0f172a;
+}
+
 #register-panel .hint {
     font-size: 13px;
     color: #64748b;

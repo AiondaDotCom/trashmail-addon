@@ -33,6 +33,8 @@
 
     "welcomeTitle": {"message": "Willkommen zum Aionda Mail Add-On"},
     "welcomeRegisterTitle": {"message": "Konto erstellen"},
+    "confirmResendInMinutes": {"message": "Erneut senden in $1 Min."},
+    "confirmResendInSeconds": {"message": "Erneut senden in $1 Sek."},
     "confirmTitle": {"message": "Fast geschafft: E-Mail bestätigen"},
     "confirmSentTo": {"message": "Wir haben eine Bestätigungs-E-Mail an $1 geschickt. Öffne sie und klicke auf den Link - wir warten hier so lange."},
     "confirmWaiting": {"message": "Warte auf deine Bestätigung…"},

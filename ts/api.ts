@@ -174,16 +174,19 @@ async function callAPI(data: Record<string, unknown>, json: Record<string, unkno
         // msg im JSON-Body - die dem User zeigen statt der rohen Statuszeile.
         let serverMessage = "";
         let serverErrorCode: number | undefined;
+        let serverRemaining: number | undefined;
         try {
-            const errorBody = JSON.parse(await response.text()) as { msg?: string; error_code?: number };
+            const errorBody = JSON.parse(await response.text()) as { msg?: string; error_code?: number; remaining_seconds?: number };
             serverMessage = errorBody.msg ?? "";
             serverErrorCode = errorBody.error_code;
+            serverRemaining = errorBody.remaining_seconds;
         } catch {
             // Kein JSON (z.B. Proxy-Fehlerseite) - generische Meldung nutzen
         }
-        const error = new Error(serverMessage || `${response.status} ${response.statusText} Error occurred.`) as Error & { errorCode?: number; httpStatus?: number };
+        const error = new Error(serverMessage || `${response.status} ${response.statusText} Error occurred.`) as Error & { errorCode?: number; httpStatus?: number; remainingSeconds?: number };
         error.errorCode = serverErrorCode;
         error.httpStatus = response.status;
+        error.remainingSeconds = serverRemaining;
         throw error;
     }
 

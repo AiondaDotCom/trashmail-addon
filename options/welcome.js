@@ -253,7 +253,7 @@
       }
       fitWindowToContent();
     } catch (e) {
-      console.warn("[TrashMail] Username availability check failed:", e);
+      console.warn("[Aionda Mail] Username availability check failed:", e);
     }
   }
   function register(e) {
@@ -346,10 +346,39 @@
       throw error;
     }
   }
+  var resendCooldownTimer;
+  function startResendCooldown(seconds) {
+    const resendButton = elById("btn-confirm-resend");
+    if (resendCooldownTimer) {
+      clearInterval(resendCooldownTimer);
+    }
+    let remaining = Math.max(0, Math.floor(seconds));
+    const tick = () => {
+      if (remaining <= 0) {
+        if (resendCooldownTimer) {
+          clearInterval(resendCooldownTimer);
+        }
+        resendButton.disabled = false;
+        resendButton.textContent = browser.i18n.getMessage("confirmResend");
+        return;
+      }
+      resendButton.disabled = true;
+      if (remaining >= 60) {
+        const mmss = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
+        resendButton.textContent = browser.i18n.getMessage("confirmResendInMinutes", mmss);
+      } else {
+        resendButton.textContent = browser.i18n.getMessage("confirmResendInSeconds", String(remaining));
+      }
+      remaining--;
+    };
+    tick();
+    resendCooldownTimer = setInterval(tick, 1e3);
+  }
   function showConfirmationPanel(email, _sessionId) {
     confirmEmail = email;
     changePanel("confirm-panel");
     elById("confirm-sent-to").textContent = browser.i18n.getMessage("confirmSentTo", email);
+    startResendCooldown(300);
     const poll = async () => {
       try {
         const result = await callWithReauth("list_real_emails");
@@ -369,20 +398,30 @@
           }, 1500);
         }
       } catch (e) {
-        console.warn("[TrashMail] Confirmation poll failed:", e);
+        console.warn("[Aionda Mail] Confirmation poll failed:", e);
       }
     };
     poll();
     confirmPollTimer = setInterval(poll, 3e3);
   }
   elById("btn-confirm-resend").addEventListener("click", () => {
+    const resendButton = elById("btn-confirm-resend");
+    if (resendButton.disabled) {
+      return;
+    }
     const confirmError = elById("confirm-error");
     confirmError.style.display = "none";
     callWithReauth("resend_confirmation_email", { "email": confirmEmail }).then(() => {
       elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmResent");
+      startResendCooldown(300);
     }).catch((error) => {
-      confirmError.textContent = error.message || String(error);
-      confirmError.style.display = "block";
+      const remaining = error.remainingSeconds;
+      if (typeof remaining === "number" && remaining > 0) {
+        startResendCooldown(remaining);
+      } else {
+        confirmError.textContent = error.message || String(error);
+        confirmError.style.display = "block";
+      }
     });
   });
   elById("btn-confirm-skip").addEventListener("click", () => {
@@ -396,19 +435,19 @@
   function getBrowserName() {
     if (typeof navigator !== "undefined" && navigator.userAgent) {
       if (navigator.userAgent.includes("Firefox")) {
-        return "Firefox Extension";
-      }
-      if (navigator.userAgent.includes("Chrome")) {
-        return "Chrome Extension";
-      }
-      if (navigator.userAgent.includes("Safari")) {
-        return "Safari Extension";
+        return "Firefox Add-On";
       }
       if (navigator.userAgent.includes("Edge")) {
-        return "Edge Extension";
+        return "Edge Add-On";
+      }
+      if (navigator.userAgent.includes("Chrome")) {
+        return "Chrome Add-On";
+      }
+      if (navigator.userAgent.includes("Safari")) {
+        return "Safari Add-On";
       }
     }
-    return "Browser Extension";
+    return "Browser Add-On";
   }
   function classicLogin(username, password) {
     return callAPI({
@@ -429,7 +468,7 @@
     });
     if (needsPAT && sessionId) {
       return createAccessToken(sessionId, getBrowserName()).then((token) => {
-        console.log("[TrashMail] PAT created successfully");
+        console.log("[Aionda Mail] PAT created successfully");
         return browser.storage.sync.set({
           "username": username,
           "password": token
@@ -440,7 +479,7 @@
       }).then(() => {
         return loginDetails;
       }).catch((patError) => {
-        console.warn("[TrashMail] PAT creation failed:", patError);
+        console.warn("[Aionda Mail] PAT creation failed:", patError);
         return browser.storage.sync.set({
           "username": username,
           "password": password
@@ -519,14 +558,14 @@
     const password = form.get("password");
     const isPatToken = isPAT(password);
     if (isPatToken) {
-      console.log("[TrashMail] PAT detected, checking auth method...");
+      console.log("[Aionda Mail] PAT detected, checking auth method...");
       if (typeof addonOpaqueClient !== "undefined") {
         addonOpaqueClient.checkOpaqueEnabled(username).then((authMethods) => {
           if (authMethods.opaque_enabled) {
-            console.log("[TrashMail] Using PAT-OPAQUE authentication");
+            console.log("[Aionda Mail] Using PAT-OPAQUE authentication");
             return addonOpaqueClient.patOpaqueLogin(username, password);
           } else {
-            console.log("[TrashMail] Using classic PAT login (server not OPAQUE yet)");
+            console.log("[Aionda Mail] Using classic PAT login (server not OPAQUE yet)");
             return classicLogin(username, password);
           }
         }).then((loginDetails) => {
@@ -535,7 +574,7 @@
           return loadDEAAndClose(loginDetails["session_id"]);
         }).catch((error) => {
           if (error.message && error.message.includes("OPAQUE")) {
-            console.warn("[TrashMail] OPAQUE failed, trying classic PAT login:", error.message);
+            console.warn("[Aionda Mail] OPAQUE failed, trying classic PAT login:", error.message);
             classicLogin(username, password).then((loginDetails) => {
               return handleLoginSuccess(username, password, loginDetails, false);
             }).then((loginDetails) => {
@@ -548,7 +587,7 @@
           showLoginError(error, loginError, progress, cancelButton, loginButton);
         });
       } else {
-        console.log("[TrashMail] OPAQUE client not available, using classic PAT login");
+        console.log("[Aionda Mail] OPAQUE client not available, using classic PAT login");
         classicLogin(username, password).then((loginDetails) => {
           return handleLoginSuccess(username, password, loginDetails, false);
         }).then((loginDetails) => {
@@ -559,7 +598,7 @@
       }
       return;
     }
-    console.log("[TrashMail] Checking authentication method...");
+    console.log("[Aionda Mail] Checking authentication method...");
     checkAuthMethodAndLogin(username, password, loginButton, cancelButton, progress, loginError);
   }
   function showLoginError(error, loginError, progress, cancelButton, loginButton) {
@@ -578,18 +617,18 @@
     }
     opaqueCheckPromise.then((authMethods) => {
       if (authMethods.opaque_enabled) {
-        console.log("[TrashMail] Account uses OPAQUE - PAT required");
-        showOpaquePatRequired(username);
+        console.log("[Aionda Mail] OPAQUE account - logging in and creating PAT automatically");
+        loginWithOpaquePassword(username, password, loginButton, cancelButton, progress, loginError);
         return;
       }
       if (typeof addonSrpClient === "undefined") {
-        console.log("[TrashMail] SRP client not available, using classic login");
+        console.log("[Aionda Mail] SRP client not available, using classic login");
         performClassicLoginWithMigration(username, password, loginButton, cancelButton, progress, loginError);
         return;
       }
       return addonSrpClient.checkSrpEnabled(username).then((result) => {
         if (result && result.success !== false && result.srp_enabled) {
-          console.log("[TrashMail] Using SRP (Zero-Knowledge) authentication");
+          console.log("[Aionda Mail] Using SRP (Zero-Knowledge) authentication");
           return addonSrpClient.login(username, password).then((loginDetails) => {
             if (loginDetails.requires_2fa) {
               show2FAInput(username, password);
@@ -600,7 +639,7 @@
             return loadDEAAndClose(loginDetails["session_id"]);
           });
         } else {
-          console.log("[TrashMail] Using classic login");
+          console.log("[Aionda Mail] Using classic login");
           return performClassicLoginWithMigrationAsync(username, password);
         }
       });
@@ -613,7 +652,7 @@
         return;
       }
       if (error.message && (error.message.includes("opaque_check") || error.message.includes("srp_check") || error.message.includes("fetch"))) {
-        console.warn("[TrashMail] Auth check failed, falling back to classic login:", error.message);
+        console.warn("[Aionda Mail] Auth check failed, falling back to classic login:", error.message);
         performClassicLoginWithMigrationAsync(username, password).catch((fallbackError) => {
           showLoginError(fallbackError, loginError, progress, cancelButton, loginButton);
         });
@@ -622,86 +661,22 @@
       showLoginError(error, loginError, progress, cancelButton, loginButton);
     });
   }
-  function showOpaquePatRequired(username) {
-    const loginPanel = elById("login-panel");
-    const progress = document.getElementById("progress-login");
-    const loginButton = document.getElementById("btn-login");
-    const cancelButton = document.getElementById("btn-login-cancel");
-    if (progress) {
-      progress.style.display = "none";
+  function loginWithOpaquePassword(username, password, loginButton, cancelButton, progress, loginError) {
+    if (typeof addonOpaqueClient === "undefined") {
+      showLoginError(new Error("OPAQUE client not loaded. Please reload."), loginError, progress, cancelButton, loginButton);
+      return;
     }
-    if (loginButton) {
-      loginButton.disabled = false;
-    }
-    if (cancelButton) {
-      cancelButton.disabled = false;
-    }
-    let panelOpaque = document.getElementById("opaque-pat-required-panel");
-    if (!panelOpaque) {
-      panelOpaque = document.createElement("div");
-      panelOpaque.id = "opaque-pat-required-panel";
-      panelOpaque.className = "panel";
-      const lang = browser.i18n.getUILanguage().substr(0, 2);
-      let title, info, step1, step2, step3, step4, step5, btnOpen, btnCancel;
-      if (lang === "de") {
-        title = "Personal Access Token erforderlich";
-        info = "Ihr Konto verwendet die neue OPAQUE-Authentifizierung. Diese bietet maximale Sicherheit, erfordert aber einen Personal Access Token (PAT) f\xFCr die Browser-Erweiterung:";
-        step1 = "\xD6ffnen Sie mail.aionda.com und melden Sie sich an";
-        step2 = "Klicken Sie im Adress-Manager rechts oben auf Ihren Benutzernamen";
-        step3 = "W\xE4hlen Sie <strong>Konto \u2192 Personal Access Tokens</strong>";
-        step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
-        step5 = 'Kommen Sie hierher zur\xFCck: <strong>Benutzername bleibt gleich</strong>, aber im Feld <strong>"Passwort"</strong> geben Sie das kopierte Token ein';
-        btnOpen = "TrashMail \xF6ffnen";
-        btnCancel = "Abbrechen";
-      } else if (lang === "fr") {
-        title = "Personal Access Token requis";
-        info = "Votre compte utilise la nouvelle authentification OPAQUE. Cela offre une s\xE9curit\xE9 maximale mais n\xE9cessite un Personal Access Token (PAT) pour l'extension du navigateur :";
-        step1 = "Ouvrez mail.aionda.com et connectez-vous";
-        step2 = "Cliquez sur votre nom d'utilisateur en haut \xE0 droite du gestionnaire d'adresses";
-        step3 = "S\xE9lectionnez <strong>Compte \u2192 Personal Access Tokens</strong>";
-        step4 = "Cr\xE9ez un nouveau token et copiez-le";
-        step5 = "Revenez ici : <strong>le nom d'utilisateur reste le m\xEAme</strong>, mais dans le champ <strong>\xAB Mot de passe \xBB</strong> entrez le token copi\xE9";
-        btnOpen = "Ouvrir TrashMail";
-        btnCancel = "Annuler";
-      } else {
-        title = "Personal Access Token Required";
-        info = "Your account uses the new OPAQUE authentication. This provides maximum security but requires a Personal Access Token (PAT) for the browser extension:";
-        step1 = "Open mail.aionda.com and log in";
-        step2 = "Click on your username in the top right of the Address Manager";
-        step3 = "Select <strong>Account \u2192 Personal Access Tokens</strong>";
-        step4 = "Create a new token and copy it";
-        step5 = 'Come back here: <strong>Username stays the same</strong>, but in the <strong>"Password"</strong> field enter the copied token';
-        btnOpen = "Open TrashMail";
-        btnCancel = "Cancel";
+    const opaqueClient = addonOpaqueClient;
+    opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true }).then((loginDetails) => handleLoginSuccess(username, password, loginDetails, false)).then((loginDetails) => (
+      // OPAQUE-PAT anlegen und statt des Passworts hinterlegen
+      opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails)
+    )).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"])).catch((error) => {
+      if (error.requires_2fa) {
+        show2FAInput(username, password);
+        return;
       }
-      panelOpaque.innerHTML = `
-            <h2>${title}</h2>
-            <p>${info}</p>
-            <ol style="text-align: left; margin: 15px auto; max-width: 400px;">
-                <li>${step1}</li>
-                <li>${step2}</li>
-                <li>${step3}</li>
-                <li>${step4}</li>
-                <li>${step5}</li>
-            </ol>
-            <div style="margin-top: 20px;">
-                <input type="button" id="btn-open-trashmail-opaque" class="button"
-                       style="height: 32px; min-width: 140px; background-color: #0066cc; color: white;"
-                       value="${btnOpen}">
-                <input type="button" id="btn-opaque-cancel" class="button"
-                       style="height: 32px; min-width: 100px;"
-                       value="${btnCancel}">
-            </div>
-        `;
-      loginPanel.parentNode.insertBefore(panelOpaque, loginPanel.nextSibling);
-      elById("btn-open-trashmail-opaque").onclick = function() {
-        browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
-      };
-      elById("btn-opaque-cancel").onclick = function() {
-        changePanel("login-panel");
-      };
-    }
-    changePanel("opaque-pat-required-panel");
+      showLoginError(error, loginError, progress, cancelButton, loginButton);
+    });
   }
   function performClassicLoginWithMigrationAsync(username, password) {
     return classicLogin(username, password).then((loginDetails) => {
@@ -710,11 +685,11 @@
         throw { handled: true };
       }
       if (loginDetails.migrate_to_srp && typeof addonSrpClient !== "undefined") {
-        console.log("[TrashMail] Server supports SRP, migrating account...");
+        console.log("[Aionda Mail] Server supports SRP, migrating account...");
         addonSrpClient.migrateToSrp(username, password).then(() => {
-          console.log("[TrashMail] SRP migration successful");
+          console.log("[Aionda Mail] SRP migration successful");
         }).catch((err) => {
-          console.warn("[TrashMail] SRP migration failed (non-fatal):", err.message || err);
+          console.warn("[Aionda Mail] SRP migration failed (non-fatal):", err.message || err);
         });
       }
       return handleLoginSuccess(username, password, loginDetails, true);
@@ -768,7 +743,7 @@
         step3 = "W\xE4hlen Sie <strong>Konto \u2192 Personal Access Tokens</strong>";
         step4 = "Erstellen Sie ein neues Token und kopieren Sie es";
         step5 = 'Kommen Sie hierher zur\xFCck: <strong>Benutzername bleibt gleich</strong>, aber im Feld <strong>"Passwort"</strong> geben Sie das kopierte Token ein';
-        btnOpen = "TrashMail \xF6ffnen";
+        btnOpen = "Aionda Mail \xF6ffnen";
         btnCancel = "Abbrechen";
       } else if (lang === "fr") {
         title = "Authentification \xE0 deux facteurs active";
@@ -778,7 +753,7 @@
         step3 = "S\xE9lectionnez <strong>Compte \u2192 Personal Access Tokens</strong>";
         step4 = "Cr\xE9ez un nouveau token et copiez-le";
         step5 = "Revenez ici : <strong>le nom d'utilisateur reste le m\xEAme</strong>, mais dans le champ <strong>\xAB Mot de passe \xBB</strong> entrez le token copi\xE9";
-        btnOpen = "Ouvrir TrashMail";
+        btnOpen = "Ouvrir Aionda Mail";
         btnCancel = "Annuler";
       } else {
         title = "Two-Factor Authentication Active";
@@ -788,30 +763,27 @@
         step3 = "Select <strong>Account \u2192 Personal Access Tokens</strong>";
         step4 = "Create a new token and copy it";
         step5 = 'Come back here: <strong>Username stays the same</strong>, but in the <strong>"Password"</strong> field enter the copied token';
-        btnOpen = "Open TrashMail";
+        btnOpen = "Open Aionda Mail";
         btnCancel = "Cancel";
       }
       panelPat.innerHTML = `
-            <h2>${title}</h2>
-            <p>${info}</p>
-            <ol style="text-align: left; margin: 15px auto; max-width: 400px;">
+            <h1>${title}</h1>
+            <p class="hint">${info}</p>
+            <ol class="pat-steps">
                 <li>${step1}</li>
                 <li>${step2}</li>
                 <li>${step3}</li>
                 <li>${step4}</li>
                 <li>${step5}</li>
             </ol>
-            <div style="margin-top: 20px;">
-                <input type="button" id="btn-open-trashmail" class="button"
-                       style="height: 32px; min-width: 140px; background-color: #0066cc; color: white;"
-                       value="${btnOpen}">
-                <input type="button" id="btn-pat-cancel" class="button"
-                       style="height: 32px; min-width: 100px;"
-                       value="${btnCancel}">
+            <div class="buttons">
+                <button type="button" id="btn-open-aionda">${btnOpen}</button>
+                <button type="button" id="btn-pat-cancel">${btnCancel}</button>
             </div>
         `;
       loginPanel.parentNode.insertBefore(panelPat, loginPanel.nextSibling);
-      elById("btn-open-trashmail").onclick = function() {
+      elById("btn-open-aionda").classList.add("btn-primary");
+      elById("btn-open-aionda").onclick = function() {
         browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
       };
       elById("btn-pat-cancel").onclick = function() {

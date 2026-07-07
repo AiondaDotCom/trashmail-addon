@@ -41,6 +41,9 @@ describe('welcome.ts', () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [{}, {}] })));
     });
     afterEach(() => {
+        // Fake-Timer aufraeumen, falls ein Test sie (auch bei Assertion-Fehler)
+        // liegen liess - sonst timeouten alle folgenden Tests mit await tick().
+        vi.useRealTimers();
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
@@ -341,7 +344,10 @@ describe('welcome.ts', () => {
             vi.useRealTimers();
         });
 
-        it('lets the user resend the confirmation email or skip waiting', async () => {
+        it('gates resend behind a live countdown, then allows resending or skipping', async () => {
+            vi.useFakeTimers();
+            mock.i18n.messages.set('confirmResendInMinutes', 'Erneut senden in $1 Min.');
+            mock.i18n.messages.set('confirmResend', 'E-Mail erneut senden');
             routeFetch({ success: true, game_session_id: 'gs1' });
             setOpaqueClient({
                 registerAccountV2: vi.fn().mockResolvedValue({ success: true }),
@@ -355,19 +361,36 @@ describe('welcome.ts', () => {
             $('btn-show-register').dispatchEvent(new MouseEvent('click'));
             fillForm();
             $('form-register').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            await tick(); await tick(); await tick(); await tick();
+            await vi.advanceTimersByTimeAsync(5);
             expect($('confirm-panel').style.display).toBe('block');
 
-            // Erneut senden
-            $('btn-confirm-resend').dispatchEvent(new MouseEvent('click'));
-            await tick();
+            // Direkt nach der Registrierung: Resend gesperrt mit Countdown-Label
+            const resendBtn = document.getElementById('btn-confirm-resend') as HTMLButtonElement;
+            expect(resendBtn.disabled).toBe(true);
+            expect(resendBtn.textContent).toBe('Erneut senden in 5:00 Min.');  // $1-Substitution
+
+            // Klick waehrend Cooldown -> kein API-Call
+            resendBtn.dispatchEvent(new MouseEvent('click'));
+            await vi.advanceTimersByTimeAsync(1);
+            expect(globals.callAPI).not.toHaveBeenCalledWith(expect.objectContaining({ cmd: 'resend_confirmation_email' }));
+
+            // Cooldown ablaufen lassen -> Button frei
+            await vi.advanceTimersByTimeAsync(300_000);
+            expect(resendBtn.disabled).toBe(false);
+            expect(resendBtn.textContent).toBe('E-Mail erneut senden');
+
+            // Jetzt erneut senden -> API-Call
+            resendBtn.dispatchEvent(new MouseEvent('click'));
+            await vi.advanceTimersByTimeAsync(1);
             expect(globals.callAPI).toHaveBeenCalledWith(expect.objectContaining({
                 cmd: 'resend_confirmation_email', session_id: 's9', email: 'real@example.com',
             }));
 
-            // Spaeter bestaetigen -> Fenster schliesst trotzdem
+            // Spaeter bestaetigen -> Fenster schliesst
             $('btn-confirm-skip').dispatchEvent(new MouseEvent('click'));
-            await tick(); await tick();
+            await vi.advanceTimersByTimeAsync(1);
+            vi.useRealTimers();
+            await tick();
             expect(windowsRemove).toHaveBeenCalled();
         });
 
@@ -571,19 +594,46 @@ describe('welcome.ts', () => {
             expect(mock.storage.local.data.get('session_id')).toBe('s-classic');
         });
 
-        it('shows the OPAQUE-PAT-required panel for a classic password on an OPAQUE account', async () => {
+        it('logs an OPAQUE account in with its password and auto-creates a PAT (no manual dialog)', async () => {
+            const passwordOpaqueLogin = vi.fn().mockResolvedValue({ success: true, session_id: 's9', domain_name_list: [], real_email_list: {} });
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_auto');
             setOpaqueClient({
                 checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
-                patOpaqueLogin: vi.fn(),
+                passwordOpaqueLogin,
+                createAccessTokenOpaque,
+            });
+            globals.callAPI.mockImplementation(async (data: { cmd: string }) => (data.cmd === 'read_dea' ? [] : { success: true }));
+            const windowsRemove = vi.spyOn(mock.windows, 'remove');
+            await importWelcome();
+
+            input('login-username').value = 'bob';
+            input('login-password').value = 'plainpassword';
+            $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            // Kein manueller PAT-Dialog mehr
+            expect(document.getElementById('opaque-pat-required-panel')).toBeNull();
+            // Login via OPAQUE-Passwort + Website-Session, dann PAT automatisch
+            expect(passwordOpaqueLogin).toHaveBeenCalledWith('bob', 'plainpassword', { establishBrowserSession: true });
+            expect(createAccessTokenOpaque).toHaveBeenCalledWith('s9', expect.any(String));
+            expect(mock.storage.sync.data.get('password')).toBe('tmpat_auto');
+            expect(windowsRemove).toHaveBeenCalled();
+        });
+
+        it('shows a 2FA fallback (no OTP input) when the OPAQUE login requires 2FA', async () => {
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
+                createAccessTokenOpaque: vi.fn(),
             });
             await importWelcome();
 
             input('login-username').value = 'bob';
             input('login-password').value = 'plainpassword';
             $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            await tick(6);
+            await tick(8);
 
-            expect(document.getElementById('opaque-pat-required-panel')).not.toBeNull();
+            expect(document.getElementById('pat-required-panel')).not.toBeNull();
         });
     });
 
@@ -726,7 +776,7 @@ describe('welcome.ts', () => {
 
             await submitLogin('bob', 'plainpw');
 
-            expect(globals.createAccessToken).toHaveBeenCalledWith('s1', 'Firefox Extension');
+            expect(globals.createAccessToken).toHaveBeenCalledWith('s1', 'Firefox Add-On');
         });
 
         it('rebuilds the previous-addresses map from DEAs (loadDEAAndClose)', async () => {
@@ -810,9 +860,9 @@ describe('welcome.ts', () => {
         });
 
         it.each([
-            ['Mozilla/5.0 Chrome/120', 'Chrome Extension'],
-            ['Mozilla/5.0 Safari/605', 'Safari Extension'],
-            ['Mozilla/5.0 Edge/120', 'Edge Extension'],
+            ['Mozilla/5.0 Chrome/120', 'Chrome Add-On'],
+            ['Mozilla/5.0 Safari/605', 'Safari Add-On'],
+            ['Mozilla/5.0 Edge/120', 'Edge Add-On'],
         ])('names the PAT after the browser for UA %s', async (userAgent, expectedName) => {
             Object.defineProperty(window.navigator, 'userAgent', { configurable: true, value: userAgent });
             globals.callAPI.mockImplementation(async (d: { cmd: string }) => {
@@ -842,21 +892,22 @@ describe('welcome.ts', () => {
         });
     });
 
-    describe('OPAQUE PAT-required panel – localisation', () => {
+    describe('2FA fallback panel – localisation', () => {
         it.each([
-            ['fr-FR', 'Personal Access Token requis'],
-            ['en-US', 'Personal Access Token Required'],
-        ])('renders the %s panel text', async (uiLang, expectedTitle) => {
+            ['fr-FR', 'Authentification à deux facteurs active'],
+            ['en-US', 'Two-Factor Authentication Active'],
+        ])('renders the %s 2FA fallback text', async (uiLang, expectedTitle) => {
             mock.i18n.getUILanguage = () => uiLang;
             setOpaqueClient({
                 checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
-                patOpaqueLogin: vi.fn(),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true })),
+                createAccessTokenOpaque: vi.fn(),
             });
             await importWelcome();
 
-            await submitLogin('bob', 'plainpassword', 6);
+            await submitLogin('bob', 'plainpassword', 8);
 
-            const panel = document.getElementById('opaque-pat-required-panel')!;
+            const panel = document.getElementById('pat-required-panel')!;
             expect(panel.innerHTML).toContain(expectedTitle);
         });
     });
