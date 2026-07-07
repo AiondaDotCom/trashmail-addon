@@ -40,7 +40,7 @@
   createContextMenu();
   function openCreateAddress(parentTab, frameId) {
     const width = 750;
-    const height = 490;
+    const height = 720;
     browser.windows.getLastFocused().then((focused) => {
       const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
       const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));

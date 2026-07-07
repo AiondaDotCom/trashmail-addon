@@ -425,25 +425,66 @@ function register(e: Event) {
 // ============================================================
 
 let confirmPollTimer: ReturnType<typeof setInterval> | undefined;
-let confirmSessionId = "";
 let confirmEmail = "";
 
 interface RealEmailEntry { email?: string; confirmed?: boolean }
+
+/** Aktuelle Session-ID frisch aus dem Storage lesen (nicht cachen - sie kann rotieren). */
+async function currentSessionId(): Promise<string> {
+    const local = await browser.storage.local.get(["session_id"]) as { session_id?: string };
+    return local.session_id ?? "";
+}
+
+/**
+ * Meldet sich mit dem gespeicherten PAT neu an und liefert eine frische
+ * Session-ID. Noetig, weil der Klick auf den Bestaetigungslink serverseitig
+ * die Session rotiert (confirm_email -> Session::regenerate) und die im
+ * Addon gespeicherte session_id damit ungueltig wird.
+ */
+async function reAuthWithPat(): Promise<string> {
+    const sync = await browser.storage.sync.get(["username", "password"]) as { username?: string; password?: string };
+    if (typeof addonOpaqueClient === "undefined" || !sync.username || !sync.password) {
+        throw new Error("re-auth unavailable");
+    }
+    const login = await addonOpaqueClient.patOpaqueLogin(sync.username, sync.password);
+    const sessionId = String(login["session_id"] ?? "");
+    await browser.storage.local.set({ "session_id": sessionId });
+    return sessionId;
+}
+
+const AUTH_ERROR_CODES = [2, 61];
+
+/**
+ * Fuehrt einen callAPI-Aufruf aus und meldet sich bei Auth-Fehler (Session
+ * abgelaufen/rotiert) einmalig per PAT neu an und wiederholt den Aufruf.
+ */
+async function callWithReauth(cmd: string, extraParams: Record<string, unknown> = {}): Promise<TmApiResponse> {
+    const sessionId = await currentSessionId();
+    try {
+        return await callAPI({ "cmd": cmd, "session_id": sessionId, ...extraParams });
+    } catch (error) {
+        const code = (error as { errorCode?: number }).errorCode;
+        if (code !== undefined && AUTH_ERROR_CODES.includes(code)) {
+            const fresh = await reAuthWithPat();
+            return await callAPI({ "cmd": cmd, "session_id": fresh, ...extraParams });
+        }
+        throw error;
+    }
+}
 
 /**
  * Zeigt nach der Registrierung den Bestaetigungs-Schritt und pollt
  * list_real_emails, bis die echte E-Mail-Adresse bestaetigt wurde.
  * Erst dann (oder bei "Spaeter bestaetigen") schliesst das Fenster.
  */
-function showConfirmationPanel(email: string, sessionId: string) {
+function showConfirmationPanel(email: string, _sessionId: string) {
     confirmEmail = email;
-    confirmSessionId = sessionId;
     changePanel("confirm-panel");
     elById("confirm-sent-to").textContent = browser.i18n.getMessage("confirmSentTo", email);
 
     const poll = async () => {
         try {
-            const result = await callAPI({ "cmd": "list_real_emails", "session_id": sessionId });
+            const result = await callWithReauth("list_real_emails");
             // Response ist unter `data` genestet (list_real_emails-Vertrag)
             const data = (result["data"] as Record<string, unknown> | undefined) ?? result;
             const entries = (data["real_emails_detailed"] as RealEmailEntry[] | undefined) ?? [];
@@ -455,7 +496,7 @@ function showConfirmationPanel(email: string, sessionId: string) {
                 await browser.storage.local.set({ "real_emails": confirmedList });
                 elById("confirm-status").classList.add("done");
                 elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmDone");
-                setTimeout(() => { loadDEAAndClose(sessionId); }, 1500);
+                setTimeout(() => { currentSessionId().then((sid) => loadDEAAndClose(sid)); }, 1500);
             }
         } catch (e) {
             // Netzfehler: einfach beim naechsten Intervall erneut versuchen
@@ -470,7 +511,7 @@ function showConfirmationPanel(email: string, sessionId: string) {
 elById("btn-confirm-resend").addEventListener("click", () => {
     const confirmError = elById("confirm-error");
     confirmError.style.display = "none";
-    callAPI({ "cmd": "resend_confirmation_email", "session_id": confirmSessionId, "email": confirmEmail }).then(() => {
+    callWithReauth("resend_confirmation_email", { "email": confirmEmail }).then(() => {
         elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmResent");
     }).catch((error: AppError) => {
         // z.B. Rate-Limit (max. 1 Mail pro 5 Minuten) - Server-Meldung zeigen
@@ -481,7 +522,7 @@ elById("btn-confirm-resend").addEventListener("click", () => {
 
 elById("btn-confirm-skip").addEventListener("click", () => {
     if (confirmPollTimer) {clearInterval(confirmPollTimer);}
-    loadDEAAndClose(confirmSessionId);
+    currentSessionId().then((sessionId) => { loadDEAAndClose(sessionId); });
 });
 
 /**

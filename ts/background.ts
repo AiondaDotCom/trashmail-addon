@@ -67,7 +67,7 @@ createContextMenu();
 
 function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number) {
     const width = 750;
-    const height = 490;
+    const height = 720;
     // Zentriert ueber dem zuletzt fokussierten Browserfenster oeffnen
     // (im Service Worker gibt es kein `screen`-Objekt).
     browser.windows.getLastFocused().then((focused) => {

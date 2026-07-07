@@ -118,7 +118,7 @@
       window.close();
     } catch (error) {
       const errorMsg = elById("error_msg");
-      errorMsg.textContent = String(error);
+      errorMsg.textContent = error.message || String(error);
       errorMsg.style.display = "block";
     }
   }

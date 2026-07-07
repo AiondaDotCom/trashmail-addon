@@ -171,7 +171,9 @@ async function addressManager() {
         window.close();
     } catch (error) {
         const errorMsg = elById("error_msg");
-        errorMsg.textContent = String(error);
+        // .message statt String(error) - sonst haengt bei Error-Objekten ein
+        // "Error:"-Praefix davor.
+        errorMsg.textContent = (error as { message?: string }).message || String(error);
         errorMsg.style.display = "block";
     }
 }

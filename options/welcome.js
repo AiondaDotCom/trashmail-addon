@@ -317,16 +317,42 @@
     });
   }
   var confirmPollTimer;
-  var confirmSessionId = "";
   var confirmEmail = "";
-  function showConfirmationPanel(email, sessionId) {
+  async function currentSessionId() {
+    const local = await browser.storage.local.get(["session_id"]);
+    return local.session_id ?? "";
+  }
+  async function reAuthWithPat() {
+    const sync = await browser.storage.sync.get(["username", "password"]);
+    if (typeof addonOpaqueClient === "undefined" || !sync.username || !sync.password) {
+      throw new Error("re-auth unavailable");
+    }
+    const login2 = await addonOpaqueClient.patOpaqueLogin(sync.username, sync.password);
+    const sessionId = String(login2["session_id"] ?? "");
+    await browser.storage.local.set({ "session_id": sessionId });
+    return sessionId;
+  }
+  var AUTH_ERROR_CODES = [2, 61];
+  async function callWithReauth(cmd, extraParams = {}) {
+    const sessionId = await currentSessionId();
+    try {
+      return await callAPI({ "cmd": cmd, "session_id": sessionId, ...extraParams });
+    } catch (error) {
+      const code = error.errorCode;
+      if (code !== void 0 && AUTH_ERROR_CODES.includes(code)) {
+        const fresh = await reAuthWithPat();
+        return await callAPI({ "cmd": cmd, "session_id": fresh, ...extraParams });
+      }
+      throw error;
+    }
+  }
+  function showConfirmationPanel(email, _sessionId) {
     confirmEmail = email;
-    confirmSessionId = sessionId;
     changePanel("confirm-panel");
     elById("confirm-sent-to").textContent = browser.i18n.getMessage("confirmSentTo", email);
     const poll = async () => {
       try {
-        const result = await callAPI({ "cmd": "list_real_emails", "session_id": sessionId });
+        const result = await callWithReauth("list_real_emails");
         const data = result["data"] ?? result;
         const entries = data["real_emails_detailed"] ?? [];
         const entry = entries.find((item) => String(item.email).toLowerCase() === email.toLowerCase());
@@ -339,7 +365,7 @@
           elById("confirm-status").classList.add("done");
           elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmDone");
           setTimeout(() => {
-            loadDEAAndClose(sessionId);
+            currentSessionId().then((sid) => loadDEAAndClose(sid));
           }, 1500);
         }
       } catch (e) {
@@ -352,7 +378,7 @@
   elById("btn-confirm-resend").addEventListener("click", () => {
     const confirmError = elById("confirm-error");
     confirmError.style.display = "none";
-    callAPI({ "cmd": "resend_confirmation_email", "session_id": confirmSessionId, "email": confirmEmail }).then(() => {
+    callWithReauth("resend_confirmation_email", { "email": confirmEmail }).then(() => {
       elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmResent");
     }).catch((error) => {
       confirmError.textContent = error.message || String(error);
@@ -363,7 +389,9 @@
     if (confirmPollTimer) {
       clearInterval(confirmPollTimer);
     }
-    loadDEAAndClose(confirmSessionId);
+    currentSessionId().then((sessionId) => {
+      loadDEAAndClose(sessionId);
+    });
   });
   function getBrowserName() {
     if (typeof navigator !== "undefined" && navigator.userAgent) {
