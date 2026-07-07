@@ -275,6 +275,51 @@ form div.buttons {
     margin: 0 0 16px;
 }
 
+/* Bestaetigungs-Warten nach der Registrierung */
+.confirm-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin: 4px 0 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+.confirm-spinner {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #0891b2;
+    border-radius: 50%;
+    animation: confirm-spin 0.9s linear infinite;
+}
+@keyframes confirm-spin {
+    to { transform: rotate(360deg); }
+}
+.confirm-status.done {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.confirm-status.done .confirm-spinner {
+    border: none;
+    background: #22c55e;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    animation: none;
+}
+.confirm-status.done .confirm-spinner::before {
+    content: "\2713";
+}
+
 .important {
     padding: 14px 16px;
     margin-bottom: 18px;

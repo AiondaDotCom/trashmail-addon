@@ -306,7 +306,8 @@
         ]);
       }).then(() => loginDetails);
     }).then((loginDetails) => {
-      return loadDEAAndClose(loginDetails["session_id"]);
+      progress.style.display = "none";
+      showConfirmationPanel(realEmail, String(loginDetails["session_id"]));
     }).catch((error) => {
       registerError.textContent = error.message || String(error);
       registerError.style.display = "block";
@@ -315,6 +316,55 @@
       registerButton.disabled = false;
     });
   }
+  var confirmPollTimer;
+  var confirmSessionId = "";
+  var confirmEmail = "";
+  function showConfirmationPanel(email, sessionId) {
+    confirmEmail = email;
+    confirmSessionId = sessionId;
+    changePanel("confirm-panel");
+    elById("confirm-sent-to").textContent = browser.i18n.getMessage("confirmSentTo", email);
+    const poll = async () => {
+      try {
+        const result = await callAPI({ "cmd": "list_real_emails", "session_id": sessionId });
+        const data = result["data"] ?? result;
+        const entries = data["real_emails_detailed"] ?? [];
+        const entry = entries.find((item) => String(item.email).toLowerCase() === email.toLowerCase());
+        if (entry?.confirmed) {
+          if (confirmPollTimer) {
+            clearInterval(confirmPollTimer);
+          }
+          const confirmedList = data["real_email_list"] ?? [email];
+          await browser.storage.local.set({ "real_emails": confirmedList });
+          elById("confirm-status").classList.add("done");
+          elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmDone");
+          setTimeout(() => {
+            loadDEAAndClose(sessionId);
+          }, 1500);
+        }
+      } catch (e) {
+        console.warn("[TrashMail] Confirmation poll failed:", e);
+      }
+    };
+    poll();
+    confirmPollTimer = setInterval(poll, 3e3);
+  }
+  elById("btn-confirm-resend").addEventListener("click", () => {
+    const confirmError = elById("confirm-error");
+    confirmError.style.display = "none";
+    callAPI({ "cmd": "resend_confirmation_email", "session_id": confirmSessionId, "email": confirmEmail }).then(() => {
+      elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmResent");
+    }).catch((error) => {
+      confirmError.textContent = error.message || String(error);
+      confirmError.style.display = "block";
+    });
+  });
+  elById("btn-confirm-skip").addEventListener("click", () => {
+    if (confirmPollTimer) {
+      clearInterval(confirmPollTimer);
+    }
+    loadDEAAndClose(confirmSessionId);
+  });
   function getBrowserName() {
     if (typeof navigator !== "undefined" && navigator.userAgent) {
       if (navigator.userAgent.includes("Firefox")) {

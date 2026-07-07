@@ -31,6 +31,13 @@
 
     "welcomeTitle": {"message": "Bem-vindo ao Add-on do Aionda Mail"},
     "welcomeRegisterTitle": {"message": "Criar conta"},
+    "confirmTitle": {"message": "Quase pronto: confirme seu e-mail"},
+    "confirmSentTo": {"message": "Enviamos um e-mail de confirmação para $1. Abra-o e clique no link - esperamos aqui."},
+    "confirmWaiting": {"message": "Aguardando sua confirmação…"},
+    "confirmDone": {"message": "Confirmado! Você está pronto."},
+    "confirmResend": {"message": "Reenviar e-mail"},
+    "confirmResent": {"message": "E-mail de confirmação reenviado."},
+    "confirmSkip": {"message": "Confirmar depois"},
     "registerUsernameIdeas": {"message": "Sugestões:"},
     "registerUsernameIdeasMore": {"message": "Mais sugestões"},
     "registerIntro": {"message": "Escolha um nome de usuário, defina uma senha e informe seu e-mail real - pronto. Você já estará conectado."},

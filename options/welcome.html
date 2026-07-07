@@ -81,6 +81,21 @@
         </form>
     </div>
 
+    <!-- Confirm Panel: wartet live auf die E-Mail-Bestaetigung nach der Registrierung -->
+    <div id="confirm-panel" class="panel" style="display: none">
+        <h1 data-i18n="confirmTitle"></h1>
+        <p class="hint" id="confirm-sent-to"></p>
+        <div class="confirm-status" id="confirm-status">
+            <span class="confirm-spinner" id="confirm-spinner"></span>
+            <span id="confirm-status-text" data-i18n="confirmWaiting"></span>
+        </div>
+        <div id="confirm-error" class="error" style="display: none"></div>
+        <div class="buttons">
+            <button type="button" id="btn-confirm-resend" data-i18n="confirmResend"></button>
+            <button type="button" id="btn-confirm-skip" data-i18n="confirmSkip"></button>
+        </div>
+    </div>
+
     <!-- Login panel -->
     <div id="login-panel" class="panel" style="display: none">
         <form id="form-login">

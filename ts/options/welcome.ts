@@ -407,7 +407,10 @@ function register(e: Event) {
             ]);
         }).then(() => loginDetails);
     }).then((loginDetails) => {
-        return loadDEAAndClose(loginDetails["session_id"] as string);
+        // Nicht sofort schliessen: live auf die E-Mail-Bestaetigung warten
+        // (Weiterleitungen funktionieren erst mit bestaetigter Adresse)
+        progress.style.display = "none";
+        showConfirmationPanel(realEmail, String(loginDetails["session_id"]));
     }).catch((error: AppError) => {
         registerError.textContent = error.message || String(error);
         registerError.style.display = "block";
@@ -416,6 +419,70 @@ function register(e: Event) {
         registerButton.disabled = false;
     });
 }
+
+// ============================================================
+// E-Mail-Bestaetigung: live warten, bis der User den Link klickt
+// ============================================================
+
+let confirmPollTimer: ReturnType<typeof setInterval> | undefined;
+let confirmSessionId = "";
+let confirmEmail = "";
+
+interface RealEmailEntry { email?: string; confirmed?: boolean }
+
+/**
+ * Zeigt nach der Registrierung den Bestaetigungs-Schritt und pollt
+ * list_real_emails, bis die echte E-Mail-Adresse bestaetigt wurde.
+ * Erst dann (oder bei "Spaeter bestaetigen") schliesst das Fenster.
+ */
+function showConfirmationPanel(email: string, sessionId: string) {
+    confirmEmail = email;
+    confirmSessionId = sessionId;
+    changePanel("confirm-panel");
+    elById("confirm-sent-to").textContent = browser.i18n.getMessage("confirmSentTo", email);
+
+    const poll = async () => {
+        try {
+            const result = await callAPI({ "cmd": "list_real_emails", "session_id": sessionId });
+            // Response ist unter `data` genestet (list_real_emails-Vertrag)
+            const data = (result["data"] as Record<string, unknown> | undefined) ?? result;
+            const entries = (data["real_emails_detailed"] as RealEmailEntry[] | undefined) ?? [];
+            const entry = entries.find((item) => String(item.email).toLowerCase() === email.toLowerCase());
+            if (entry?.confirmed) {
+                if (confirmPollTimer) {clearInterval(confirmPollTimer);}
+                // Nur bestaetigte Adressen lokal anbieten
+                const confirmedList = (data["real_email_list"] as string[] | undefined) ?? [email];
+                await browser.storage.local.set({ "real_emails": confirmedList });
+                elById("confirm-status").classList.add("done");
+                elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmDone");
+                setTimeout(() => { loadDEAAndClose(sessionId); }, 1500);
+            }
+        } catch (e) {
+            // Netzfehler: einfach beim naechsten Intervall erneut versuchen
+            console.warn("[TrashMail] Confirmation poll failed:", e);
+        }
+    };
+
+    poll();
+    confirmPollTimer = setInterval(poll, 3000);
+}
+
+elById("btn-confirm-resend").addEventListener("click", () => {
+    const confirmError = elById("confirm-error");
+    confirmError.style.display = "none";
+    callAPI({ "cmd": "resend_confirmation_email", "session_id": confirmSessionId, "email": confirmEmail }).then(() => {
+        elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmResent");
+    }).catch((error: AppError) => {
+        // z.B. Rate-Limit (max. 1 Mail pro 5 Minuten) - Server-Meldung zeigen
+        confirmError.textContent = error.message || String(error);
+        confirmError.style.display = "block";
+    });
+});
+
+elById("btn-confirm-skip").addEventListener("click", () => {
+    if (confirmPollTimer) {clearInterval(confirmPollTimer);}
+    loadDEAAndClose(confirmSessionId);
+});
 
 /**
  * Get browser name for PAT token naming

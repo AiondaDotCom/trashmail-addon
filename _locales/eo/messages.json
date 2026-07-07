@@ -31,6 +31,13 @@
 
     "welcomeTitle": {"message": "Bonvenon al la Aionda Mail aldonaĵo"},
     "welcomeRegisterTitle": {"message": "Krei konton"},
+    "confirmTitle": {"message": "Preskaŭ preta: konfirmu vian retadreson"},
+    "confirmSentTo": {"message": "Ni sendis konfirman retmesaĝon al $1. Malfermu ĝin kaj klaku la ligilon - ni atendas ĉi tie."},
+    "confirmWaiting": {"message": "Atendante vian konfirmon…"},
+    "confirmDone": {"message": "Konfirmite! Vi estas preta."},
+    "confirmResend": {"message": "Resendi retmesaĝon"},
+    "confirmResent": {"message": "Konfirma retmesaĝo resendita."},
+    "confirmSkip": {"message": "Konfirmi poste"},
     "registerUsernameIdeas": {"message": "Proponoj:"},
     "registerUsernameIdeasMore": {"message": "Pliaj proponoj"},
     "registerIntro": {"message": "Elektu uzantnomon, difinu pasvorton kaj indiku vian veran retadreson - preta. Vi estos tuj ensalutinta."},

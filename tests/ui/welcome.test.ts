@@ -241,6 +241,7 @@ describe('welcome.ts', () => {
         });
 
         it('registers via OPAQUE with an invisible captcha, auto-creates a PAT, stores the real email and closes the window', async () => {
+            mock.i18n.messages.set('confirmSentTo', 'Mail an $1 geschickt.');
             const fetchMock = routeFetch({ success: true, game_session_id: 'gs1' });
             const registerAccountV2 = vi.fn().mockResolvedValue({ success: true, account_id: 42, username: 'newuser' });
             const passwordOpaqueLogin = vi.fn().mockResolvedValue({
@@ -287,7 +288,86 @@ describe('welcome.ts', () => {
             }));
             expect(mock.storage.local.data.get('real_emails')).toEqual(['real@example.com']);
             expect(mock.storage.sync.data.get('default_email')).toBe('real@example.com');
-            // Fenster wird nach erfolgreichem Auto-Login geschlossen
+            // Fenster schliesst NICHT sofort - erst der Bestaetigungs-Schritt
+            expect(windowsRemove).not.toHaveBeenCalled();
+            expect($('confirm-panel').style.display).toBe('block');
+            expect($('confirm-sent-to').textContent).toContain('real@example.com');
+        });
+
+        it('waits live for the email confirmation, then stores confirmed list and closes', async () => {
+            vi.useFakeTimers();
+            routeFetch({ success: true, game_session_id: 'gs1' });
+            setOpaqueClient({
+                registerAccountV2: vi.fn().mockResolvedValue({ success: true }),
+                passwordOpaqueLogin: vi.fn().mockResolvedValue({ success: true, session_id: 's9', domain_name_list: [], real_email_list: {} }),
+                createAccessTokenOpaque: vi.fn().mockResolvedValue('tmpat_fresh'),
+            });
+            let confirmed = false;
+            globals.callAPI.mockImplementation(async (data: { cmd: string }) => {
+                if (data.cmd === 'list_real_emails') {
+                    return {
+                        success: true,
+                        data: {
+                            real_emails_detailed: [{ email: 'real@example.com', confirmed }],
+                            real_email_list: confirmed ? ['real@example.com'] : [],
+                        },
+                    };
+                }
+                return data.cmd === 'read_dea' ? [] : { success: true };
+            });
+            const windowsRemove = vi.spyOn(mock.windows, 'remove');
+            await importWelcome();
+
+            $('btn-show-register').dispatchEvent(new MouseEvent('click'));
+            fillForm();
+            $('form-register').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            for (let flush = 0; flush < 8; flush++) { await vi.advanceTimersByTimeAsync(1); }
+
+            // Panel wartet (erster Poll: unbestaetigt)
+            expect($('confirm-panel').style.display).toBe('block');
+            expect($('confirm-status').classList.contains('done')).toBe(false);
+            expect(windowsRemove).not.toHaveBeenCalled();
+
+            // User klickt den Link -> naechster Poll (3s) erkennt die Bestaetigung
+            confirmed = true;
+            await vi.advanceTimersByTimeAsync(3100);
+            expect($('confirm-status').classList.contains('done')).toBe(true);
+            // Nur die bestaetigte Liste landet im Storage
+            expect(mock.storage.local.data.get('real_emails')).toEqual(['real@example.com']);
+
+            // Nach kurzem Erfolgsmoment schliesst das Fenster
+            await vi.advanceTimersByTimeAsync(1600);
+            expect(windowsRemove).toHaveBeenCalled();
+            vi.useRealTimers();
+        });
+
+        it('lets the user resend the confirmation email or skip waiting', async () => {
+            routeFetch({ success: true, game_session_id: 'gs1' });
+            setOpaqueClient({
+                registerAccountV2: vi.fn().mockResolvedValue({ success: true }),
+                passwordOpaqueLogin: vi.fn().mockResolvedValue({ success: true, session_id: 's9', domain_name_list: [], real_email_list: {} }),
+                createAccessTokenOpaque: vi.fn().mockResolvedValue('tmpat_fresh'),
+            });
+            globals.callAPI.mockImplementation(async (data: { cmd: string }) => (data.cmd === 'read_dea' ? [] : { success: true }));
+            const windowsRemove = vi.spyOn(mock.windows, 'remove');
+            await importWelcome();
+
+            $('btn-show-register').dispatchEvent(new MouseEvent('click'));
+            fillForm();
+            $('form-register').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(); await tick(); await tick(); await tick();
+            expect($('confirm-panel').style.display).toBe('block');
+
+            // Erneut senden
+            $('btn-confirm-resend').dispatchEvent(new MouseEvent('click'));
+            await tick();
+            expect(globals.callAPI).toHaveBeenCalledWith(expect.objectContaining({
+                cmd: 'resend_confirmation_email', session_id: 's9', email: 'real@example.com',
+            }));
+
+            // Spaeter bestaetigen -> Fenster schliesst trotzdem
+            $('btn-confirm-skip').dispatchEvent(new MouseEvent('click'));
+            await tick(); await tick();
             expect(windowsRemove).toHaveBeenCalled();
         });
 

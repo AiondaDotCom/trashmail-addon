@@ -33,6 +33,13 @@
 
     "welcomeTitle": {"message": "Bienvenu à l'extension de Aionda Mail"},
     "welcomeRegisterTitle": {"message": "Créer un compte"},
+    "confirmTitle": {"message": "Presque fini : confirmez votre e-mail"},
+    "confirmSentTo": {"message": "Nous avons envoyé un e-mail de confirmation à $1. Ouvrez-le et cliquez sur le lien - nous attendons ici."},
+    "confirmWaiting": {"message": "En attente de votre confirmation…"},
+    "confirmDone": {"message": "Confirmé ! Vous êtes prêt."},
+    "confirmResend": {"message": "Renvoyer l'e-mail"},
+    "confirmResent": {"message": "E-mail de confirmation renvoyé."},
+    "confirmSkip": {"message": "Confirmer plus tard"},
     "registerUsernameIdeas": {"message": "Suggestions :"},
     "registerUsernameIdeasMore": {"message": "D'autres suggestions"},
     "registerIntro": {"message": "Choisissez un nom d'utilisateur, un mot de passe et votre adresse e-mail réelle - c'est tout. Vous serez connecté immédiatement."},
