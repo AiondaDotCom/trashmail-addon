@@ -141,9 +141,16 @@ async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): P
 async function resumePendingCreateAddress(): Promise<void> {
     const stored = await browser.storage.local.get("pending_create_address") as { pending_create_address?: PendingCreateAddress };
     const pending = stored.pending_create_address;
-    if (!pending) { return; }
+    if (!pending) {
+        console.log("[Background] auth_completed: keine gemerkte Adresse-Absicht");
+        return;
+    }
     await browser.storage.local.remove("pending_create_address");
-    if (typeof pending.ts !== "number" || Date.now() - pending.ts > 120000) { return; }
+    if (typeof pending.ts !== "number" || Date.now() - pending.ts > 120000) {
+        console.log("[Background] auth_completed: Absicht veraltet, verworfen");
+        return;
+    }
+    console.log("[Background] auth_completed: setze Adresse-Einfuegen fort", pending);
     openCreateAddressForm(pending);
 }
 
@@ -368,8 +375,9 @@ browser.storage.sync.get(["username", "password"]).then((storage) => {
 browser.runtime.onMessage.addListener((message: BackgroundMessage, sender, sendResponse) => {
     // Nach erfolgreichem Login: gemerkte "Adresse einfuegen"-Absicht fortsetzen.
     if (message.action === "auth_completed") {
+        console.log("[Background] auth_completed empfangen");
         resumePendingCreateAddress();
-        return; // keine Antwort noetig
+        return; // undefined -> Kanal schliesst sofort, Welcome-Fenster kann schliessen
     }
 
     // Handle update_menu

@@ -693,11 +693,14 @@ function loadDEAAndClose(sessionId?: string): Promise<void> {
         return browser.storage.local.set({ "previous_addresses": currentPrevAddresses }).then(() => {
             // Falls dieser Login ueber "Adresse einfuegen" (abgemeldet) ausgeloest
             // wurde, setzt der Background jetzt das Einfuegen fort - sonst stuende
-            // der User nach dem Login ohne Formular da.
-            browser.runtime.sendMessage({ "action": "auth_completed" }).catch(() => undefined);
-            browser.windows.getCurrent().then((w) => {
-                browser.windows.remove(w.id!);
-            });
+            // der User nach dem Login ohne Formular da. WICHTIG: erst NACH dem
+            // Senden schliessen, sonst geht die Nachricht beim Fenster-Close
+            // verloren (Race), und der Background bekommt sie nie.
+            return browser.runtime.sendMessage({ "action": "auth_completed" }).catch(() => undefined);
+        }).then(() => {
+            return browser.windows.getCurrent();
+        }).then((w) => {
+            browser.windows.remove(w.id!);
         });
     });
 }
