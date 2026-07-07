@@ -7,6 +7,7 @@
     "optionsForwards": {"message": "Número de reencaminhamentos:"},
     "optionsLifespan": {"message": "Tempo de vida:"},
     "optionsSwitchLoginButton": {"message": "Mudar sessão"},
+    "popupLoginButton": {"message": "Iniciar sessão / criar conta"},
     "optionsLogoutButton": {"message": "Terminar sessão"},
     "optionsNotLoggedIn": {"message": "Sessão não iniciada"},
     "optionsLoginButton": {"message": "Iniciar sessão"},

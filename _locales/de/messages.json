@@ -9,6 +9,7 @@
     "optionsForwards": {"message": "Anzahl an Weiterleitungen:"},
     "optionsLifespan": {"message": "Gültigkeitsdauer:"},
     "optionsSwitchLoginButton": {"message": "Benutzer wechseln"},
+    "popupLoginButton": {"message": "Anmelden / Konto erstellen"},
     "optionsLogoutButton": {"message": "Abmelden"},
     "optionsNotLoggedIn": {"message": "Nicht angemeldet"},
     "optionsLoginButton": {"message": "Anmelden"},

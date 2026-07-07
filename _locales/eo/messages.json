@@ -7,6 +7,7 @@
     "optionsForwards": {"message": "Numeroj de plusendoj:"},
     "optionsLifespan": {"message": "Vivodaŭro:"},
     "optionsSwitchLoginButton": {"message": "Ŝangi konton"},
+    "popupLoginButton": {"message": "Ensaluti / krei konton"},
     "optionsLogoutButton": {"message": "Elsaluti"},
     "optionsNotLoggedIn": {"message": "Ne ensalutinta"},
     "optionsLoginButton": {"message": "Ensaluti"},

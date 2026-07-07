@@ -295,6 +295,8 @@ describe('popup.ts', () => {
 
     describe('buttons', () => {
         it('address-manager button logs in via POST helper and closes the popup', async () => {
+            mock.storage.sync.data.set('username', 'bob');
+            mock.storage.sync.data.set('password', 'tmpat_secret123');
             await importPopup();
             document.getElementById('btn-address-manager')!.dispatchEvent(new MouseEvent('click'));
             await tick();
@@ -303,19 +305,43 @@ describe('popup.ts', () => {
             expect(nav.close).toHaveBeenCalled();
         });
 
-        it('address-manager error path shows the message and offers re-login', async () => {
+        it('opens the login window directly when logged out (no error detour)', async () => {
+            mock.i18n.messages.set('popupLoginButton', 'Anmelden / Konto erstellen');
+            await importPopup();
+            await tick();
+
+            // Haupt-Button ist zum Anmelde-Button geworden
+            const label = document.querySelector('#btn-address-manager span:last-child')!;
+            expect(label.textContent).toBe('Anmelden / Konto erstellen');
+
+            document.getElementById('btn-address-manager')!.dispatchEvent(new MouseEvent('click'));
+            await tick();
+            await tick();
+
+            // Kein Fehler, kein Helper-Aufruf - direkt das Welcome-Fenster
+            expect((globalThis as Record<string, unknown>)['openAddressManagerAuthenticated']).not.toHaveBeenCalled();
+            expect(mock.windows.created).toHaveLength(1);
+            expect(String(mock.windows.created[0]!['url'])).toContain('options/welcome.html');
+            expect(document.getElementById('error_msg')!.style.display).not.toBe('block');
+            expect(nav.close).toHaveBeenCalled();
+        });
+
+        it('address-manager error path shows the message and then opens the login window', async () => {
             vi.useFakeTimers();
+            mock.storage.sync.data.set('username', 'bob');
+            mock.storage.sync.data.set('password', 'tmpat_secret123');
             ((globalThis as Record<string, unknown>)['openAddressManagerAuthenticated'] as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('please log in again'));
             await importPopup();
             document.getElementById('btn-address-manager')!.dispatchEvent(new MouseEvent('click'));
             await Promise.resolve();
             await Promise.resolve();
+            await Promise.resolve();
             const errorMsg = document.getElementById('error_msg')!;
             expect(errorMsg.style.display).toBe('block');
             expect(errorMsg.textContent).toContain('log in');
-            // Re-login timer opens the options page after 2s.
-            vi.advanceTimersByTime(2000);
-            expect(mock.runtime.openOptionsPageCalls).toBe(1);
+            // Nach 2s oeffnet sich direkt das Anmelde-Fenster (Welcome)
+            await vi.advanceTimersByTimeAsync(2100);
+            expect(mock.windows.created.some((w) => String(w['url']).includes('options/welcome.html'))).toBe(true);
             vi.useRealTimers();
         });
 

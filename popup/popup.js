@@ -176,7 +176,33 @@
     });
   }
   elById("security-status").addEventListener("click", openGuardianInfoWindow);
+  function openLoginWindow() {
+    const width = 600;
+    const height = 720;
+    browser.windows.getCurrent().then((current) => {
+      const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
+      const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
+      return browser.windows.create({
+        "url": browser.runtime.getURL("options/welcome.html"),
+        "width": width,
+        "height": height,
+        "left": left,
+        "top": top,
+        "type": "popup"
+      });
+    }).then(() => {
+      window.close();
+    });
+  }
+  async function isLoggedIn() {
+    const sync = await browser.storage.sync.get(["username", "password"]);
+    return Boolean(sync.username && sync.password);
+  }
   async function addressManager() {
+    if (!await isLoggedIn()) {
+      openLoginWindow();
+      return;
+    }
     try {
       await openAddressManagerAuthenticated();
       window.close();
@@ -184,15 +210,20 @@
       const errorMsg = elById("error_msg");
       errorMsg.textContent = error.message || String(error);
       errorMsg.style.display = "block";
-      const message = error.message;
-      if (message && message.includes("log in")) {
-        setTimeout(() => {
-          browser.runtime.openOptionsPage();
-          window.close();
-        }, 2e3);
+      setTimeout(() => {
+        openLoginWindow();
+      }, 2e3);
+    }
+  }
+  async function updateLoginStateUI() {
+    if (!await isLoggedIn()) {
+      const label = elById("btn-address-manager").querySelector("span:last-child");
+      if (label) {
+        label.textContent = browser.i18n.getMessage("popupLoginButton");
       }
     }
   }
+  updateLoginStateUI();
   elById("btn-address-manager").addEventListener("click", addressManager);
   elById("btn-options").addEventListener("click", () => {
     browser.runtime.openOptionsPage().then(() => {

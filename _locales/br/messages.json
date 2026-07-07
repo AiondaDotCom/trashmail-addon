@@ -7,6 +7,7 @@
     "optionsForwards": {"message": "Número de encaminhamentos:"},
     "optionsLifespan": {"message": "Tempo de vida:"},
     "optionsSwitchLoginButton": {"message": "Trocar conta"},
+    "popupLoginButton": {"message": "Entrar / criar conta"},
     "optionsLogoutButton": {"message": "Sair"},
     "optionsNotLoggedIn": {"message": "Não conectado"},
     "optionsLoginButton": {"message": "Entrar"},

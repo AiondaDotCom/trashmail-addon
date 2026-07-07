@@ -256,7 +256,35 @@ elById("security-status").addEventListener("click", openGuardianInfoWindow);
  * the browser's existing session cookie, causing users to be logged out of
  * their active sessions when the extension opened a new tab.
  */
+/** Anmelde-/Registrier-Fenster (Welcome) zentriert oeffnen. */
+function openLoginWindow() {
+    const width = 600;
+    const height = 720;
+    browser.windows.getCurrent().then((current) => {
+        const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
+        const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
+        return browser.windows.create({
+            "url": browser.runtime.getURL("options/welcome.html"),
+            "width": width, "height": height, "left": left, "top": top,
+            "type": "popup",
+        });
+    }).then(() => {
+        window.close();
+    });
+}
+
+async function isLoggedIn(): Promise<boolean> {
+    const sync = await browser.storage.sync.get(["username", "password"]) as { username?: string; password?: string };
+    return Boolean(sync.username && sync.password);
+}
+
 async function addressManager() {
+    // Abgemeldet? Dann direkt das Anmelde-Fenster oeffnen statt eines Fehlers
+    if (!(await isLoggedIn())) {
+        openLoginWindow();
+        return;
+    }
+
     try {
         // POST-Login (PAT-OPAQUE bzw. classic) setzt das Session-Cookie im
         // Browser - der Manager-Tab oeffnet direkt eingeloggt, ohne
@@ -268,16 +296,24 @@ async function addressManager() {
         errorMsg.textContent = (error as { message?: string }).message || String(error);
         errorMsg.style.display = "block";
 
-        // If session expired for OPAQUE account, offer to re-login
-        const message = (error as { message?: string }).message;
-        if (message && message.includes("log in")) {
-            setTimeout(() => {
-                browser.runtime.openOptionsPage();
-                window.close();
-            }, 2000);
+        // Login kaputt (z.B. PAT widerrufen)? Nach kurzem Hinweis direkt
+        // das Anmelde-Fenster oeffnen - dort kann man sich neu anmelden.
+        setTimeout(() => {
+            openLoginWindow();
+        }, 2000);
+    }
+}
+
+/** Popup an den Login-Zustand anpassen: abgemeldet wird der Haupt-Button zum Anmelde-Button. */
+async function updateLoginStateUI() {
+    if (!(await isLoggedIn())) {
+        const label = elById("btn-address-manager").querySelector("span:last-child");
+        if (label) {
+            label.textContent = browser.i18n.getMessage("popupLoginButton");
         }
     }
 }
+updateLoginStateUI();
 
 elById("btn-address-manager").addEventListener("click", addressManager);
 
