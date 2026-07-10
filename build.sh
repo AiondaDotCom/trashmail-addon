@@ -27,6 +27,7 @@ EXCLUDE=(
     "README.md"
     "LICENSE"
     "update_suffixes.py"
+    "store-assets"
     ".git"
     ".DS_Store"
 )
@@ -100,7 +101,7 @@ build_source() {
 
     rm -f "$outfile"
     cd "$SCRIPT_DIR"
-    zip -r "$outfile" . -x "./.git/*" -x "./.DS_Store" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip" -x "./manifest.json.bak"
+    zip -r "$outfile" . -x "./.git/*" -x "./.DS_Store" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip" -x "./manifest.json.bak" -x "./store-assets" -x "./store-assets/*"
     echo "  Created: $SCRIPT_DIR/$outfile"
 }
 
