@@ -65,6 +65,7 @@
     "buttonRegister": {"message": "Crear cuenta"},
     "welcomeInfo": {"message": "Para crear direcciones de correo desechables, necesitarás una cuenta Aionda Mail. Con esta cuenta podrás usar esta extensión en múltiples ordenadores y navegadores."},
     "welcomeLostPassword": {"message": "¿Olvidaste tu contraseña?"},
+    "loginInvalidCredentials": {"message": "Nombre de usuario o contraseña incorrectos."},
     "lostPasswordInfo": {"message": "Si has perdido tu contraseña, será necesario restablecerla. Por favor introduce tu dirección de correo real asociada con tu nombre de usuario:"},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Enlace de restablecimiento de contraseña enviado a '$EMAIL$'.$PEND$$PBEGIN$Por favor revisa tu bandeja de entrada para encontrar el enlace de restablecimiento.$PEND$",

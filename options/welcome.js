@@ -603,8 +603,14 @@
     console.log("[Aionda Mail] Checking authentication method...");
     checkAuthMethodAndLogin(username, password, loginButton, cancelButton, progress, loginError);
   }
+  var INVALID_CREDENTIALS_ERROR_CODES = [3, 61];
   function showLoginError(error, loginError, progress, cancelButton, loginButton) {
-    loginError.textContent = error.message || String(error);
+    const errorCode = error.errorCode;
+    let message = error.message || String(error);
+    if (typeof errorCode === "number" && INVALID_CREDENTIALS_ERROR_CODES.includes(errorCode)) {
+      message = browser.i18n.getMessage("loginInvalidCredentials") || message;
+    }
+    loginError.textContent = message;
     loginError.style.display = "block";
     progress.style.display = "none";
     cancelButton.disabled = false;

@@ -65,6 +65,7 @@
     "buttonRegister": {"message": "Créer un compte"},
     "welcomeInfo": {"message": "Pour créer des adresses jetables vous avez besoin d'un compte Aionda Mail. Avec ce compte vous pouvez utiliser cette extension sur plusieurs ordinateurs et navigateurs."},
     "welcomeLostPassword": {"message": "Mot de passe perdu ?"},
+    "loginInvalidCredentials": {"message": "Nom d'utilisateur ou mot de passe incorrect."},
     "lostPasswordInfo": {"message": "Si le mot de passe a été perdu, il est nécessaire de générer un nouveau mot de passe. Veuillez svp entrer l'adresse courielle réelle associée avec votre nom d'utilisateur."},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Un lien pour générer un nouveau mot de passe vous a été envoyé à '$EMAIL$'.$PEND$$PBEGIN$Veuillez vérifier svp votre boîte à lettres.$PEND$",

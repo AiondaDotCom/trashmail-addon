@@ -8,6 +8,7 @@ interface AppError {
     message?: string;
     handled?: boolean;
     requires_2fa?: boolean;
+    errorCode?: number;
     [key: string]: unknown;
 }
 
@@ -799,11 +800,20 @@ function login(e: Event) {
     checkAuthMethodAndLogin(username, password, loginButton, cancelButton, progress, loginError);
 }
 
+// Server-Fehlermeldungen (msg) sind immer englisch - fuer bekannte error_codes
+// die lokalisierte Meldung anzeigen (3 = INCORRECT_USERNAME_OR_PASSWORD, 61 = AUTHENTICATION_ERROR)
+const INVALID_CREDENTIALS_ERROR_CODES = [3, 61];
+
 /**
  * Helper to display login errors
  */
 function showLoginError(error: unknown, loginError: HTMLElement, progress: HTMLElement, cancelButton: HTMLButtonElement, loginButton: HTMLButtonElement) {
-    loginError.textContent = (error as AppError).message || String(error);
+    const errorCode = (error as AppError).errorCode;
+    let message = (error as AppError).message || String(error);
+    if (typeof errorCode === "number" && INVALID_CREDENTIALS_ERROR_CODES.includes(errorCode)) {
+        message = browser.i18n.getMessage("loginInvalidCredentials") || message;
+    }
+    loginError.textContent = message;
     loginError.style.display = "block";
     progress.style.display = "none";
     cancelButton.disabled = false;

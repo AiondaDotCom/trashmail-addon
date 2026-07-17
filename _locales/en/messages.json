@@ -65,6 +65,7 @@
     "buttonRegister": {"message": "Create account"},
     "welcomeInfo": {"message": "To create disposable email addresses, you will require a Aionda Mail account. With this account you will be able to use this add-on on multiple computers and browsers."},
     "welcomeLostPassword": {"message": "Lost your password?"},
+    "loginInvalidCredentials": {"message": "Incorrect username or password."},
     "lostPasswordInfo": {"message": "If your password has been lost, then a password reset will be necessary. Please enter your real email address which is associated with your username:"},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Password reset link sent to '$EMAIL$'.$PEND$$PBEGIN$Please check your inbox for the password reset link.$PEND$",

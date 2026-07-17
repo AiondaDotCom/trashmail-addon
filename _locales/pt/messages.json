@@ -63,6 +63,7 @@
     "buttonRegister": {"message": "Criar conta"},
     "welcomeInfo": {"message": "Para criar endereços de e-mail descartáveis, precisas de uma conta Aionda Mail. Com esta conta poderás usar este add-on em vários computadores e navegadores."},
     "welcomeLostPassword": {"message": "Perdeste a tua palavra-passe?"},
+    "loginInvalidCredentials": {"message": "Nome de utilizador ou palavra-passe incorretos."},
     "lostPasswordInfo": {"message": "Se perdeste a tua palavra-passe, é necessário redefini-la. Por favor, introduz o teu endereço de e-mail real associado ao teu nome de utilizador:"},
     "lostPasswordSuccess": {
         "message": "$PBEGIN$Link de redefinição de palavra-passe enviado para '$EMAIL$'.$PEND$$PBEGIN$Por favor, verifica a tua caixa de entrada para o link de redefinição.$PEND$",
