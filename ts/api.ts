@@ -37,6 +37,22 @@ const apiPublicKeys = new Map<string, ApiKeyEntry>(); // keyId -> CryptoKey
 let apiKeysLoaded = false;
 
 /**
+ * Detect which browser the addon runs in (for server-side usage counters).
+ * Edge/Opera are Chromium forks and identify as Chrome too - check their
+ * specific UA tokens first. Firefox before Chrome, Chrome before Safari
+ * (Chrome UA contains "Safari/").
+ */
+function detectAddonBrowser(): string {
+    const ua = navigator.userAgent;
+    if (ua.includes("Firefox/")) { return "firefox"; }
+    if (ua.includes("Edg/"))     { return "edge"; }
+    if (ua.includes("OPR/"))     { return "opera"; }
+    if (ua.includes("Chrome/"))  { return "chrome"; }
+    if (ua.includes("Safari/"))  { return "safari"; }
+    return "other";
+}
+
+/**
  * Convert Base64 to ArrayBuffer
  */
 function apiBase64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -162,6 +178,10 @@ async function callAPI(data: Record<string, unknown>, json: Record<string, unkno
     const headers = new Headers({"Content-Type": "application/x-www-form-urlencoded"});
     const params = new URLSearchParams(data as Record<string, string>);
     params.append("lang", browser.i18n.getUILanguage().substr(0, 2));
+    // Nutzungs-Tracking: Browser + Addon-Version mitschicken. Serverseitig
+    // werden daraus NUR Tageszaehler (addon_usage_daily), keine Inhalte.
+    params.append("client", `addon-${detectAddonBrowser()}`);
+    params.append("client_version", browser.runtime.getManifest().version);
     // credentials: "omit" - niemals Webapp-Cookies mitschicken! Sonst greift
     // z.B. bei opaque_register_init oder add_real_email die fremde
     // Browser-Session (mail.aionda.com) statt der Addon-session_id.

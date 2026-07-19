@@ -6,6 +6,25 @@
   var apiBaseUrl = DEFAULT_API_URL;
   var apiPublicKeys = /* @__PURE__ */ new Map();
   var apiKeysLoaded = false;
+  function detectAddonBrowser() {
+    const ua = navigator.userAgent;
+    if (ua.includes("Firefox/")) {
+      return "firefox";
+    }
+    if (ua.includes("Edg/")) {
+      return "edge";
+    }
+    if (ua.includes("OPR/")) {
+      return "opera";
+    }
+    if (ua.includes("Chrome/")) {
+      return "chrome";
+    }
+    if (ua.includes("Safari/")) {
+      return "safari";
+    }
+    return "other";
+  }
   function apiBase64ToArrayBuffer(base64) {
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
@@ -98,6 +117,8 @@
     const headers = new Headers({ "Content-Type": "application/x-www-form-urlencoded" });
     const params = new URLSearchParams(data);
     params.append("lang", browser.i18n.getUILanguage().substr(0, 2));
+    params.append("client", `addon-${detectAddonBrowser()}`);
+    params.append("client_version", browser.runtime.getManifest().version);
     const fetchOptions = { "method": "POST", "headers": headers, "body": JSON.stringify(json), "credentials": "omit" };
     const response = await fetch(`${apiBaseUrl}/?api=1&${params.toString()}`, fetchOptions);
     if (!response.ok) {
