@@ -1,5 +1,7 @@
 "use strict";
 
+import { getOrgDomainResolver, type OrgDomainResolver } from "../public-suffix";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
@@ -662,13 +664,9 @@ function loadDEAAndClose(sessionId?: string): Promise<void> {
         "session_id": sessionId,
     };
 
-    const suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then((response) => {
-        if (response.ok) {return response.json();}
-    });
-
-    return Promise.all([callAPI(data), suffixes]).then((values) => {
+    return Promise.all([callAPI(data), getOrgDomainResolver()]).then((values) => {
         const addresses = values[0] as unknown as DeaRecord[];
-        const [rules, exceptions] = values[1] as [Record<string, unknown>, Record<string, unknown>];
+        const orgDomain = values[1] as OrgDomainResolver;
         const currentPrevAddresses: Record<string, string[][]> = {};
 
         for (const address of addresses) {
@@ -680,7 +678,7 @@ function loadDEAAndClose(sessionId?: string): Promise<void> {
                     if (e instanceof TypeError) {continue;}
                     throw e;
                 }
-                const domain = org_domain(domainUrl, rules, exceptions);
+                const domain = orgDomain(domainUrl);
                 const email = [`${String(address["disposable_name"])}@${String(address["disposable_domain"])}`,
                     address["website"]];
 

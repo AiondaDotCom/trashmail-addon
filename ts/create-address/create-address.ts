@@ -1,5 +1,7 @@
 "use strict";
 
+import { getOrgDomainResolver } from "../public-suffix";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 const lang = browser.i18n.getUILanguage().substring(0, 2);
@@ -287,19 +289,17 @@ async function createAddress(e: Event) {
 
         const address: [string, string | undefined] = [`${String(form.get("disposable_name"))}@${String(form.get("domain"))}`, parentUrl];
 
-        // **Suffixes und Storage abrufen**
-        const [storage, suffixesResponse] = await Promise.all([
+        // **Resolver und Storage abrufen**
+        const [storage, orgDomain] = await Promise.all([
             browser.storage.local.get("previous_addresses"),
-            fetch(browser.runtime.getURL("public_suffix.json")),
+            getOrgDomainResolver(),
         ]);
 
-        const suffixes = suffixesResponse.ok ? await suffixesResponse.json() : [[], []];
-        const [rules, exceptions] = suffixes;
         const addresses = (storage["previous_addresses"] || {}) as Record<string, Array<[string, string | undefined]>>; // Initialisiere, falls nicht vorhanden
 
         let domain: string;
         try {
-            domain = org_domain(new URL(parentUrl as string), rules, exceptions);
+            domain = orgDomain(new URL(parentUrl as string));
         } catch (e) {
             console.error("Ungültige URL:", parentUrl, e);
             domain = "mail.aionda.com"; // Fallback-Domain

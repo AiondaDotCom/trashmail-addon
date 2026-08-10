@@ -1,3 +1,5 @@
+import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
@@ -307,17 +309,13 @@ browser.storage.sync.get(["username", "password"]).then((storage) => {
 
     // On failure we deliberately let the rejection propagate through the chain
     // (instead of swallowing it with .catch(console.error), which used to make
-    // `suffixes` resolve to undefined and blow up later as a confusing
-    // "undefined is not iterable"). The outer .catch logs it and the
-    // previous_addresses update is aborted - no bogus grouping is written.
-    const suffixes = fetch(browser.runtime.getURL("public_suffix.json"))
-        .then((response) => response.ok ? response.json() : Promise.reject(new Error("Public Suffix List konnte nicht geladen werden")));
-
-    return Promise.all([callAPI(data), suffixes]);
+    // the resolver arrive as undefined and blow up later). The outer .catch
+    // logs it and the previous_addresses update is aborted - no bogus grouping
+    // is written.
+    return Promise.all([callAPI(data), getOrgDomainResolver()]);
 }).then((values) => {
     const currentPrevAddresses: Record<string, [string, string][]> = {};
-    const [addresses, [rules, exceptions]] = values as unknown as [DeaAddress[], [PublicSuffixStore, PublicSuffixStore]];
-    const orgDomain = (globalThis as unknown as PublicSuffixGlobals).org_domain;
+    const [addresses, orgDomain] = values as unknown as [DeaAddress[], OrgDomainResolver];
 
     for (const address of addresses) {
         if (address["website"]) {
@@ -336,7 +334,7 @@ browser.storage.sync.get(["username", "password"]).then((storage) => {
                 continue;
             }
 
-            domain = orgDomain(domain, rules, exceptions);
+            domain = orgDomain(domain);
             const email: [string, string] = [`${address["disposable_name"]}@${address["disposable_domain"]}`, address["website"]];
 
             if (domain in currentPrevAddresses) {

@@ -1,5 +1,41 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/public-suffix.ts
+  var browserApi = globalThis.browser ?? chrome;
+  var resolverPromise = null;
+  function nativePublicSuffix() {
+    return browserApi?.publicSuffix;
+  }
+  function nativeResolver(api) {
+    return (url) => {
+      const hostname = url.hostname;
+      try {
+        return api.getDomain(hostname) ?? hostname;
+      } catch {
+        return hostname;
+      }
+    };
+  }
+  async function fallbackResolver() {
+    const response = await fetch(browserApi.runtime.getURL("public_suffix.json"));
+    if (!response.ok) {
+      throw new Error("Public Suffix List konnte nicht geladen werden");
+    }
+    const [rules, exceptions] = await response.json();
+    const orgDomain = globalThis.org_domain;
+    return (url) => orgDomain(url, rules, exceptions);
+  }
+  function getOrgDomainResolver() {
+    if (!resolverPromise) {
+      const api = nativePublicSuffix();
+      resolverPromise = api ? Promise.resolve(nativeResolver(api)) : fallbackResolver().catch((error) => {
+        resolverPromise = null;
+        throw error;
+      });
+    }
+    return resolverPromise;
+  }
+
   // trashmail-addon/ts/background.ts
   var browser = globalThis.browser ?? chrome;
   if (typeof importScripts === "function") {
@@ -213,12 +249,10 @@
       "session_id": login["session_id"]
     };
     console.log("[TrashMail] read_dea request:", data);
-    const suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then((response) => response.ok ? response.json() : Promise.reject(new Error("Public Suffix List konnte nicht geladen werden")));
-    return Promise.all([callAPI(data), suffixes]);
+    return Promise.all([callAPI(data), getOrgDomainResolver()]);
   }).then((values) => {
     const currentPrevAddresses = {};
-    const [addresses, [rules, exceptions]] = values;
-    const orgDomain = globalThis.org_domain;
+    const [addresses, orgDomain] = values;
     for (const address of addresses) {
       if (address["website"]) {
         let domain;
@@ -232,7 +266,7 @@
           console.warn("Ung\xFCltige URL:", address["website"], e);
           continue;
         }
-        domain = orgDomain(domain, rules, exceptions);
+        domain = orgDomain(domain);
         const email = [`${address["disposable_name"]}@${address["disposable_domain"]}`, address["website"]];
         if (domain in currentPrevAddresses) {
           currentPrevAddresses[domain].push(email);

@@ -4,7 +4,9 @@
  * Producers (vendor classic scripts, left untouched):
  *   - opaque-client.js  -> addonOpaqueClient
  *   - srp-client.js     -> addonSrpClient
- *   - publicsuffixlist.js -> org_domain
+ *
+ * (publicsuffixlist.js -> org_domain is typed in public-suffix.globals.d.ts,
+ * where the fallback path that consumes it lives.)
  *
  * These are ambient (script-scope) declarations; do NOT add import/export here.
  */
@@ -53,15 +55,3 @@ interface AddonSrpClient {
  */
 declare const addonOpaqueClient: AddonOpaqueClient | undefined;
 declare const addonSrpClient: AddonSrpClient | undefined;
-
-/**
- * Get the organizational domain from a URL. Defined in publicsuffixlist.js.
- * `rules`/`exceptions` come straight from public_suffix.json (opaque store shape).
- * Also consumed by create-address/create-address.ts (ambient, program-wide).
- */
-// eslint-disable-next-line @typescript-eslint/naming-convention -- external vendor global name
-declare function org_domain(
-    url: URL,
-    rules: Record<string, unknown>,
-    exceptions: Record<string, unknown>,
-): string;

@@ -1,5 +1,41 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/public-suffix.ts
+  var browserApi = globalThis.browser ?? chrome;
+  var resolverPromise = null;
+  function nativePublicSuffix() {
+    return browserApi?.publicSuffix;
+  }
+  function nativeResolver(api) {
+    return (url) => {
+      const hostname = url.hostname;
+      try {
+        return api.getDomain(hostname) ?? hostname;
+      } catch {
+        return hostname;
+      }
+    };
+  }
+  async function fallbackResolver() {
+    const response = await fetch(browserApi.runtime.getURL("public_suffix.json"));
+    if (!response.ok) {
+      throw new Error("Public Suffix List konnte nicht geladen werden");
+    }
+    const [rules, exceptions] = await response.json();
+    const orgDomain = globalThis.org_domain;
+    return (url) => orgDomain(url, rules, exceptions);
+  }
+  function getOrgDomainResolver() {
+    if (!resolverPromise) {
+      const api = nativePublicSuffix();
+      resolverPromise = api ? Promise.resolve(nativeResolver(api)) : fallbackResolver().catch((error) => {
+        resolverPromise = null;
+        throw error;
+      });
+    }
+    return resolverPromise;
+  }
+
   // trashmail-addon/ts/options/welcome.ts
   var browser = globalThis.browser ?? chrome;
   function elById(id) {
@@ -504,14 +540,9 @@
       "cmd": "read_dea",
       "session_id": sessionId
     };
-    const suffixes = fetch(browser.runtime.getURL("public_suffix.json")).then((response) => {
-      if (response.ok) {
-        return response.json();
-      }
-    });
-    return Promise.all([callAPI(data), suffixes]).then((values) => {
+    return Promise.all([callAPI(data), getOrgDomainResolver()]).then((values) => {
       const addresses = values[0];
-      const [rules, exceptions] = values[1];
+      const orgDomain = values[1];
       const currentPrevAddresses = {};
       for (const address of addresses) {
         if (address["website"]) {
@@ -524,7 +555,7 @@
             }
             throw e;
           }
-          const domain = org_domain(domainUrl, rules, exceptions);
+          const domain = orgDomain(domainUrl);
           const email = [
             `${String(address["disposable_name"])}@${String(address["disposable_domain"])}`,
             address["website"]

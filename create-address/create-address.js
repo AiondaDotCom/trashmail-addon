@@ -1,5 +1,41 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/public-suffix.ts
+  var browserApi = globalThis.browser ?? chrome;
+  var resolverPromise = null;
+  function nativePublicSuffix() {
+    return browserApi?.publicSuffix;
+  }
+  function nativeResolver(api) {
+    return (url) => {
+      const hostname = url.hostname;
+      try {
+        return api.getDomain(hostname) ?? hostname;
+      } catch {
+        return hostname;
+      }
+    };
+  }
+  async function fallbackResolver() {
+    const response = await fetch(browserApi.runtime.getURL("public_suffix.json"));
+    if (!response.ok) {
+      throw new Error("Public Suffix List konnte nicht geladen werden");
+    }
+    const [rules, exceptions] = await response.json();
+    const orgDomain = globalThis.org_domain;
+    return (url) => orgDomain(url, rules, exceptions);
+  }
+  function getOrgDomainResolver() {
+    if (!resolverPromise) {
+      const api = nativePublicSuffix();
+      resolverPromise = api ? Promise.resolve(nativeResolver(api)) : fallbackResolver().catch((error) => {
+        resolverPromise = null;
+        throw error;
+      });
+    }
+    return resolverPromise;
+  }
+
   // trashmail-addon/ts/create-address/create-address.ts
   var browser = globalThis.browser ?? chrome;
   var lang = browser.i18n.getUILanguage().substring(0, 2);
@@ -198,16 +234,14 @@
         }
       }
       const address = [`${String(form.get("disposable_name"))}@${String(form.get("domain"))}`, parentUrl];
-      const [storage, suffixesResponse] = await Promise.all([
+      const [storage, orgDomain] = await Promise.all([
         browser.storage.local.get("previous_addresses"),
-        fetch(browser.runtime.getURL("public_suffix.json"))
+        getOrgDomainResolver()
       ]);
-      const suffixes = suffixesResponse.ok ? await suffixesResponse.json() : [[], []];
-      const [rules, exceptions] = suffixes;
       const addresses = storage["previous_addresses"] || {};
       let domain;
       try {
-        domain = org_domain(new URL(parentUrl), rules, exceptions);
+        domain = orgDomain(new URL(parentUrl));
       } catch (e2) {
         console.error("Ung\xFCltige URL:", parentUrl, e2);
         domain = "mail.aionda.com";
