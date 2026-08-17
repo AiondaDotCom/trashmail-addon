@@ -1,6 +1,7 @@
 {
     "errorSessionExpired": {"message": "Tu sesión ha caducado. Abre las opciones de la extensión e inicia sesión de nuevo."},
     "errorGenericServer": {"message": "El servidor devolvió un error. Abre las opciones de la extensión e inicia sesión de nuevo."},
+    "errorAddressNotPasted": {"message": "La dirección $ADDRESS$ se ha creado, pero no se pudo insertar en el formulario. Cópiala a mano.", "placeholders": {"address": {"content": "$1"}}},
     "extensionName": {"message": "Aionda Mail (TrashMail): Correo temporal"},
     "extensionDescription": {"message": "Crea correos temporales y desechables con un clic y protege tu dirección real del spam. Antes TrashMail.com."},
 

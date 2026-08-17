@@ -173,6 +173,63 @@ describe('create-address.ts', () => {
             expect(mock.tabs.sentMessages).toHaveLength(0);
         });
 
+        it('REGRESSION: ein Fehlschlag beim Einfuegen wird nicht als Adress-Fehler gemeldet', async () => {
+            // Kundenmeldung vom 16.08.2026: Im Fehlerkasten stand die rohe
+            // Browsermeldung "Error message from listener couldn't be parsed or
+            // was empty.", obwohl die Adresse angelegt war. Ursache: der
+            // Content-Script-Listener warf eine DOMException, und Chrome (>= 145)
+            // reicht deren Text nicht weiter.
+            globals.callAPI.mockResolvedValue({});
+            await bootWithSession();
+            mock.i18n.messages.set('errorAddressNotPasted', 'Adresse $1 wurde erstellt, aber nicht eingefuegt.');
+            vi.spyOn(mock.tabs, 'sendMessage').mockRejectedValue(
+                new Error("Error message from listener couldn't be parsed or was empty."),
+            );
+            const windowRemove = vi.spyOn(mock.windows, 'remove');
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            const box = $('error_msg') as HTMLElement & { innerText: string };
+            expect(box.style.display).toBe('block');
+            // Die Adresse steht drin, die rohe Browsermeldung nicht.
+            expect(box.innerText).toContain('myaddr@d.com');
+            expect(box.innerText).not.toContain("couldn't be parsed");
+            // Fenster bleibt offen, damit die Adresse nicht verlorengeht.
+            expect(windowRemove).not.toHaveBeenCalled();
+            expect((document.getElementById('btn-create') as HTMLButtonElement).disabled).toBe(false);
+            // Und die Adresse ist trotzdem lokal gemerkt (sie EXISTIERT ja).
+            expect(mock.storage.local.data.get('previous_addresses')).toBeDefined();
+        });
+
+        it('schliesst das Fenster, wenn das Content-Script pasted:false meldet - aber ohne rohe Fehlermeldung', async () => {
+            globals.callAPI.mockResolvedValue({});
+            await bootWithSession();
+            mock.i18n.messages.set('errorAddressNotPasted', 'Adresse $1 wurde erstellt, aber nicht eingefuegt.');
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: false });
+            const windowRemove = vi.spyOn(mock.windows, 'remove');
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            const box = $('error_msg') as HTMLElement & { innerText: string };
+            expect(box.innerText).toContain('myaddr@d.com');
+            expect(windowRemove).not.toHaveBeenCalled();
+        });
+
+        it('schliesst das Fenster, wenn das Einfuegen geklappt hat', async () => {
+            globals.callAPI.mockResolvedValue({});
+            await bootWithSession();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: true });
+            const windowRemove = vi.spyOn(mock.windows, 'remove');
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(windowRemove).toHaveBeenCalledWith(1);
+            expect($('error_msg').style.display).not.toBe('block');
+        });
+
         it('re-auths via PAT and retries when the session expired (error code 25)', async () => {
             // OPAQUE-Konto mit hinterlegtem PAT, aber serverseitig abgelaufener Session.
             mock.storage.sync.data.set('username', 'saf');

@@ -314,12 +314,42 @@ async function createAddress(e: Event) {
         await browser.storage.local.set({ "previous_addresses": addresses });
 
         // ** Add address into active tab **
-        await browser.tabs.sendMessage(tabId!, address[0], { "frameId": frameId });
+        // Ab hier ist die Adresse SCHON angelegt. Ein Fehlschlag beim Einfuegen
+        // oder beim Menue darf deshalb nicht wie ein Abbruch aussehen - vorher
+        // landete die rohe Browsermeldung "Error message from listener couldn't
+        // be parsed or was empty." im Fehlerkasten, waehrend alles geklappt hatte.
+        let pasted = true;
+        try {
+            const antwort = await browser.tabs.sendMessage(tabId!, address[0], { "frameId": frameId }) as { pasted?: boolean } | undefined;
+            // Aeltere Content-Scripts antworten nichts - das gilt als eingefuegt.
+            if (antwort && antwort.pasted === false) {
+                pasted = false;
+            }
+        } catch (err) {
+            console.warn("[Aionda Mail] Adresse konnte nicht ins Feld eingetragen werden:", err);
+            pasted = false;
+        }
+
         // Send message to the background service to update the menu
-        await browser.runtime.sendMessage({
-            action: "update_menu",
-            tabId: tabId,
-        });
+        try {
+            await browser.runtime.sendMessage({
+                action: "update_menu",
+                tabId: tabId,
+            });
+        } catch (err) {
+            console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+        }
+
+        if (!pasted) {
+            // Fenster offen lassen und die Adresse zum Kopieren zeigen - sonst
+            // ist sie vom Bildschirm weg, ohne im Formular zu stehen.
+            error.innerText = browser.i18n.getMessage("errorAddressNotPasted", [address[0]])
+                || `The address ${address[0]} was created, but could not be inserted into the form. Please copy it manually.`;
+            error.style.display = "block";
+            progress.style.display = "none";
+            createButton.disabled = false;
+            return;
+        }
 
         // **Popup schließen**
         const currentWindow = await browser.windows.getCurrent();

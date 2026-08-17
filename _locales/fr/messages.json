@@ -1,6 +1,7 @@
 {
     "errorSessionExpired": {"message": "Votre session a expiré. Veuillez ouvrir les options de l'extension et vous reconnecter."},
     "errorGenericServer": {"message": "Le serveur a renvoyé une erreur. Veuillez ouvrir les options de l'extension et vous reconnecter."},
+    "errorAddressNotPasted": {"message": "L'adresse $ADDRESS$ a bien été créée, mais n'a pas pu être insérée dans le formulaire. Copie-la à la main.", "placeholders": {"address": {"content": "$1"}}},
     "extensionName": {"message": "Aionda Mail (TrashMail) : E-mail jetable"},
     "extensionDescription": {"message": "E-mails jetables en un clic : protégez votre vraie adresse contre le spam. Anciennement TrashMail.com."},
 

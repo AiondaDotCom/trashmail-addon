@@ -252,11 +252,31 @@
         addresses[domain] = [address];
       }
       await browser.storage.local.set({ "previous_addresses": addresses });
-      await browser.tabs.sendMessage(tabId, address[0], { "frameId": frameId });
-      await browser.runtime.sendMessage({
-        action: "update_menu",
-        tabId
-      });
+      let pasted = true;
+      try {
+        const antwort = await browser.tabs.sendMessage(tabId, address[0], { "frameId": frameId });
+        if (antwort && antwort.pasted === false) {
+          pasted = false;
+        }
+      } catch (err) {
+        console.warn("[Aionda Mail] Adresse konnte nicht ins Feld eingetragen werden:", err);
+        pasted = false;
+      }
+      try {
+        await browser.runtime.sendMessage({
+          action: "update_menu",
+          tabId
+        });
+      } catch (err) {
+        console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+      }
+      if (!pasted) {
+        error.innerText = browser.i18n.getMessage("errorAddressNotPasted", [address[0]]) || `The address ${address[0]} was created, but could not be inserted into the form. Please copy it manually.`;
+        error.style.display = "block";
+        progress.style.display = "none";
+        createButton.disabled = false;
+        return;
+      }
       const currentWindow = await browser.windows.getCurrent();
       await browser.windows.remove(currentWindow.id);
     } catch (msg) {

@@ -1,6 +1,7 @@
 {
     "errorSessionExpired": {"message": "Your session has expired. Please open the extension options and log in again."},
     "errorGenericServer": {"message": "The server returned an error. Please open the extension options and log in again."},
+    "errorAddressNotPasted": {"message": "The address $ADDRESS$ was created, but could not be inserted into the form. Please copy it manually.", "placeholders": {"address": {"content": "$1"}}},
     "extensionName": {"message": "Aionda Mail (TrashMail): Disposable Temp Mail"},
     "extensionDescription": {"message": "Temp mail: create disposable email addresses in one click and protect your real address from spam. Formerly TrashMail.com."},
 

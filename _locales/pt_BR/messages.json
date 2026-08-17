@@ -1,4 +1,5 @@
 {
+    "errorAddressNotPasted": {"message": "O endereço $ADDRESS$ foi criado, mas não foi possível inseri-lo no formulário. Copie-o manualmente.", "placeholders": {"address": {"content": "$1"}}},
     "extensionName": {"message": "Aionda Mail (TrashMail): Email temporário"},
     "extensionDescription": {"message": "Crie emails temporários e descartáveis com um clique e proteja seu endereço real do spam. Antes TrashMail.com."},
 

@@ -65,6 +65,38 @@
     div.textContent = text;
     return div.innerHTML;
   }
+  function pasteIntoFocusedField(pasteText) {
+    const e = document.activeElement;
+    if (!e) {
+      return false;
+    }
+    if ("selectionStart" in e) {
+      const input = e;
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      if (start === null || end === null) {
+        input.value = pasteText;
+      } else {
+        input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
+        try {
+          input.setSelectionRange(start + pasteText.length, start + pasteText.length);
+        } catch (err) {
+          console.warn("[Aionda Mail] Cursor konnte nicht gesetzt werden:", err);
+        }
+      }
+      return input.value.includes(pasteText);
+    }
+    if (e.isContentEditable) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        return false;
+      }
+      selection.deleteFromDocument();
+      selection.getRangeAt(0).insertNode(document.createTextNode(pasteText));
+      return true;
+    }
+    return false;
+  }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.action === "guardian_warning") {
       const warning = message;
@@ -78,23 +110,14 @@
       sendResponse(isInput || activeElement && activeElement.isContentEditable);
       return true;
     } else {
-      const pasteText = message;
-      const e = document.activeElement;
-      if (e) {
-        if ("selectionStart" in e) {
-          const input = e;
-          const start = input.selectionStart;
-          const end = input.selectionEnd;
-          input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
-          input.setSelectionRange(start + pasteText.length, start + pasteText.length);
-        } else if (e.isContentEditable) {
-          const selection = window.getSelection();
-          if (selection.rangeCount > 0) {
-            selection.deleteFromDocument();
-            selection.getRangeAt(0).insertNode(document.createTextNode(pasteText));
-          }
-        }
+      let pasted = false;
+      try {
+        pasted = pasteIntoFocusedField(message);
+      } catch (err) {
+        console.warn("[Aionda Mail] Adresse konnte nicht eingefuegt werden:", err);
       }
+      sendResponse({ pasted });
+      return true;
     }
   });
 })();

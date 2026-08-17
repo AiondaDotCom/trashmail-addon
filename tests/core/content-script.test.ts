@@ -131,6 +131,39 @@ describe('paste address into focused field', () => {
         }
     });
 
+    it('WAECHTER: ein Feld ohne Einfuegemarke (type="email") laesst den Listener NICHT werfen', async () => {
+        // Vorbedingung, damit der Waechter nicht ins Leere prueft: genau hier wirft
+        // der Browser. jsdom verhaelt sich wie Chrome (gemessen 13.08./16.08.2026:
+        // selectionStart === null, setSelectionRange -> DOMException InvalidStateError).
+        const input = document.createElement('input');
+        input.type = 'email';
+        document.body.appendChild(input);
+        input.focus();
+        expect(input.selectionStart).toBeNull();
+        expect(() => input.setSelectionRange(0, 0)).toThrow(DOMException);
+
+        // Ein Wurf aus dem Listener kommt beim Absender als
+        // "Error message from listener couldn't be parsed or was empty." an.
+        const response = await mock.runtime.sendMessage('wegwerf-7037@kurzepost.de');
+
+        expect(response).toEqual({ pasted: true });
+        expect(input.value).toBe('wegwerf-7037@kurzepost.de');
+    });
+
+    it('meldet ehrlich pasted:false, wenn der Browser den Wert verwirft (type="number")', async () => {
+        const input = document.createElement('input');
+        input.type = 'number';
+        document.body.appendChild(input);
+        input.focus();
+
+        const response = await mock.runtime.sendMessage('wegwerf-7037@kurzepost.de');
+
+        // Der Browser verwirft eine nicht-numerische Zuweisung still - dann darf
+        // die Rueckmeldung nicht "eingefuegt" behaupten.
+        expect(input.value).toBe('');
+        expect(response).toEqual({ pasted: false });
+    });
+
     it('is a no-op when the focused element is neither an input nor contentEditable', async () => {
         const plain = document.createElement('div');
         plain.textContent = 'unchanged';

@@ -94,6 +94,69 @@ function escapeHtml(text: string): string {
     return div.innerHTML;
 }
 
+/**
+ * Traegt die Adresse an der Einfuegemarke des fokussierten Feldes ein und meldet,
+ * ob sie danach wirklich drinsteht.
+ *
+ * 🚩 Felder wie `type="email"` oder `type="number"` haben KEINE Einfuegemarke:
+ * `selectionStart` ist dort `null` und `setSelectionRange()` wirft eine
+ * DOMException („The input element's type ('email') does not support
+ * selection."). Wird die aus einem `onMessage`-Listener geworfen, sieht der
+ * Absender davon nichts Brauchbares - eine DOMException ist kein *natives*
+ * Error-Objekt, und Chrome ersetzt sie ab Version 145 durch den nichtssagenden
+ * Satz „Error message from listener couldn't be parsed or was empty."
+ * (`OneTimeMessageHandler::GetErrorMessageFromValue`). Genau das bekam ein Kunde
+ * am 16.08.2026 zu sehen, waehrend die Adresse in Wahrheit erstellt UND
+ * eingefuegt war. Bis Chrome 141 wurde derselbe Wurf still verschluckt
+ * (`sendMessage` loeste mit `undefined` auf) - der Fehler ist also alt, nur
+ * seine Sichtbarkeit ist neu. Gemessen mit Chrome for Testing 141 und 148.
+ *
+ * Deshalb: hier wird nichts geworfen, und die Rueckmeldung ist ehrlich - bei
+ * `type="number"` verwirft der Browser die Adresse still, dann ist das Ergebnis
+ * `false` und nicht „eingefuegt".
+ */
+function pasteIntoFocusedField(pasteText: string): boolean {
+    const e = document.activeElement;
+    if (!e) {
+        return false;
+    }
+
+    if ("selectionStart" in e) {
+        // input/textarea elements
+        const input = e as HTMLInputElement;
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+
+        if (start === null || end === null) {
+            // Keine Einfuegemarke (type="email", "number", ...): Inhalt ersetzen
+            // und setSelectionRange gar nicht erst aufrufen.
+            input.value = pasteText;
+        } else {
+            input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
+            try {
+                input.setSelectionRange(start + pasteText.length, start + pasteText.length); // Cursor setzen
+            } catch (err) {
+                console.warn("[Aionda Mail] Cursor konnte nicht gesetzt werden:", err);
+            }
+        }
+
+        return input.value.includes(pasteText);
+    }
+
+    if ((e as HTMLElement).isContentEditable) {
+        // contentEditable elements
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            return false;
+        }
+        selection.deleteFromDocument();
+        selection.getRangeAt(0).insertNode(document.createTextNode(pasteText));
+        return true;
+    }
+
+    return false;
+}
+
 browser.runtime.onMessage.addListener((message: GuardianWarningMessage | string, sender, sendResponse) => {
     // Guardian MITM warning
     if (message && (message as GuardianWarningMessage).action === "guardian_warning") {
@@ -109,25 +172,15 @@ browser.runtime.onMessage.addListener((message: GuardianWarningMessage | string,
         sendResponse(isInput || (activeElement && (activeElement as HTMLElement).isContentEditable));
         return true; // Asynchrone Antwort erlauben
     } else {  // Paste email address
-        const pasteText = message as string;
-        const e = document.activeElement;
-        if (e) {
-            if ("selectionStart" in e) {
-                // input/textarea elements
-                const input = e as HTMLInputElement;
-                const start = input.selectionStart!;
-                const end = input.selectionEnd!;
-                input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
-                input.setSelectionRange(start + pasteText.length, start + pasteText.length); // Cursor setzen
-            } else if ((e as HTMLElement).isContentEditable) {
-                // contentEditable elements
-                const selection = window.getSelection()!;
-                if (selection.rangeCount > 0) {
-                    selection.deleteFromDocument();
-                    selection.getRangeAt(0).insertNode(document.createTextNode(pasteText));
-                }
-            }
+        let pasted = false;
+        try {
+            pasted = pasteIntoFocusedField(message as string);
+        } catch (err) {
+            // Nichts aus dem Listener herauswerfen - siehe pasteIntoFocusedField().
+            console.warn("[Aionda Mail] Adresse konnte nicht eingefuegt werden:", err);
         }
+        sendResponse({ pasted: pasted });
+        return true;
     }
 });
 

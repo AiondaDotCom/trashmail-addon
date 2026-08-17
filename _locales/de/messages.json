@@ -1,6 +1,7 @@
 {
     "errorSessionExpired": {"message": "Deine Sitzung ist abgelaufen. Bitte öffne die Erweiterungs-Einstellungen und melde dich erneut an."},
     "errorGenericServer": {"message": "Der Server hat einen Fehler zurückgegeben. Bitte öffne die Erweiterungs-Einstellungen und melde dich erneut an."},
+    "errorAddressNotPasted": {"message": "Die Adresse $ADDRESS$ wurde erstellt, konnte aber nicht in das Formular eingefügt werden. Bitte kopiere sie von Hand.", "placeholders": {"address": {"content": "$1"}}},
     "extensionName": {"message": "Aionda Mail (TrashMail): Temp & Wegwerf-Mail"},
     "extensionDescription": {"message": "Temp Mail: Wegwerf-E-Mail-Adressen mit einem Klick erstellen und deine echte Adresse vor Spam schützen. Früher TrashMail.com."},
 
