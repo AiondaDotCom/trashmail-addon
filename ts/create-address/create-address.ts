@@ -64,11 +64,9 @@ async function reauthAndGetSession(): Promise<string> {
     }
 
     if (isPAT(password)) {
-        if (typeof addonOpaqueClient === "undefined") {
-            throw new Error(browser.i18n.getMessage("errorSessionExpired")
-                || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
-        }
-        const login = await addonOpaqueClient.patOpaqueLogin(username, password);
+        // loginWithStoredPat routet je Kontosorte: OPAQUE-PAT per Handshake,
+        // klassisches PAT (mail_access_tokens) per cmd=login.
+        const login = await loginWithStoredPat(username, password);
         const sessionId = String(login["session_id"]);
         await browser.storage.local.set({ "session_id": sessionId });
         return sessionId;

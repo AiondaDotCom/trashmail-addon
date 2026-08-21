@@ -12,7 +12,7 @@
  * once and for all) lives in the isolated sibling file api-signature.test.ts,
  * so here public_key.json always 404s and the crypto branch stays untouched.
  */
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { installBrowserMock, type BrowserMock } from '../helpers/browser-mock';
 
@@ -231,5 +231,95 @@ describe('PREFIXES', () => {
         expect(Array.isArray(api().PREFIXES)).toBe(true);
         expect(api().PREFIXES.length).toBeGreaterThan(100);
         expect(api().PREFIXES).toContain('cat');
+    });
+});
+
+describe('loginWithStoredPat', () => {
+    // Ein tmpat_-Token kann in mail_opaque_access_tokens (OPAQUE-Konten) ODER
+    // mail_access_tokens (klassische Konten) leben. Kundenfall 21.08.2026:
+    // klassisches Konto, unbedingtes patOpaqueLogin -> "Invalid Personal
+    // Access Token" bei jeder Token-Nutzung.
+    const g = globalThis as Record<string, unknown>;
+    const lws = () => (globalThis as unknown as {
+        loginWithStoredPat: (username: string, token: string, options?: { establishBrowserSession?: boolean }) => Promise<Record<string, unknown>>;
+    }).loginWithStoredPat;
+
+    afterEach(() => {
+        delete g['addonOpaqueClient'];
+    });
+
+    it('klassisches Konto: routet auf cmd=login und ruft patOpaqueLogin NICHT (Kundenfall)', async () => {
+        const patOpaqueLogin = vi.fn();
+        g['addonOpaqueClient'] = {
+            checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: false, srp_enabled: false }),
+            patOpaqueLogin,
+        };
+        const fetchMock = stubFetch(fakeResponse({ success: true, data: { session_id: 's-classic' } }));
+
+        const result = await lws()('andrew', 'tmpat_classictoken');
+
+        expect(patOpaqueLogin).not.toHaveBeenCalled();
+        expect(result).toMatchObject({ session_id: 's-classic' });
+        const loginCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('cmd=login'));
+        expect(loginCall).toBeDefined();
+    });
+
+    it('OPAQUE-Konto: routet auf patOpaqueLogin und macht KEIN cmd=login', async () => {
+        const patOpaqueLogin = vi.fn().mockResolvedValue({ success: true, session_id: 's-opaque' });
+        g['addonOpaqueClient'] = {
+            checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+            patOpaqueLogin,
+        };
+        const fetchMock = stubFetch(fakeResponse({ success: true, data: {} }));
+
+        const result = await lws()('saf', 'tmpat_opaquetoken', { establishBrowserSession: true });
+
+        expect(patOpaqueLogin).toHaveBeenCalledWith('saf', 'tmpat_opaquetoken', { establishBrowserSession: true });
+        expect(result).toMatchObject({ session_id: 's-opaque' });
+        expect(fetchMock.mock.calls.find((call) => String(call[0]).includes('cmd=login'))).toBeUndefined();
+    });
+
+    it('Altbestand: OPAQUE-Konto mit klassischem Token faellt auf cmd=login zurueck', async () => {
+        g['addonOpaqueClient'] = {
+            checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+            patOpaqueLogin: vi.fn().mockRejectedValue(new Error('Invalid Personal Access Token')),
+        };
+        stubFetch(fakeResponse({ success: true, data: { session_id: 's-legacy' } }));
+
+        const result = await lws()('legacyuser', 'tmpat_oldclassic');
+
+        expect(result).toMatchObject({ session_id: 's-legacy' });
+    });
+
+    it('scheitern beide Wege, kommt der Fehler des zur Kontosorte passenden Wegs', async () => {
+        g['addonOpaqueClient'] = {
+            checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+            patOpaqueLogin: vi.fn().mockRejectedValue(new Error('Invalid Personal Access Token')),
+        };
+        stubFetch(fakeResponse({ success: false, error_code: 61, msg: 'Auth failed' }, { ok: false, status: 401, statusText: 'Unauthorized' }));
+
+        await expect(lws()('bob', 'tmpat_revoked')).rejects.toThrow('Invalid Personal Access Token');
+    });
+
+    it('ohne OPAQUE-Client: klassischer Login direkt, kein Fallback-Rauschen', async () => {
+        stubFetch(fakeResponse({ success: true, data: { session_id: 's-noclient' } }));
+
+        const result = await lws()('bob', 'tmpat_x');
+
+        expect(result).toMatchObject({ session_id: 's-noclient' });
+    });
+
+    it('establishBrowserSession: klassischer Weg schickt cmd=login MIT Browser-Cookies', async () => {
+        g['addonOpaqueClient'] = {
+            checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: false, srp_enabled: false }),
+            patOpaqueLogin: vi.fn(),
+        };
+        const fetchMock = stubFetch(fakeResponse({ success: true, data: { session_id: 's-cookie' } }));
+
+        await lws()('andrew', 'tmpat_classictoken', { establishBrowserSession: true });
+
+        const loginCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('cmd=login'));
+        expect(loginCall).toBeDefined();
+        expect((loginCall?.[1] as { credentials?: string } | undefined)?.credentials).toBe('include');
     });
 });

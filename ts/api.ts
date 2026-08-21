@@ -351,14 +351,111 @@ function createAccessToken(sessionId: string, tokenName: string): Promise<string
     });
 }
 
+/** Optionen fuer die PAT-/Klassik-Logins unten. */
+interface PatLoginOptions {
+    /**
+     * true = Login-Requests MIT Browser-Cookies schicken, sodass der Server
+     * das Website-Session-Cookie setzt (fuer "Address-Manager oeffnen").
+     * Default: cookie-los, nur die session_id aus der Antwort zaehlt.
+     */
+    establishBrowserSession?: boolean;
+}
+
+/**
+ * Klassischer Login (cmd=login) mit Benutzername + Geheimnis. Das Geheimnis
+ * darf auch ein klassisches PAT (tmpat_...) sein - der Server erkennt das
+ * Praefix selbst und validiert gegen mail_access_tokens
+ * (LoginService::authenticateWithPAT).
+ */
+async function classicLoginRequest(username: string, secret: string, options: PatLoginOptions = {}): Promise<TmApiResponse> {
+    if (!options.establishBrowserSession) {
+        return callAPI({ "cmd": "login", "fe-login-user": username, "fe-login-pass": secret });
+    }
+    // POST mit Cookies, Zugangsdaten im Body: weder session_id noch Geheimnis
+    // landen in der URL, der Server setzt das Session-Cookie im Browser.
+    const baseUrl = await getApiBaseUrl();
+    const lang = browser.i18n.getUILanguage().substr(0, 2);
+    // eslint-disable-next-line no-restricted-syntax -- Cookie-Login vor jeder Sitzung; das Addon hat keinen /e-Client, und callAPI kennt keine Cookies
+    const response = await fetch(`${baseUrl}/?api=1&cmd=login&lang=${lang}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ "fe-login-user": username, "fe-login-pass": secret }),
+    });
+    const result = JSON.parse(await response.text()) as TmApiResponse & { success?: boolean; msg?: string };
+    if (result.error || result.success === false) {
+        const error = new Error(result.msg || result.error || "Login failed") as ApiError;
+        if (result.error_code !== undefined) {
+            error.errorCode = result.error_code;
+        }
+        throw error;
+    }
+    return result;
+}
+
+/**
+ * Meldet sich mit einem gespeicherten PAT (tmpat_...) an und liefert die
+ * Login-Details (inkl. session_id).
+ *
+ * Ein PAT kann in ZWEI Ablagen leben, und dem Token sieht man die Sorte
+ * nicht an:
+ *   - mail_opaque_access_tokens (OPAQUE-Konten, createAccessTokenOpaque):
+ *     NUR per OPAQUE-Handshake verifizierbar (patOpaqueLogin)
+ *   - mail_access_tokens (klassische Konten, createAccessToken):
+ *     NUR per cmd=login verifizierbar; der OPAQUE-Handshake endet fuer sie
+ *     IMMER mit "Invalid Personal Access Token", weil serverseitig kein
+ *     OPAQUE-Record existiert
+ * Deshalb wird hier anhand von opaque_check geroutet und bei einem
+ * Fehlschlag die jeweils andere Ablage probiert (Altbestand: Konto spaeter
+ * migriert, gespeichertes Token noch aus der anderen Ablage).
+ *
+ * Kundenfall 21.08.2026: klassisches Konto, alle Aufrufstellen gingen
+ * unbedingt auf patOpaqueLogin -> Login gruen, aber jede Token-Nutzung
+ * scheiterte mit "Invalid Personal Access Token".
+ */
+async function loginWithStoredPat(username: string, token: string, options: PatLoginOptions = {}): Promise<TmApiResponse> {
+    const opaqueLogin = typeof addonOpaqueClient !== "undefined"
+        ? (): Promise<TmApiResponse> => addonOpaqueClient!.patOpaqueLogin(username, token, options)
+        : null;
+    const classicLogin = (): Promise<TmApiResponse> => classicLoginRequest(username, token, options);
+
+    let opaqueEnabled = false;
+    if (opaqueLogin) {
+        try {
+            opaqueEnabled = (await addonOpaqueClient!.checkOpaqueEnabled(username)).opaque_enabled;
+        } catch (e) {
+            console.warn("[API] opaque_check failed, trying classic PAT login:", e);
+        }
+    }
+
+    const primary = (opaqueEnabled && opaqueLogin) ? opaqueLogin : classicLogin;
+    const fallback = (opaqueEnabled && opaqueLogin) ? classicLogin : opaqueLogin;
+
+    try {
+        return await primary();
+    } catch (primaryError) {
+        if (!fallback) {
+            throw primaryError;
+        }
+        try {
+            return await fallback();
+        } catch {
+            // Der Fehler des zur Kontosorte passenden Wegs ist der
+            // aussagekraeftigere - den Fallback-Fehler verwerfen.
+            throw primaryError;
+        }
+    }
+}
+
 /**
  * Oeffnet den Web-Adressmanager als eingeloggten Tab.
  *
  * Etabliert die Website-Session per POST-Login MIT Browser-Cookies
- * (PAT-Konten via OPAQUE-Handshake, klassische Konten via cmd=login mit
- * Zugangsdaten im Request-BODY). Es landet also weder session_id noch
- * Passwort in der URL - der Manager-Tab oeffnet nackt mit ?cmd=manager
- * und ist ueber das frisch gesetzte Session-Cookie authentifiziert.
+ * (PAT je nach Kontosorte via OPAQUE-Handshake ODER cmd=login, klassische
+ * Konten via cmd=login mit Zugangsdaten im Request-BODY). Es landet also
+ * weder session_id noch Passwort in der URL - der Manager-Tab oeffnet nackt
+ * mit ?cmd=manager und ist ueber das frisch gesetzte Session-Cookie
+ * authentifiziert.
  */
 async function openAddressManagerAuthenticated(): Promise<void> {
     const lang = browser.i18n.getUILanguage().substr(0, 2);
@@ -373,25 +470,9 @@ async function openAddressManagerAuthenticated(): Promise<void> {
     const baseUrl = await getApiBaseUrl();
 
     if (isPAT(password)) {
-        // PAT lebt in mail_opaque_access_tokens und ist nur per OPAQUE
-        // verifizierbar - der Handshake setzt mit establishBrowserSession
-        // das Session-Cookie im Browser.
-        if (typeof addonOpaqueClient === "undefined") {
-            throw new Error("OPAQUE client not loaded. Please reload.");
-        }
-        await addonOpaqueClient.patOpaqueLogin(username, password, { establishBrowserSession: true });
+        await loginWithStoredPat(username, password, { establishBrowserSession: true });
     } else {
-        // Klassisches Konto: POST-Login mit Cookies, Zugangsdaten im Body
-        const response = await fetch(`${baseUrl}/?api=1&cmd=login&lang=${lang}`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ "fe-login-user": username, "fe-login-pass": password }),
-        });
-        const result = JSON.parse(await response.text()) as { error?: string; msg?: string; success?: boolean };
-        if (result.error || result.success === false) {
-            throw new Error(result.msg || result.error || "Login failed");
-        }
+        await classicLoginRequest(username, password, { establishBrowserSession: true });
     }
 
     await browser.tabs.create({ "url": `${baseUrl}/?cmd=manager&lang=${lang}` });
@@ -399,7 +480,7 @@ async function openAddressManagerAuthenticated(): Promise<void> {
 
 // esbuild wraps this bundle in an IIFE, so the declarations above are NOT
 // global anymore. Publish the cross-file surface explicitly (see global.d.ts).
-Object.assign(globalThis, { callAPI, isPAT, createAccessToken, getApiBaseUrl, loadApiBaseUrl, PREFIXES, DEFAULT_API_URL, openAddressManagerAuthenticated });
+Object.assign(globalThis, { callAPI, isPAT, createAccessToken, getApiBaseUrl, loadApiBaseUrl, PREFIXES, DEFAULT_API_URL, openAddressManagerAuthenticated, loginWithStoredPat });
 // API_BASE_URL is mutable (reassigned by loadApiBaseUrl) and read as a live
 // global by other files - expose it via a getter over the internal let.
 // The setter is needed by the hidden debug panel in options.ts, which

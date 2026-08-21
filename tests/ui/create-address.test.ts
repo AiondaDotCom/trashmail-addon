@@ -231,11 +231,11 @@ describe('create-address.ts', () => {
         });
 
         it('re-auths via PAT and retries when the session expired (error code 25)', async () => {
-            // OPAQUE-Konto mit hinterlegtem PAT, aber serverseitig abgelaufener Session.
+            // Konto mit hinterlegtem PAT, aber serverseitig abgelaufener Session.
+            // loginWithStoredPat routet selbst (OPAQUE-Handshake vs. cmd=login).
             mock.storage.sync.data.set('username', 'saf');
             mock.storage.sync.data.set('password', 'tmpat_stalesession');
-            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 'fresh-sid' });
-            (globalThis as Record<string, unknown>)['addonOpaqueClient'] = { patOpaqueLogin };
+            globals.loginWithStoredPat.mockResolvedValue({ session_id: 'fresh-sid' });
 
             // Erster create_dea-Call scheitert mit Code 25 (anonymer Fallback),
             // der zweite (nach Re-Auth) klappt.
@@ -247,22 +247,19 @@ describe('create-address.ts', () => {
             document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
             await tick(8);
 
-            expect(patOpaqueLogin).toHaveBeenCalledWith('saf', 'tmpat_stalesession');
+            expect(globals.loginWithStoredPat).toHaveBeenCalledWith('saf', 'tmpat_stalesession');
             expect(mock.storage.local.data.get('session_id')).toBe('fresh-sid');
             // Zweiter Versuch mit frischer Session
             const retry = globals.callAPI.mock.calls.filter((c) => (c[0] as { cmd?: string }).cmd === 'create_dea');
             expect(retry.at(-1)![0]).toMatchObject({ session_id: 'fresh-sid' });
             // Adresse landet trotz anfaenglichem Fehler im Parent-Tab.
             expect(mock.tabs.sentMessages).toContainEqual({ tabId: 42, message: 'myaddr@d.com' });
-
-            delete (globalThis as Record<string, unknown>)['addonOpaqueClient'];
         });
 
         it('re-auths and retries a vault DEA when the session expired (login-required code 2)', async () => {
             mock.storage.sync.data.set('username', 'saf');
             mock.storage.sync.data.set('password', 'tmpat_stalevault');
-            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 'fresh-vault' });
-            (globalThis as Record<string, unknown>)['addonOpaqueClient'] = { patOpaqueLogin };
+            globals.loginWithStoredPat.mockResolvedValue({ session_id: 'fresh-vault' });
 
             // Vault-DEA ohne gueltige Session -> Server-Guard liefert Code 2.
             globals.callAPI
@@ -274,13 +271,11 @@ describe('create-address.ts', () => {
             document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
             await tick(8);
 
-            expect(patOpaqueLogin).toHaveBeenCalledWith('saf', 'tmpat_stalevault');
+            expect(globals.loginWithStoredPat).toHaveBeenCalledWith('saf', 'tmpat_stalevault');
             const calls = globals.callAPI.mock.calls.filter((c) => (c[0] as { cmd?: string }).cmd === 'create_dea');
             // Beide Versuche schicken das Vault-Ziel, der zweite mit frischer Session.
             expect((calls.at(-1)![1] as { data: { destination: string } }).data.destination).toBe('__VAULT__');
             expect(calls.at(-1)![0]).toMatchObject({ session_id: 'fresh-vault' });
-
-            delete (globalThis as Record<string, unknown>)['addonOpaqueClient'];
         });
     });
 

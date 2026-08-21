@@ -233,6 +233,54 @@
       throw new Error("Failed to create access token");
     });
   }
+  async function classicLoginRequest(username, secret, options = {}) {
+    if (!options.establishBrowserSession) {
+      return callAPI({ "cmd": "login", "fe-login-user": username, "fe-login-pass": secret });
+    }
+    const baseUrl = await getApiBaseUrl();
+    const lang = browser.i18n.getUILanguage().substr(0, 2);
+    const response = await fetch(`${baseUrl}/?api=1&cmd=login&lang=${lang}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ "fe-login-user": username, "fe-login-pass": secret })
+    });
+    const result = JSON.parse(await response.text());
+    if (result.error || result.success === false) {
+      const error = new Error(result.msg || result.error || "Login failed");
+      if (result.error_code !== void 0) {
+        error.errorCode = result.error_code;
+      }
+      throw error;
+    }
+    return result;
+  }
+  async function loginWithStoredPat(username, token, options = {}) {
+    const opaqueLogin = typeof addonOpaqueClient !== "undefined" ? () => addonOpaqueClient.patOpaqueLogin(username, token, options) : null;
+    const classicLogin = () => classicLoginRequest(username, token, options);
+    let opaqueEnabled = false;
+    if (opaqueLogin) {
+      try {
+        opaqueEnabled = (await addonOpaqueClient.checkOpaqueEnabled(username)).opaque_enabled;
+      } catch (e) {
+        console.warn("[API] opaque_check failed, trying classic PAT login:", e);
+      }
+    }
+    const primary = opaqueEnabled && opaqueLogin ? opaqueLogin : classicLogin;
+    const fallback = opaqueEnabled && opaqueLogin ? classicLogin : opaqueLogin;
+    try {
+      return await primary();
+    } catch (primaryError) {
+      if (!fallback) {
+        throw primaryError;
+      }
+      try {
+        return await fallback();
+      } catch {
+        throw primaryError;
+      }
+    }
+  }
   async function openAddressManagerAuthenticated() {
     const lang = browser.i18n.getUILanguage().substr(0, 2);
     const sync = await browser.storage.sync.get(["username", "password"]);
@@ -243,25 +291,13 @@
     }
     const baseUrl = await getApiBaseUrl();
     if (isPAT(password)) {
-      if (typeof addonOpaqueClient === "undefined") {
-        throw new Error("OPAQUE client not loaded. Please reload.");
-      }
-      await addonOpaqueClient.patOpaqueLogin(username, password, { establishBrowserSession: true });
+      await loginWithStoredPat(username, password, { establishBrowserSession: true });
     } else {
-      const response = await fetch(`${baseUrl}/?api=1&cmd=login&lang=${lang}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ "fe-login-user": username, "fe-login-pass": password })
-      });
-      const result = JSON.parse(await response.text());
-      if (result.error || result.success === false) {
-        throw new Error(result.msg || result.error || "Login failed");
-      }
+      await classicLoginRequest(username, password, { establishBrowserSession: true });
     }
     await browser.tabs.create({ "url": `${baseUrl}/?cmd=manager&lang=${lang}` });
   }
-  Object.assign(globalThis, { callAPI, isPAT, createAccessToken, getApiBaseUrl, loadApiBaseUrl, PREFIXES, DEFAULT_API_URL, openAddressManagerAuthenticated });
+  Object.assign(globalThis, { callAPI, isPAT, createAccessToken, getApiBaseUrl, loadApiBaseUrl, PREFIXES, DEFAULT_API_URL, openAddressManagerAuthenticated, loginWithStoredPat });
   Object.defineProperty(globalThis, "API_BASE_URL", {
     get: () => apiBaseUrl,
     set: (value) => {

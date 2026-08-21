@@ -915,6 +915,7 @@ async function pingForVerification(tabId: number, hostname: string): Promise<voi
     try {
         console.log("[Guardian] Ping for verification on cached page, tab:", tabId);
         // Small API request that will be signed
+        // eslint-disable-next-line no-restricted-syntax -- Guardian prueft den TRANSPORT selbst (Ed25519-Signatur der Antwort); ein Wrapper wuerde genau das verdecken
         const response = await fetch(`https://${hostname}/?api=1&cmd=ping`, {
             method: "GET",
             cache: "no-store" // Bypass cache

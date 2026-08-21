@@ -360,10 +360,10 @@
   }
   async function reAuthWithPat() {
     const sync = await browser.storage.sync.get(["username", "password"]);
-    if (typeof addonOpaqueClient === "undefined" || !sync.username || !sync.password) {
+    if (!sync.username || !sync.password) {
       throw new Error("re-auth unavailable");
     }
-    const login2 = await addonOpaqueClient.patOpaqueLogin(sync.username, sync.password);
+    const login2 = await loginWithStoredPat(sync.username, sync.password);
     const sessionId = String(login2["session_id"] ?? "");
     await browser.storage.local.set({ "session_id": sessionId });
     return sessionId;
@@ -591,44 +591,14 @@
     const password = form.get("password");
     const isPatToken = isPAT(password);
     if (isPatToken) {
-      console.log("[Aionda Mail] PAT detected, checking auth method...");
-      if (typeof addonOpaqueClient !== "undefined") {
-        addonOpaqueClient.checkOpaqueEnabled(username).then((authMethods) => {
-          if (authMethods.opaque_enabled) {
-            console.log("[Aionda Mail] Using PAT-OPAQUE authentication");
-            return addonOpaqueClient.patOpaqueLogin(username, password);
-          } else {
-            console.log("[Aionda Mail] Using classic PAT login (server not OPAQUE yet)");
-            return classicLogin(username, password);
-          }
-        }).then((loginDetails) => {
-          return handleLoginSuccess(username, password, loginDetails, false);
-        }).then((loginDetails) => {
-          return loadDEAAndClose(loginDetails["session_id"]);
-        }).catch((error) => {
-          if (error.message && error.message.includes("OPAQUE")) {
-            console.warn("[Aionda Mail] OPAQUE failed, trying classic PAT login:", error.message);
-            classicLogin(username, password).then((loginDetails) => {
-              return handleLoginSuccess(username, password, loginDetails, false);
-            }).then((loginDetails) => {
-              return loadDEAAndClose(loginDetails["session_id"]);
-            }).catch((fallbackError) => {
-              showLoginError(fallbackError, loginError, progress, cancelButton, loginButton);
-            });
-            return;
-          }
-          showLoginError(error, loginError, progress, cancelButton, loginButton);
-        });
-      } else {
-        console.log("[Aionda Mail] OPAQUE client not available, using classic PAT login");
-        classicLogin(username, password).then((loginDetails) => {
-          return handleLoginSuccess(username, password, loginDetails, false);
-        }).then((loginDetails) => {
-          return loadDEAAndClose(loginDetails["session_id"]);
-        }).catch((error) => {
-          showLoginError(error, loginError, progress, cancelButton, loginButton);
-        });
-      }
+      console.log("[Aionda Mail] PAT detected, routing by account type...");
+      loginWithStoredPat(username, password).then((loginDetails) => {
+        return handleLoginSuccess(username, password, loginDetails, false);
+      }).then((loginDetails) => {
+        return loadDEAAndClose(loginDetails["session_id"]);
+      }).catch((error) => {
+        showLoginError(error, loginError, progress, cancelButton, loginButton);
+      });
       return;
     }
     console.log("[Aionda Mail] Checking authentication method...");

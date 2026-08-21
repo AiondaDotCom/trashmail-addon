@@ -563,12 +563,11 @@ describe('welcome.ts', () => {
     });
 
     describe('login – OPAQUE / PAT', () => {
-        it('uses PAT-OPAQUE authentication when the server has OPAQUE enabled', async () => {
-            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 's-opaque', domain_name_list: [], real_email_list: {} });
-            setOpaqueClient({
-                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
-                patOpaqueLogin,
-            });
+        it('logs a PAT in via loginWithStoredPat (routing lives in api.ts)', async () => {
+            // Das Routing OPAQUE-Handshake vs. cmd=login samt Fallback liegt in
+            // loginWithStoredPat (api.ts) und wird dort getestet - welcome.ts
+            // reicht das Token nur durch.
+            globals.loginWithStoredPat.mockResolvedValue({ session_id: 's-pat', domain_name_list: [], real_email_list: {} });
             routeCallApi({});
             await importWelcome();
 
@@ -577,25 +576,8 @@ describe('welcome.ts', () => {
             $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
             await tick(8);
 
-            expect(patOpaqueLogin).toHaveBeenCalledWith('bob', 'tmpat_secrettoken');
-            expect(mock.storage.local.data.get('session_id')).toBe('s-opaque');
-        });
-
-        it('falls back to classic PAT login when OPAQUE fails', async () => {
-            setOpaqueClient({
-                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
-                patOpaqueLogin: vi.fn().mockRejectedValue(new Error('OPAQUE handshake failed')),
-            });
-            routeCallApi({ session_id: 's-classic', domain_name_list: [], real_email_list: {} });
-            await importWelcome();
-
-            input('login-username').value = 'bob';
-            input('login-password').value = 'tmpat_secrettoken';
-            $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            await tick(8);
-
-            expect(globals.callAPI).toHaveBeenCalledWith(expect.objectContaining({ cmd: 'login' }));
-            expect(mock.storage.local.data.get('session_id')).toBe('s-classic');
+            expect(globals.loginWithStoredPat).toHaveBeenCalledWith('bob', 'tmpat_secrettoken');
+            expect(mock.storage.local.data.get('session_id')).toBe('s-pat');
         });
 
         it('logs an OPAQUE account in with its password and auto-creates a PAT (no manual dialog)', async () => {
@@ -834,17 +816,14 @@ describe('welcome.ts', () => {
     });
 
     describe('login – misc branches', () => {
-        it('flow A: classic PAT login when the OPAQUE client is unavailable', async () => {
-            globals.callAPI.mockImplementation(async (d: { cmd: string }) => {
-                if (d.cmd === 'login') return { session_id: 's-pat', domain_name_list: [], real_email_list: {} };
-                if (d.cmd === 'read_dea') return [];
-                return {};
-            });
+        it('flow A: a stored PAT never creates a NEW token', async () => {
+            globals.loginWithStoredPat.mockResolvedValue({ session_id: 's-pat', domain_name_list: [], real_email_list: {} });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : {}));
             await importWelcome();
 
             await submitLogin('bob', 'tmpat_sometoken');
 
-            expect(globals.callAPI).toHaveBeenCalledWith(expect.objectContaining({ cmd: 'login' }));
+            expect(globals.loginWithStoredPat).toHaveBeenCalledWith('bob', 'tmpat_sometoken');
             expect(globals.createAccessToken).not.toHaveBeenCalled(); // already a PAT
             expect(mock.storage.local.data.get('session_id')).toBe('s-pat');
         });
@@ -905,11 +884,8 @@ describe('welcome.ts', () => {
             expect(mock.storage.local.data.get('session_id')).toBe('s-fb');
         });
 
-        it('shows a login error when a PAT-OPAQUE failure is not OPAQUE-related', async () => {
-            setOpaqueClient({
-                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
-                patOpaqueLogin: vi.fn().mockRejectedValue(new Error('network down')), // enthält NICHT "OPAQUE"
-            });
+        it('shows a login error when the PAT login fails', async () => {
+            globals.loginWithStoredPat.mockRejectedValue(new Error('network down'));
             await importWelcome();
 
             await submitLogin('bob', 'tmpat_token', 6);

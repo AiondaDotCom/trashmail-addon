@@ -68,6 +68,7 @@ function logout() {
             requests.push(callAPI({ "cmd": "logout", "session_id": sessionId }).catch(() => undefined));
         }
         // Browser-Session-Cookie (falls der Manager geoeffnet wurde) mit beenden
+        // eslint-disable-next-line no-restricted-syntax -- Cookie-Logout: callAPI kennt keine Cookies, /e gibt es im Addon nicht
         requests.push(fetch(`${API_BASE_URL}/?api=1&cmd=logout`, {
             method: "POST",
             credentials: "include",

@@ -48,6 +48,13 @@ declare function getApiBaseUrl(): Promise<string>;
 declare function loadApiBaseUrl(): Promise<string>;
 /** Manager-Tab oeffnen: POST-Login (PAT-OPAQUE bzw. classic) setzt das Session-Cookie, URL bleibt clean. */
 declare function openAddressManagerAuthenticated(): Promise<void>;
+/**
+ * Login mit gespeichertem PAT (tmpat_...). Routet anhand von opaque_check auf
+ * patOpaqueLogin (mail_opaque_access_tokens) ODER cmd=login
+ * (mail_access_tokens) und probiert bei Fehlschlag die andere Ablage - ein
+ * klassisches PAT ist per OPAQUE-Handshake strukturell nicht verifizierbar.
+ */
+declare function loginWithStoredPat(username: string, token: string, options?: { establishBrowserSession?: boolean }): Promise<TmApiResponse>;
 /** Live value - exposed by api.ts via a defineProperty getter. */
 declare const API_BASE_URL: string;
 declare const PREFIXES: string[];

@@ -48,6 +48,7 @@ export interface CommonGlobals {
     createAccessToken: ReturnType<typeof vi.fn>;
     getApiBaseUrl: ReturnType<typeof vi.fn>;
     openAddressManagerAuthenticated: ReturnType<typeof vi.fn>;
+    loginWithStoredPat: ReturnType<typeof vi.fn>;
     orgDomain: ReturnType<typeof vi.fn>;
     /** Aktueller API_BASE_URL-Wert (per get/set-Property wie in api.ts). */
     getApiBase(): string;
@@ -67,6 +68,7 @@ export function stubCommonGlobals(overrides: { apiBase?: string } = {}): CommonG
     const createAccessToken = vi.fn();
     const getApiBaseUrl = vi.fn(async () => apiBase);
     const openAddressManagerAuthenticated = vi.fn(async () => undefined);
+    const loginWithStoredPat = vi.fn();
     // Vendor: org_domain aus publicsuffixlist.js — hier deterministisch = Hostname.
     const orgDomain = vi.fn((url: URL) => url.hostname);
 
@@ -79,6 +81,7 @@ export function stubCommonGlobals(overrides: { apiBase?: string } = {}): CommonG
         createAccessToken,
         getApiBaseUrl,
         openAddressManagerAuthenticated,
+        loginWithStoredPat,
         isPAT,
         org_domain: orgDomain,
         DEFAULT_API_URL: 'https://mail.aionda.com',
@@ -102,6 +105,7 @@ export function stubCommonGlobals(overrides: { apiBase?: string } = {}): CommonG
         createAccessToken,
         getApiBaseUrl,
         openAddressManagerAuthenticated,
+        loginWithStoredPat,
         orgDomain,
         getApiBase: () => apiBase,
     };

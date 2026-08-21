@@ -79,6 +79,7 @@ async function obtainCaptchaSession(): Promise<string> {
     // (3-60s Dauer, >=10 Interaktionen) - Autofill fuellt schneller als 3s,
     // und wer lange ueberlegt, soll nicht an der 60s-Grenze scheitern.
     const elapsed = Date.now() - regPanelOpenedAt;
+    // eslint-disable-next-line no-restricted-syntax -- Captcha-Validierung VOR jeder Sitzung; das Addon hat keinen /e-Client
     const response = await fetch(`${API_BASE_URL}/?api=1&cmd=game_captcha_validate`, {
         // Keine Webapp-Cookies mitschicken - das Addon arbeitet nur mit session_id.
         credentials: "omit",
@@ -273,6 +274,7 @@ async function checkUsernameAvailability(username: string) {
 
     try {
         const lang = browser.i18n.getUILanguage().substr(0, 2);
+        // eslint-disable-next-line no-restricted-syntax -- Namenspruefung VOR der Registrierung (keine Sitzung); das Addon hat keinen /e-Client
         const response = await fetch(`${API_BASE_URL}/?api=1&cmd=check_username_available&lang=${lang}`, {
             // Keine Webapp-Cookies mitschicken - das Addon arbeitet nur mit session_id.
             credentials: "omit",
@@ -446,10 +448,12 @@ async function currentSessionId(): Promise<string> {
  */
 async function reAuthWithPat(): Promise<string> {
     const sync = await browser.storage.sync.get(["username", "password"]) as { username?: string; password?: string };
-    if (typeof addonOpaqueClient === "undefined" || !sync.username || !sync.password) {
+    if (!sync.username || !sync.password) {
         throw new Error("re-auth unavailable");
     }
-    const login = await addonOpaqueClient.patOpaqueLogin(sync.username, sync.password);
+    // loginWithStoredPat routet je Kontosorte: OPAQUE-PAT per Handshake,
+    // klassisches PAT (mail_access_tokens) per cmd=login.
+    const login = await loginWithStoredPat(sync.username, sync.password);
     const sessionId = String(login["session_id"] ?? "");
     await browser.storage.local.set({ "session_id": sessionId });
     return sessionId;
@@ -736,58 +740,21 @@ function login(e: Event) {
     const password = form.get("password") as string;
     const isPatToken = isPAT(password);
 
-    // Flow A: If password is a PAT, check if we need OPAQUE or classic
+    // Flow A: If password is a PAT, loginWithStoredPat routet je Kontosorte
+    // (OPAQUE-Handshake vs. cmd=login) und probiert bei Fehlschlag die
+    // jeweils andere Token-Ablage.
     if (isPatToken) {
-        console.log("[Aionda Mail] PAT detected, checking auth method...");
-
-        // Check if OPAQUE client and server support are available
-        if (typeof addonOpaqueClient !== "undefined") {
-            addonOpaqueClient.checkOpaqueEnabled(username).then((authMethods) => {
-                if (authMethods.opaque_enabled) {
-                    // Use PAT-OPAQUE (Zero-Knowledge)
-                    console.log("[Aionda Mail] Using PAT-OPAQUE authentication");
-                    return addonOpaqueClient!.patOpaqueLogin(username, password);
-                } else {
-                    // Use classic PAT login (server hasn't migrated yet)
-                    console.log("[Aionda Mail] Using classic PAT login (server not OPAQUE yet)");
-                    return classicLogin(username, password);
-                }
-            }).then((loginDetails) => {
+        console.log("[Aionda Mail] PAT detected, routing by account type...");
+        loginWithStoredPat(username, password)
+            .then((loginDetails) => {
                 return handleLoginSuccess(username, password, loginDetails, false);
-            }).then((loginDetails) => {
+            })
+            .then((loginDetails) => {
                 return loadDEAAndClose(loginDetails["session_id"]);
-            }).catch((error: AppError) => {
-                // Fallback to classic PAT login on OPAQUE errors
-                if (error.message && error.message.includes("OPAQUE")) {
-                    console.warn("[Aionda Mail] OPAQUE failed, trying classic PAT login:", error.message);
-                    classicLogin(username, password)
-                        .then((loginDetails) => {
-                            return handleLoginSuccess(username, password, loginDetails, false);
-                        })
-                        .then((loginDetails) => {
-                            return loadDEAAndClose(loginDetails["session_id"]);
-                        })
-                        .catch((fallbackError) => {
-                            showLoginError(fallbackError, loginError, progress, cancelButton, loginButton);
-                        });
-                    return;
-                }
+            })
+            .catch((error: AppError) => {
                 showLoginError(error, loginError, progress, cancelButton, loginButton);
             });
-        } else {
-            // No OPAQUE client, use classic PAT login
-            console.log("[Aionda Mail] OPAQUE client not available, using classic PAT login");
-            classicLogin(username, password)
-                .then((loginDetails) => {
-                    return handleLoginSuccess(username, password, loginDetails, false);
-                })
-                .then((loginDetails) => {
-                    return loadDEAAndClose(loginDetails["session_id"]);
-                })
-                .catch((error) => {
-                    showLoginError(error, loginError, progress, cancelButton, loginButton);
-                });
-        }
         return;
     }
 

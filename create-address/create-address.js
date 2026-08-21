@@ -61,10 +61,7 @@
       throw new Error(browser.i18n.getMessage("errorSessionExpired") || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
     }
     if (isPAT(password)) {
-      if (typeof addonOpaqueClient === "undefined") {
-        throw new Error(browser.i18n.getMessage("errorSessionExpired") || "Sitzung abgelaufen. Bitte in den Optionen erneut anmelden.");
-      }
-      const login = await addonOpaqueClient.patOpaqueLogin(username, password);
+      const login = await loginWithStoredPat(username, password);
       const sessionId2 = String(login["session_id"]);
       await browser.storage.local.set({ "session_id": sessionId2 });
       return sessionId2;
