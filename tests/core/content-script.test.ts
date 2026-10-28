@@ -178,3 +178,122 @@ describe('paste address into focused field', () => {
         }
     });
 });
+
+/**
+ * #8d29c6d5 #26f94a61: Frameworks wie React verfolgen den Feldwert ueber einen
+ * eigenen Setter auf der INSTANZ. `input.value = x` laeuft durch diesen Setter,
+ * der Verfolger haelt den neuen Wert fuer bekannt, und das folgende
+ * `input`-Ereignis loest kein onChange aus - das Formular sieht die Adresse
+ * nicht. Ohne jedes Ereignis merkt es ohnehin nichts. Nachgebaut ist genau
+ * Reacts `inputValueTracking`: Setter auf der Instanz, Vergleich beim Ereignis.
+ */
+describe('Einfuegen in Framework-Formulare (React/Vue)', () => {
+    function reactArtigesFeld(type = 'text'): { input: HTMLInputElement; aenderungen: string[]; ereignisse: string[] } {
+        const input = document.createElement('input');
+        input.type = type;
+        document.body.appendChild(input);
+        const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!;
+        let verfolgt = input.value;
+        Object.defineProperty(input, 'value', {
+            configurable: true,
+            get() { return proto.get!.call(this); },
+            set(v: string) { verfolgt = String(v); proto.set!.call(this, v); },
+        });
+        const aenderungen: string[] = [];
+        const ereignisse: string[] = [];
+        // Am Dokument lauschen: React haengt seine Ereignisse an die Wurzel,
+        // ein Ereignis ohne bubbles kaeme dort nie an.
+        for (const art of ['input', 'change']) {
+            document.addEventListener(art, (ev) => {
+                if (ev.target !== input) { return; }
+                ereignisse.push(art);
+                const jetzt = proto.get!.call(input) as string;
+                if (art === 'input' && jetzt !== verfolgt) {
+                    verfolgt = jetzt;
+                    aenderungen.push(jetzt);
+                }
+            });
+        }
+        return { input, aenderungen, ereignisse };
+    }
+
+    it('WAECHTER: loest input und change aus, und ein React-artiger Verfolger erkennt die Aenderung', async () => {
+        const { input, aenderungen, ereignisse } = reactArtigesFeld('text');
+        input.focus();
+        const response = await mock.runtime.sendMessage('react@trashmail.com');
+        expect(response).toEqual({ pasted: true });
+        expect(input.value).toBe('react@trashmail.com');
+        expect(ereignisse).toEqual(['input', 'change']);
+        expect(aenderungen).toEqual(['react@trashmail.com']);
+    });
+
+    it('WAECHTER: gilt auch fuer Felder ohne Einfuegemarke (type="email")', async () => {
+        const { input, aenderungen, ereignisse } = reactArtigesFeld('email');
+        input.focus();
+        const response = await mock.runtime.sendMessage('email@trashmail.com');
+        expect(response).toEqual({ pasted: true });
+        expect(ereignisse).toEqual(['input', 'change']);
+        expect(aenderungen).toEqual(['email@trashmail.com']);
+    });
+
+    it('nutzt bei einer textarea den Setter von HTMLTextAreaElement', async () => {
+        const area = document.createElement('textarea');
+        document.body.appendChild(area);
+        area.focus();
+        let gesehen = '';
+        area.addEventListener('input', () => { gesehen = area.value; });
+        const response = await mock.runtime.sendMessage('area@trashmail.com');
+        expect(response).toEqual({ pasted: true });
+        expect(gesehen).toBe('area@trashmail.com');
+    });
+});
+
+/**
+ * #26f94a61: Auf iOS gibt es keine Kontextmenues der Erweiterung; die Adresse
+ * entsteht im Popup. Das Antippen der Symbolleiste nimmt dem Feld den Fokus
+ * (die Tastatur verschwindet), `document.activeElement` ist dann `body`. Das
+ * zuletzt fokussierte Eingabefeld der Seite bleibt das Ziel.
+ */
+describe('Ziel nach Fokusverlust (Popup-Weg)', () => {
+    it('fuegt in das zuletzt fokussierte Feld ein, wenn der Fokus inzwischen weg ist', async () => {
+        const input = document.createElement('input');
+        input.type = 'email';
+        document.body.appendChild(input);
+        input.focus();
+        input.blur();
+        expect(document.activeElement).toBe(document.body);
+        const response = await mock.runtime.sendMessage('spaeter@trashmail.com');
+        expect(response).toEqual({ pasted: true });
+        expect(input.value).toBe('spaeter@trashmail.com');
+    });
+
+    it('meldet check_editable auch nach Fokusverlust fuer das zuletzt fokussierte Feld', async () => {
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        input.focus();
+        input.blur();
+        expect(await mock.runtime.sendMessage('check_editable')).toBeFalsy();
+    });
+
+    it('nimmt kein Feld, das inzwischen aus der Seite entfernt wurde', async () => {
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        input.focus();
+        input.blur();
+        input.remove();
+        const response = await mock.runtime.sendMessage('weg@trashmail.com');
+        expect(response).toEqual({ pasted: false });
+    });
+
+    it('nimmt kein schreibgeschuetztes Feld als Ersatzziel', async () => {
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        input.focus();
+        input.readOnly = true;
+        input.blur();
+        const response = await mock.runtime.sendMessage('ro@trashmail.com');
+        expect(response).toEqual({ pasted: false });
+        expect(input.value).toBe('');
+    });
+});
+

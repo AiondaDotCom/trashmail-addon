@@ -66,7 +66,7 @@
     return div.innerHTML;
   }
   function pasteIntoFocusedField(pasteText) {
-    const e = document.activeElement;
+    const e = pasteTarget();
     if (!e) {
       return false;
     }
@@ -75,15 +75,17 @@
       const start = input.selectionStart;
       const end = input.selectionEnd;
       if (start === null || end === null) {
-        input.value = pasteText;
+        setNativeValue(input, pasteText);
       } else {
-        input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
+        setNativeValue(input, `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`);
         try {
           input.setSelectionRange(start + pasteText.length, start + pasteText.length);
         } catch (err) {
           console.warn("[Aionda Mail] Cursor konnte nicht gesetzt werden:", err);
         }
       }
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
       return input.value.includes(pasteText);
     }
     if (e.isContentEditable) {
@@ -96,6 +98,42 @@
       return true;
     }
     return false;
+  }
+  function setNativeValue(input, value) {
+    const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    if (setter) {
+      setter.call(input, value);
+    } else {
+      input.value = value;
+    }
+  }
+  function isWritable(el) {
+    if (!el) {
+      return false;
+    }
+    if ("selectionStart" in el) {
+      const field = el;
+      return !field.readOnly && !field.disabled;
+    }
+    return el.isContentEditable === true;
+  }
+  var lastWritable = null;
+  document.addEventListener("focusin", (event) => {
+    const target = event.target;
+    if (isWritable(target)) {
+      lastWritable = target;
+    }
+  }, true);
+  function pasteTarget() {
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== document.documentElement) {
+      return active;
+    }
+    if (lastWritable && lastWritable.isConnected && isWritable(lastWritable)) {
+      return lastWritable;
+    }
+    return active;
   }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.action === "guardian_warning") {

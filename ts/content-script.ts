@@ -116,29 +116,35 @@ function escapeHtml(text: string): string {
  * `false` und nicht „eingefuegt".
  */
 function pasteIntoFocusedField(pasteText: string): boolean {
-    const e = document.activeElement;
+    const e = pasteTarget();
     if (!e) {
         return false;
     }
 
     if ("selectionStart" in e) {
         // input/textarea elements
-        const input = e as HTMLInputElement;
+        const input = e as HTMLInputElement | HTMLTextAreaElement;
         const start = input.selectionStart;
         const end = input.selectionEnd;
 
         if (start === null || end === null) {
             // Keine Einfuegemarke (type="email", "number", ...): Inhalt ersetzen
             // und setSelectionRange gar nicht erst aufrufen.
-            input.value = pasteText;
+            setNativeValue(input, pasteText);
         } else {
-            input.value = `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`;
+            setNativeValue(input, `${input.value.substring(0, start)}${pasteText}${input.value.substring(end)}`);
             try {
                 input.setSelectionRange(start + pasteText.length, start + pasteText.length); // Cursor setzen
             } catch (err) {
                 console.warn("[Aionda Mail] Cursor konnte nicht gesetzt werden:", err);
             }
         }
+
+        // #8d29c6d5 #26f94a61: Ohne Ereignisse merkt ein React-/Vue-Formular
+        // nichts von der Adresse und schickt das leere Feld ab. `bubbles`, weil
+        // React an der Wurzel lauscht, nicht am Feld.
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
 
         return input.value.includes(pasteText);
     }
@@ -155,6 +161,65 @@ function pasteIntoFocusedField(pasteText: string): boolean {
     }
 
     return false;
+}
+
+/**
+ * #8d29c6d5 #26f94a61: Den Wert ueber den Setter des PROTOTYPS setzen.
+ *
+ * React legt auf jedes Feld einen eigenen `value`-Setter, der den neuen Wert
+ * als „bekannt" verbucht. `input.value = x` laeuft durch diesen Setter, und das
+ * nachfolgende `input`-Ereignis gilt React dann als keine Aenderung - das
+ * Formular behaelt seinen alten (leeren) Zustand. Der Setter des Prototyps
+ * umgeht die Verbuchung.
+ */
+function setNativeValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+    const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    if (setter) {
+        setter.call(input, value);
+    } else {
+        input.value = value;
+    }
+}
+
+/** Ein Element, in das eingefuegt werden darf (beschreibbares Feld oder contentEditable). */
+function isWritable(el: Element | null): el is HTMLElement {
+    if (!el) {
+        return false;
+    }
+    if ("selectionStart" in el) {
+        const field = el as HTMLInputElement;
+        return !field.readOnly && !field.disabled;
+    }
+    return (el as HTMLElement).isContentEditable === true;
+}
+
+/**
+ * #26f94a61: Das zuletzt fokussierte beschreibbare Element der Seite.
+ *
+ * Auf iOS gibt es keine Kontextmenues der Erweiterung, die Adresse entsteht im
+ * Popup. Das Antippen der Symbolleiste schliesst die Tastatur, das Feld
+ * verliert den Fokus und `document.activeElement` ist danach `body`. Ohne
+ * diese Erinnerung landete die Adresse nirgends.
+ */
+let lastWritable: HTMLElement | null = null;
+document.addEventListener("focusin", (event) => {
+    const target = event.target as Element | null;
+    if (isWritable(target)) {
+        lastWritable = target;
+    }
+}, true);
+
+/** Ziel fuer das Einfuegen: das fokussierte Feld, sonst das zuletzt fokussierte, solange es noch in der Seite steht. */
+function pasteTarget(): Element | null {
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== document.documentElement) {
+        return active;
+    }
+    if (lastWritable && lastWritable.isConnected && isWritable(lastWritable)) {
+        return lastWritable;
+    }
+    return active;
 }
 
 browser.runtime.onMessage.addListener((message: GuardianWarningMessage | string, sender, sendResponse) => {
