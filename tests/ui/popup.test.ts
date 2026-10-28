@@ -353,4 +353,57 @@ describe('popup.ts', () => {
             expect(nav.close).toHaveBeenCalled();
         });
     });
+
+    /** #8d29c6d5 #26f94a61: der Weg ohne Kontextmenue (Safari auf iOS/iPadOS). */
+    describe('Adresse fuer diese Seite', () => {
+        it('oeffnet das Formular im Popup mit Tab und Seite des aktiven Tabs', async () => {
+            mock.storage.sync.data.set('username', 'u');
+            mock.storage.sync.data.set('password', 'p');
+            mock.tabs.list.push({ id: 42, url: 'https://shop.test/anmelden', windowId: 1, active: true });
+            await importPopup();
+            document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
+            await tick(3);
+            // Ein Rahmen statt einer Navigation: Safari schliesst das Popup nur
+            // aus der Seite, mit der es geoeffnet wurde.
+            expect(window.location.assign).not.toHaveBeenCalled();
+            const rahmen = document.getElementById('create-address-frame') as HTMLIFrameElement;
+            expect(rahmen).not.toBeNull();
+            expect(document.getElementById('btn-create-address')).toBeNull();
+            const ziel = new URL(rahmen.src);
+            expect(ziel.pathname.endsWith('/create-address/create-address.html')).toBe(true);
+            expect(ziel.searchParams.get('popup')).toBe('1');
+            expect(ziel.searchParams.get('tab')).toBe('42');
+            expect(ziel.searchParams.get('frame')).toBe('0');
+            expect(ziel.searchParams.get('url')).toBe('https://shop.test/anmelden');
+        });
+
+        it('WAECHTER: schliesst das Popup auf Bitte des Rahmens, aber nur von gleicher Herkunft', async () => {
+            await importPopup();
+            window.dispatchEvent(new MessageEvent('message', { data: { aiondaAktion: 'popup-schliessen' }, origin: 'https://fremd.example' }));
+            expect(nav.close).not.toHaveBeenCalled();
+            window.dispatchEvent(new MessageEvent('message', { data: { aiondaAktion: 'etwas-anderes' }, origin: window.location.origin }));
+            expect(nav.close).not.toHaveBeenCalled();
+            window.dispatchEvent(new MessageEvent('message', { data: { aiondaAktion: 'popup-schliessen' }, origin: window.location.origin }));
+            // (Frühere Tests haben eigene window-Listener hinterlassen, deshalb keine Anzahl.)
+            expect(nav.close).toHaveBeenCalled();
+        });
+
+        it('fuehrt abgemeldet zur Anmeldung statt zum Formular', async () => {
+            await importPopup();
+            document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
+            await tick(4);
+            expect(document.getElementById('create-address-frame')).toBeNull();
+            expect(mock.windows.created[0]?.['url']).toContain('options/welcome.html');
+        });
+
+        it('oeffnet die Anmeldung als Tab, wenn es keine eigenen Fenster gibt (iOS)', async () => {
+            vi.spyOn(mock.windows, 'create').mockRejectedValue(new Error('windows.create is not supported'));
+            await importPopup();
+            document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
+            await tick(4);
+            expect(mock.tabs.list.some((tab) => String(tab.url).includes('options/welcome.html'))).toBe(true);
+            expect(nav.close).toHaveBeenCalled();
+        });
+    });
 });
+

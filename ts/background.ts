@@ -4,7 +4,11 @@ import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
 // Import additional scripts (Service Worker only - Chrome)
-// Firefox with background.scripts loads these via manifest
+// Firefox with background.scripts loads these via manifest.
+// Safari (manifest_safari.json) ebenfalls ueber background.scripts: Mit
+// "service_worker" lief background.js dort in einer Seite (self ist Window,
+// importScripts fehlt) - api.js, publicsuffixlist.js und guardian.js wurden
+// nie geladen (gemessen 28.10.2026, Safari iOS 26.5 im Simulator, #26f94a61).
 if (typeof importScripts === "function") {
     importScripts("api.js", "publicsuffixlist.js", "guardian.js");
 }
@@ -48,12 +52,28 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function" &
     });
 }
 
+/**
+ * #26f94a61: Safari auf iOS und iPadOS fuehrt Kontextmenues von Erweiterungen
+ * als nicht unterstuetzt (Apples Kompatibilitaetsliste; ob ein Eintrag beim
+ * langen Druecken erscheint, ist NICHT gemessen). Das Objekt
+ * `browser.contextMenus` gibt es dort trotzdem (gemessen 28.10.2026, iOS 26.5
+ * im Simulator: typeof === "object"). Der Weg auf iOS ist der Popup-Knopf
+ * „Adresse fuer diese Seite". Zugesichert ist das Objekt nicht: Fehlte es,
+ * braeche ein blanker Zugriff wie `browser.contextMenus.onClicked.addListener`
+ * das ganze Hintergrundskript beim Laden ab, mitsamt dem Nachrichtenkanal fuer
+ * Popup und Formular. Deshalb laeuft jeder Zugriff ueber diese Konstante.
+ */
+const contextMenus: typeof chrome.contextMenus | undefined = browser.contextMenus;
+
 // Check if the context menu item already exists before creating it
 async function createContextMenu() {
+    if (!contextMenus) {
+        return;
+    }
     try {
-        await browser.contextMenus.removeAll();
+        await contextMenus.removeAll();
 
-        await browser.contextMenus.create({
+        await contextMenus.create({
             id: "paste-email",
             contexts: ["editable"],
             title: browser.i18n.getMessage("menuPasteAddress")
@@ -149,7 +169,7 @@ async function resumePendingCreateAddress(): Promise<void> {
     openCreateAddressForm(pending);
 }
 
-browser.contextMenus.onClicked.addListener((event, parentTab) => {
+contextMenus?.onClicked.addListener((event, parentTab) => {
     if (event.menuItemId === "paste-email") {
         openCreateAddress(parentTab!, event.frameId || 0);
     } else {
@@ -173,6 +193,9 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 // Update the currently displayed previous addresses context menu items.
 async function updateContextMenu(tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) {
+    if (!contextMenus) {
+        return;
+    }
     try {
         if (!tab.url) {
             return;
@@ -226,7 +249,7 @@ async function updateContextMenu(tabId: number, changeInfo: chrome.tabs.OnUpdate
                 continue;
             }
 
-            const id = browser.contextMenus.create({
+            const id = contextMenus.create({
                 id: email,
                 contexts: ["editable"],
                 title: `${browser.i18n.getMessage("menuPastePrevious", email)} (${urlDetail})`

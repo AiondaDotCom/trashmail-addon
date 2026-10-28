@@ -260,6 +260,18 @@
             text-align: center;
         }
 
+        /* #8d29c6d5 #26f94a61: im Popup der Erweiterung (Knopf „Adresse fuer
+           diese Seite"). Die Popup-Groesse ergibt sich aus dem Inhalt; ohne
+           feste Breite schrumpft es auf die Breite des Kopfbilds. */
+        body.im-popup {
+            width: 400px;
+            max-width: 100%;
+            min-height: 0;
+        }
+        body.im-popup .container {
+            padding: 12px;
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .form-row {

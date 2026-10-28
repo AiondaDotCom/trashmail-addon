@@ -81,6 +81,15 @@
     "createNewAddress": {"message": "Wegwerfbare E-Mail-Adresse:"},
 
 
+    "popupCreateAddress": {"message": "Adresse für diese Seite"},
+
+
+    "buttonCopyAddress": {"message": "Adresse kopieren"},
+
+
+    "addressCopied": {"message": "Kopiert"},
+
+
     "buttonCancel": {"message": "Abbruch"},
     "buttonLogin": {"message": "Anmelden"},
     "buttonToLogin": {"message": "Benutzerkennung und Passwort eingeben"},

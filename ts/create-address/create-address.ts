@@ -87,6 +87,37 @@ let parentUrl: string | undefined;
 let parentId: number | undefined;
 let tabId: number | undefined;
 let frameId: number | undefined;
+
+/**
+ * #8d29c6d5 #26f94a61: Aus dem Popup aufgerufen (Knopf „Adresse fuer diese
+ * Seite"), steht der Ziel-Tab in der Adresszeile statt in einer Nachricht des
+ * Hintergrunds. In diesem Fall ist das Formular KEIN eigenes Fenster: Ein
+ * `windows.remove(getCurrent())` schloesse das Browserfenster des Kunden.
+ */
+const aufruf = new URLSearchParams(window.location.search);
+const imPopup = aufruf.get("popup") === "1";
+
+/**
+ * Formular schliessen. Im Popup laeuft es als Rahmen (iframe) in popup.html:
+ * Safari schliesst das Popup per `window.close()` nur aus der Seite, mit der es
+ * geoeffnet wurde - gemessen am 28.10.2026 in Safari 26.6 auf macOS, nachdem
+ * das Formular per Navigation IM Popup lag: weder „Abbruch" noch das
+ * erfolgreiche Einfuegen schlossen es. Deshalb bittet der Rahmen die
+ * Popup-Seite darum.
+ */
+function schliessen(): void {
+    if (imPopup && window.parent !== window) {
+        window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+        return;
+    }
+    window.close();
+}
+if (aufruf.has("tab")) {
+    const tab = Number(aufruf.get("tab"));
+    tabId = Number.isInteger(tab) ? tab : undefined;
+    frameId = Number(aufruf.get("frame") ?? "0") || 0;
+    parentUrl = aufruf.get("url") ?? undefined;
+}
 const p1 = browser.storage.sync.get();
 const p2 = browser.storage.local.get(["domains", "real_emails", "session_id"]);
 
@@ -328,14 +359,17 @@ async function createAddress(e: Event) {
             pasted = false;
         }
 
-        // Send message to the background service to update the menu
-        try {
-            await browser.runtime.sendMessage({
-                action: "update_menu",
-                tabId: tabId,
-            });
-        } catch (err) {
+        // Send message to the background service to update the menu.
+        // Im Popup NICHT darauf warten: Das Menue gibt es dort (iOS) nicht,
+        // und ein schlafender Hintergrund darf das Schliessen nicht aufhalten.
+        const menue = browser.runtime.sendMessage({
+            action: "update_menu",
+            tabId: tabId,
+        }).catch((err: unknown) => {
             console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+        });
+        if (!imPopup) {
+            await menue;
         }
 
         if (!pasted) {
@@ -346,6 +380,12 @@ async function createAddress(e: Event) {
             error.style.display = "block";
             progress.style.display = "none";
             createButton.disabled = false;
+            showCopyButton(address[0]);
+            return;
+        }
+
+        if (imPopup) {
+            schliessen();
             return;
         }
 
@@ -362,16 +402,46 @@ async function createAddress(e: Event) {
 }
 
 
+/**
+ * #26f94a61: Kopierknopf neben der Meldung „nicht eingefuegt". Auf iOS ist
+ * Kopieren oft der einzige Weg: Die Seite hat kein Feld im Fokus, und von Hand
+ * markieren laesst sich der Meldungstext im Popup schlecht.
+ */
+function showCopyButton(address: string): void {
+    if (!navigator.clipboard || document.getElementById("btn-copy-address")) {
+        return;
+    }
+    const button = document.createElement("button");
+    button.id = "btn-copy-address";
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
+    button.addEventListener("click", () => {
+        navigator.clipboard.writeText(address).then(() => {
+            button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
+        }).catch((err) => {
+            console.warn("[Aionda Mail] Kopieren gescheitert:", err);
+        });
+    });
+    elById("error_msg").after(button);
+}
+
 document.querySelector("form")!.addEventListener("submit", createAddress);
 
 elById("btn-address-manager").addEventListener("click", addressManager);
 
 elById("btn-close").addEventListener("click", () => {
-    window.close();
+    schliessen();
 });
 
 // Auto-resize window to fit content
 document.addEventListener("DOMContentLoaded", () => {
+    // Im Popup bestimmt der Browser die Groesse; `windows.update` traefe dort
+    // das Browserfenster des Kunden.
+    if (imPopup) {
+        document.body.classList.add("im-popup");
+        return;
+    }
     setTimeout(async () => {
         try {
             const card = document.querySelector<HTMLElement>(".card")!;

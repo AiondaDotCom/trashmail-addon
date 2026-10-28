@@ -179,21 +179,53 @@
   function openLoginWindow() {
     const width = 600;
     const height = 720;
-    browser.windows.getCurrent().then((current) => {
-      const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
-      const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
-      return browser.windows.create({
-        "url": browser.runtime.getURL("options/welcome.html"),
-        "width": width,
-        "height": height,
-        "left": left,
-        "top": top,
-        "type": "popup"
-      });
-    }).then(() => {
+    const url = browser.runtime.getURL("options/welcome.html");
+    (async () => {
+      try {
+        const current = await browser.windows.getCurrent();
+        const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
+        const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
+        await browser.windows.create({
+          "url": url,
+          "width": width,
+          "height": height,
+          "left": left,
+          "top": top,
+          "type": "popup"
+        });
+      } catch (err) {
+        console.warn("[Popup] Kein eigenes Fenster moeglich, oeffne Tab:", err);
+        await browser.tabs.create({ "url": url });
+      }
       window.close();
-    });
+    })();
   }
+  async function createAddressForPage() {
+    if (!await isLoggedIn()) {
+      openLoginWindow();
+      return;
+    }
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const params = new URLSearchParams({ "popup": "1", "frame": "0" });
+    if (tab?.id !== void 0) {
+      params.set("tab", String(tab.id));
+    }
+    if (tab?.url) {
+      params.set("url", tab.url);
+    }
+    const rahmen = document.createElement("iframe");
+    rahmen.id = "create-address-frame";
+    rahmen.src = `${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`;
+    document.body.replaceChildren(rahmen);
+    document.body.classList.add("mit-formular");
+  }
+  window.addEventListener("message", (event) => {
+    const daten = event.data;
+    if (event.origin !== window.location.origin || !daten || daten.aiondaAktion !== "popup-schliessen") {
+      return;
+    }
+    window.close();
+  });
   async function isLoggedIn() {
     const sync = await browser.storage.sync.get(["username", "password"]);
     return Boolean(sync.username && sync.password);
@@ -225,6 +257,9 @@
   }
   updateLoginStateUI();
   elById("btn-address-manager").addEventListener("click", addressManager);
+  elById("btn-create-address").addEventListener("click", () => {
+    void createAddressForPage();
+  });
   elById("btn-options").addEventListener("click", () => {
     browser.runtime.openOptionsPage().then(() => {
       window.close();

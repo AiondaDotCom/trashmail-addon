@@ -189,11 +189,22 @@ class AddonOpaqueClient {
      * (mail_access_tokens) - die sind per patOpaqueLogin NICHT verifizierbar.
      * Fuer OPAQUE-Konten immer diese Methode nutzen.
      *
-     * VORAUSSETZUNG: Eine Browser-Session (Cookie) muss existieren - vorher
-     * patOpaqueLogin/passwordOpaqueLogin mit { establishBrowserSession: true }
-     * aufrufen. Grund: der finish-Body traegt selbst ein session_id-Feld
-     * (die OPAQUE-Session) und ueberschreibt serverseitig den URL-Parameter,
-     * daher geht die Account-Auth nur ueber das Cookie.
+     * Konto-Anmeldung: Die Konto-Session steht bei init UND finish als
+     * `session_id` in der Adresse; im finish-Rumpf steht unter `session_id`
+     * die OPAQUE-Registrierungssession. #8d29c6d5 #26f94a61: Hier stand, der
+     * Rumpf ueberschreibe den URL-Parameter und die Anmeldung gehe nur ueber
+     * das Cookie. Gemessen am 28.10.2026 gegen mail.aionda.com stimmt das
+     * nicht - mit der Konto-Session in der Adresse kommt finish an der
+     * Anmeldepruefung vorbei. Und Safari schickt das Cookie von
+     * Erweiterungsseiten gar nicht mit (finish nur mit Cookie: Fehler 70).
+     * Das Cookie (establishBrowserSession) bleibt fuer den direkten Login im
+     * Browser.
+     *
+     * `mcp_capability_hash`: Der Server verlangt ihn seit der Trennung von
+     * Zugriffstoken und MCP-Faehigkeit (src 77ddb2da8); ohne antwortet finish
+     * mit Fehler 6. Die Erweiterung braucht keinen MCP-Zugang - sie erzeugt
+     * die Faehigkeit wie die Webseite, schickt nur deren SHA-256 und vergisst
+     * sie. Der Token selbst ist davon unabhaengig.
      *
      * @param {string} sessionId - Authentifizierte Account-Session (Fallback fuer init)
      * @param {string} name - Anzeigename des Tokens (z.B. "Chrome Extension")
@@ -237,7 +248,19 @@ class AddonOpaqueClient {
             password: token
         });
 
-        const finishResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_finish&lang=' + lang, {
+        // MCP-Faehigkeit: eigenes Geheimnis (tmmcp_), nur der Hash geht raus.
+        const mcpBytes = new Uint8Array(32);
+        crypto.getRandomValues(mcpBytes);
+        const mcpCapability = 'tmmcp_' + btoa(String.fromCharCode(...mcpBytes))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+        const mcpDigest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(mcpCapability));
+        const mcpCapabilityHash = Array.from(new Uint8Array(mcpDigest))
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('');
+
+        const finishResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_finish&lang=' + lang + '&session_id=' + encodeURIComponent(sessionId), {
             credentials: "include",
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -246,6 +269,7 @@ class AddonOpaqueClient {
                 user_record: registrationRecord,
                 name: name,
                 token_prefix: tokenPrefix,
+                mcp_capability_hash: mcpCapabilityHash,
                 expires_at: null
             })
         });

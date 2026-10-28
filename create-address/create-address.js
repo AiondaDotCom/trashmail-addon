@@ -79,6 +79,21 @@
   var parentId;
   var tabId;
   var frameId;
+  var aufruf = new URLSearchParams(window.location.search);
+  var imPopup = aufruf.get("popup") === "1";
+  function schliessen() {
+    if (imPopup && window.parent !== window) {
+      window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+      return;
+    }
+    window.close();
+  }
+  if (aufruf.has("tab")) {
+    const tab = Number(aufruf.get("tab"));
+    tabId = Number.isInteger(tab) ? tab : void 0;
+    frameId = Number(aufruf.get("frame") ?? "0") || 0;
+    parentUrl = aufruf.get("url") ?? void 0;
+  }
   var p1 = browser.storage.sync.get();
   var p2 = browser.storage.local.get(["domains", "real_emails", "session_id"]);
   browser.runtime.onMessage.addListener((message) => {
@@ -259,19 +274,25 @@
         console.warn("[Aionda Mail] Adresse konnte nicht ins Feld eingetragen werden:", err);
         pasted = false;
       }
-      try {
-        await browser.runtime.sendMessage({
-          action: "update_menu",
-          tabId
-        });
-      } catch (err) {
+      const menue = browser.runtime.sendMessage({
+        action: "update_menu",
+        tabId
+      }).catch((err) => {
         console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+      });
+      if (!imPopup) {
+        await menue;
       }
       if (!pasted) {
         error.innerText = browser.i18n.getMessage("errorAddressNotPasted", [address[0]]) || `The address ${address[0]} was created, but could not be inserted into the form. Please copy it manually.`;
         error.style.display = "block";
         progress.style.display = "none";
         createButton.disabled = false;
+        showCopyButton(address[0]);
+        return;
+      }
+      if (imPopup) {
+        schliessen();
         return;
       }
       const currentWindow = await browser.windows.getCurrent();
@@ -283,12 +304,34 @@
       createButton.disabled = false;
     }
   }
+  function showCopyButton(address) {
+    if (!navigator.clipboard || document.getElementById("btn-copy-address")) {
+      return;
+    }
+    const button = document.createElement("button");
+    button.id = "btn-copy-address";
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
+    button.addEventListener("click", () => {
+      navigator.clipboard.writeText(address).then(() => {
+        button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
+      }).catch((err) => {
+        console.warn("[Aionda Mail] Kopieren gescheitert:", err);
+      });
+    });
+    elById("error_msg").after(button);
+  }
   document.querySelector("form").addEventListener("submit", createAddress);
   elById("btn-address-manager").addEventListener("click", addressManager);
   elById("btn-close").addEventListener("click", () => {
-    window.close();
+    schliessen();
   });
   document.addEventListener("DOMContentLoaded", () => {
+    if (imPopup) {
+      document.body.classList.add("im-popup");
+      return;
+    }
     setTimeout(async () => {
       try {
         const card = document.querySelector(".card");

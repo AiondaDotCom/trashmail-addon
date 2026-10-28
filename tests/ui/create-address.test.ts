@@ -393,4 +393,98 @@ describe('create-address.ts', () => {
             expect(nav.close).toHaveBeenCalled();
         });
     });
+
+    /**
+     * #8d29c6d5 #26f94a61: Aus dem Popup aufgerufen kommt der Ziel-Tab ueber
+     * die Adresszeile. Das Formular ist dann KEIN eigenes Fenster - ein
+     * `windows.remove(getCurrent())` schloesse das Browserfenster.
+     */
+    describe('im Popup (Knopf „Adresse fuer diese Seite")', () => {
+        async function bootImPopup(): Promise<void> {
+            Object.defineProperty(window, 'location', {
+                configurable: true,
+                value: { ...window.location, search: '?popup=1&frame=0&tab=42&url=https%3A%2F%2Fwww.shop.com%2Fx', reload: vi.fn(), assign: vi.fn() },
+            });
+            mock.storage.local.data.set('real_emails', ['r@e.com']);
+            mock.storage.local.data.set('domains', ['d.com']);
+            mock.storage.local.data.set('session_id', 'sess');
+            await importCreateAddress();
+            await tick();
+            (document.getElementById('disposable-name') as HTMLInputElement).value = 'myaddr';
+            select('domain').value = 'd.com';
+            select('email').value = 'r@e.com';
+        }
+
+        it('WAECHTER: fuegt in den Tab aus der Adresszeile ein und schliesst nur das Popup, nie das Browserfenster', async () => {
+            globals.callAPI.mockResolvedValue({});
+            await bootImPopup();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: true });
+            const windowRemove = vi.spyOn(mock.windows, 'remove');
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(mock.tabs.sendMessage).toHaveBeenCalledWith(42, 'myaddr@d.com', { frameId: 0 });
+            expect(windowRemove).not.toHaveBeenCalled();
+            expect(nav.close).toHaveBeenCalled();
+            const prev = mock.storage.local.data.get('previous_addresses') as Record<string, unknown>;
+            expect(prev['www.shop.com']).toBeDefined();
+        });
+
+        it('zeigt bei pasted:false einen Kopierknopf, der die Adresse in die Zwischenablage legt', async () => {
+            globals.callAPI.mockResolvedValue({});
+            const writeText = vi.fn(async () => undefined);
+            Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+            await bootImPopup();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: false });
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            const copy = document.getElementById('btn-copy-address') as HTMLButtonElement;
+            expect(copy).not.toBeNull();
+            expect(nav.close).not.toHaveBeenCalled();
+            copy.click();
+            await tick();
+            expect(writeText).toHaveBeenCalledWith('myaddr@d.com');
+            expect(copy.textContent).toBe('addressCopied');
+        });
+
+        it('WAECHTER: bittet als Rahmen die Popup-Seite ums Schliessen, statt selbst window.close zu rufen', async () => {
+            globals.callAPI.mockResolvedValue({});
+            const postMessage = vi.fn();
+            vi.spyOn(window, 'parent', 'get').mockReturnValue({ postMessage } as unknown as Window);
+            await bootImPopup();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: true });
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(postMessage).toHaveBeenCalledWith({ aiondaAktion: 'popup-schliessen' }, window.location.origin);
+            expect(nav.close).not.toHaveBeenCalled();
+            $('btn-close').dispatchEvent(new MouseEvent('click'));
+            expect(postMessage).toHaveBeenCalledTimes(2);
+        });
+
+        it('wartet im Popup nicht auf den Hintergrund (update_menu bleibt unbeantwortet)', async () => {
+            globals.callAPI.mockResolvedValue({});
+            await bootImPopup();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: true });
+            vi.spyOn(mock.runtime, 'sendMessage').mockReturnValue(new Promise(() => undefined) as never);
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(nav.close).toHaveBeenCalled();
+        });
+
+        it('passt im Popup keine Fenstergroesse an', async () => {
+            await bootImPopup();
+            fireDomReady();
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            expect(mock.windows.updated).toHaveLength(0);
+            expect(document.body.classList.contains('im-popup')).toBe(true);
+        });
+    });
 });
+

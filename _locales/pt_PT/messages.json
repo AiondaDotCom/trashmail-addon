@@ -79,6 +79,15 @@
     "createNewAddress": {"message": "Novo endereço de e-mail de reencaminhamento:"},
 
 
+    "popupCreateAddress": {"message": "Endereço para esta página"},
+
+
+    "buttonCopyAddress": {"message": "Copiar endereço"},
+
+
+    "addressCopied": {"message": "Copiado"},
+
+
     "buttonCancel": {"message": "Cancelar"},
     "buttonLogin": {"message": "Iniciar sessão"},
     "buttonToLogin": {"message": "Introduz o teu nome de utilizador e palavra-passe"},
