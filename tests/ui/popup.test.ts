@@ -353,4 +353,42 @@ describe('popup.ts', () => {
             expect(nav.close).toHaveBeenCalled();
         });
     });
+
+    /** #8d29c6d5 #26f94a61: der Weg ohne Kontextmenue (Safari auf iOS/iPadOS). */
+    describe('Adresse fuer diese Seite', () => {
+        it('oeffnet das Formular im Popup mit Tab und Seite des aktiven Tabs', async () => {
+            mock.storage.sync.data.set('username', 'u');
+            mock.storage.sync.data.set('password', 'p');
+            mock.tabs.list.push({ id: 42, url: 'https://shop.test/anmelden', windowId: 1, active: true });
+            await importPopup();
+            document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
+            await tick(3);
+            const assign = window.location.assign as unknown as ReturnType<typeof vi.fn>;
+            expect(assign).toHaveBeenCalledTimes(1);
+            const ziel = new URL(String(assign.mock.calls[0]![0]));
+            expect(ziel.pathname.endsWith('/create-address/create-address.html')).toBe(true);
+            expect(ziel.searchParams.get('popup')).toBe('1');
+            expect(ziel.searchParams.get('tab')).toBe('42');
+            expect(ziel.searchParams.get('frame')).toBe('0');
+            expect(ziel.searchParams.get('url')).toBe('https://shop.test/anmelden');
+        });
+
+        it('fuehrt abgemeldet zur Anmeldung statt zum Formular', async () => {
+            await importPopup();
+            document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
+            await tick(4);
+            expect(window.location.assign).not.toHaveBeenCalled();
+            expect(mock.windows.created[0]?.['url']).toContain('options/welcome.html');
+        });
+
+        it('oeffnet die Anmeldung als Tab, wenn es keine eigenen Fenster gibt (iOS)', async () => {
+            vi.spyOn(mock.windows, 'create').mockRejectedValue(new Error('windows.create is not supported'));
+            await importPopup();
+            document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
+            await tick(4);
+            expect(mock.tabs.list.some((tab) => String(tab.url).includes('options/welcome.html'))).toBe(true);
+            expect(nav.close).toHaveBeenCalled();
+        });
+    });
 });
+

@@ -61,10 +61,14 @@
       });
     });
   }
+  var contextMenus = browser.contextMenus;
   async function createContextMenu() {
+    if (!contextMenus) {
+      return;
+    }
     try {
-      await browser.contextMenus.removeAll();
-      await browser.contextMenus.create({
+      await contextMenus.removeAll();
+      await contextMenus.create({
         id: "paste-email",
         contexts: ["editable"],
         title: browser.i18n.getMessage("menuPasteAddress")
@@ -132,7 +136,7 @@
     }
     openCreateAddressForm(pending);
   }
-  browser.contextMenus.onClicked.addListener((event, parentTab) => {
+  contextMenus?.onClicked.addListener((event, parentTab) => {
     if (event.menuItemId === "paste-email") {
       openCreateAddress(parentTab, event.frameId || 0);
     } else {
@@ -151,6 +155,9 @@
     }
   });
   async function updateContextMenu(tabId, changeInfo, tab) {
+    if (!contextMenus) {
+      return;
+    }
     try {
       if (!tab.url) {
         return;
@@ -193,7 +200,7 @@
           console.error("Fehlerhafte URL:", url, e);
           continue;
         }
-        const id = browser.contextMenus.create({
+        const id = contextMenus.create({
           id: email,
           contexts: ["editable"],
           title: `${browser.i18n.getMessage("menuPastePrevious", email)} (${urlDetail})`

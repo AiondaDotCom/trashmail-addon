@@ -81,6 +81,15 @@
     "createNewAddress": {"message": "Adresse courrielle jetable :"},
 
 
+    "popupCreateAddress": {"message": "Adresse pour cette page"},
+
+
+    "buttonCopyAddress": {"message": "Copier l'adresse"},
+
+
+    "addressCopied": {"message": "Copiée"},
+
+
     "buttonCancel": {"message": "Abandonner"},
     "buttonLogin": {"message": "Loguer"},
     "buttonToLogin": {"message": "Entrez votre nom de login et votre mot de passe"},

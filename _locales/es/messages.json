@@ -80,6 +80,12 @@
     "createTitle": {"message": "Crear dirección de correo desechable"},
     "createNewAddress": {"message": "Nueva dirección de reenvío:"},
 
+    "popupCreateAddress": {"message": "Dirección para esta página"},
+
+    "buttonCopyAddress": {"message": "Copiar dirección"},
+
+    "addressCopied": {"message": "Copiada"},
+
     "buttonCancel": {"message": "Cancelar"},
     "buttonLogin": {"message": "Iniciar sesión"},
     "buttonToLogin": {"message": "Introduce tu nombre de usuario y contraseña"},

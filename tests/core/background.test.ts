@@ -409,3 +409,32 @@ describe('runtime message: update_menu', () => {
         expect(response).toBeUndefined();
     });
 });
+
+/**
+ * #26f94a61: Safari auf iOS/iPadOS hat kein `contextMenus`. Vorher warf der
+ * blanke Zugriff `browser.contextMenus.onClicked.addListener` beim Laden, das
+ * Hintergrundskript brach ab, und der Nachrichtenkanal fuer Popup und
+ * Formular entstand nie.
+ */
+describe('ohne contextMenus (Safari auf iOS)', () => {
+    it('WAECHTER: laedt trotzdem und beantwortet Nachrichten', async () => {
+        delete (mock as unknown as Record<string, unknown>)['contextMenus'];
+        mock.tabs.list.push({ id: 7, url: 'https://shop.test/', windowId: 1, active: true });
+        await importBackground();
+
+        const status = await mock.runtime.sendMessage({ action: 'get_guardian_status' }) as Record<string, unknown>;
+        expect(status['tabId']).toBe(7);
+        const menu = await mock.runtime.sendMessage({ action: 'update_menu', tabId: 7 }) as Record<string, unknown>;
+        expect(menu['status']).toBe('success');
+    });
+
+    it('legt bei einem Tab-Wechsel keine Menues an und wirft nicht', async () => {
+        delete (mock as unknown as Record<string, unknown>)['contextMenus'];
+        mock.tabs.list.push({ id: 8, url: 'https://shop.test/', windowId: 1, active: true });
+        await importBackground();
+        mock.tabs.onActivated.trigger({ tabId: 8, windowId: 1 } as never);
+        await flush();
+        const status = await mock.runtime.sendMessage({ action: 'get_guardian_status' }) as Record<string, unknown>;
+        expect(status['tabId']).toBe(8);
+    });
+});

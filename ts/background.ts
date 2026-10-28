@@ -48,12 +48,25 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function" &
     });
 }
 
+/**
+ * #26f94a61: Safari auf iOS und iPadOS kennt keine Kontextmenues fuer
+ * Erweiterungen (Apples Liste der unterstuetzten APIs; Messung im Simulator:
+ * Ticket 26f94a61) - `browser.contextMenus` fehlt dort. Ein blanker
+ * Zugriff wie `browser.contextMenus.onClicked.addListener` warf beim Laden
+ * und brach das ganze Hintergrundskript ab, mitsamt dem Nachrichtenkanal fuer
+ * Popup und Formular. Deshalb laeuft jeder Zugriff ueber diese Konstante.
+ */
+const contextMenus: typeof chrome.contextMenus | undefined = browser.contextMenus;
+
 // Check if the context menu item already exists before creating it
 async function createContextMenu() {
+    if (!contextMenus) {
+        return;
+    }
     try {
-        await browser.contextMenus.removeAll();
+        await contextMenus.removeAll();
 
-        await browser.contextMenus.create({
+        await contextMenus.create({
             id: "paste-email",
             contexts: ["editable"],
             title: browser.i18n.getMessage("menuPasteAddress")
@@ -149,7 +162,7 @@ async function resumePendingCreateAddress(): Promise<void> {
     openCreateAddressForm(pending);
 }
 
-browser.contextMenus.onClicked.addListener((event, parentTab) => {
+contextMenus?.onClicked.addListener((event, parentTab) => {
     if (event.menuItemId === "paste-email") {
         openCreateAddress(parentTab!, event.frameId || 0);
     } else {
@@ -173,6 +186,9 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 // Update the currently displayed previous addresses context menu items.
 async function updateContextMenu(tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) {
+    if (!contextMenus) {
+        return;
+    }
     try {
         if (!tab.url) {
             return;
@@ -226,7 +242,7 @@ async function updateContextMenu(tabId: number, changeInfo: chrome.tabs.OnUpdate
                 continue;
             }
 
-            const id = browser.contextMenus.create({
+            const id = contextMenus.create({
                 id: email,
                 contexts: ["editable"],
                 title: `${browser.i18n.getMessage("menuPastePrevious", email)} (${urlDetail})`

@@ -81,6 +81,15 @@
     "createNewAddress": {"message": "New forward email address:"},
 
 
+    "popupCreateAddress": {"message": "Address for this page"},
+
+
+    "buttonCopyAddress": {"message": "Copy address"},
+
+
+    "addressCopied": {"message": "Copied"},
+
+
     "buttonCancel": {"message": "Cancel"},
     "buttonLogin": {"message": "Login"},
     "buttonToLogin": {"message": "Enter your username and password"},
