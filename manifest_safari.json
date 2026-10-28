@@ -29,7 +29,8 @@
         "<all_urls>"
     ],
     "background": {
-        "service_worker": "background.js"
+        "scripts": ["api.js", "publicsuffixlist.js", "background.js", "guardian.js"],
+        "persistent": false
     },
     "action": {
         "default_icon": {

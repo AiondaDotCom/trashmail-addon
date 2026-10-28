@@ -4,7 +4,11 @@ import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
 // Import additional scripts (Service Worker only - Chrome)
-// Firefox with background.scripts loads these via manifest
+// Firefox with background.scripts loads these via manifest.
+// Safari (manifest_safari.json) ebenfalls ueber background.scripts: Mit
+// "service_worker" lief background.js dort in einer Seite (self ist Window,
+// importScripts fehlt) - api.js, publicsuffixlist.js und guardian.js wurden
+// nie geladen (gemessen 28.10.2026, Safari iOS 26.5 im Simulator, #26f94a61).
 if (typeof importScripts === "function") {
     importScripts("api.js", "publicsuffixlist.js", "guardian.js");
 }
@@ -49,11 +53,14 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function" &
 }
 
 /**
- * #26f94a61: Safari auf iOS und iPadOS kennt keine Kontextmenues fuer
- * Erweiterungen (Apples Liste der unterstuetzten APIs; Messung im Simulator:
- * Ticket 26f94a61) - `browser.contextMenus` fehlt dort. Ein blanker
- * Zugriff wie `browser.contextMenus.onClicked.addListener` warf beim Laden
- * und brach das ganze Hintergrundskript ab, mitsamt dem Nachrichtenkanal fuer
+ * #26f94a61: Safari auf iOS und iPadOS fuehrt Kontextmenues von Erweiterungen
+ * als nicht unterstuetzt (Apples Kompatibilitaetsliste; ob ein Eintrag beim
+ * langen Druecken erscheint, ist NICHT gemessen). Das Objekt
+ * `browser.contextMenus` gibt es dort trotzdem (gemessen 28.10.2026, iOS 26.5
+ * im Simulator: typeof === "object"). Der Weg auf iOS ist der Popup-Knopf
+ * „Adresse fuer diese Seite". Zugesichert ist das Objekt nicht: Fehlte es,
+ * braeche ein blanker Zugriff wie `browser.contextMenus.onClicked.addListener`
+ * das ganze Hintergrundskript beim Laden ab, mitsamt dem Nachrichtenkanal fuer
  * Popup und Formular. Deshalb laeuft jeder Zugriff ueber diese Konstante.
  */
 const contextMenus: typeof chrome.contextMenus | undefined = browser.contextMenus;
