@@ -363,9 +363,13 @@ describe('popup.ts', () => {
             await importPopup();
             document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
             await tick(3);
-            const assign = window.location.assign as unknown as ReturnType<typeof vi.fn>;
-            expect(assign).toHaveBeenCalledTimes(1);
-            const ziel = new URL(String(assign.mock.calls[0]![0]));
+            // Ein Rahmen statt einer Navigation: Safari schliesst das Popup nur
+            // aus der Seite, mit der es geoeffnet wurde.
+            expect(window.location.assign).not.toHaveBeenCalled();
+            const rahmen = document.getElementById('create-address-frame') as HTMLIFrameElement;
+            expect(rahmen).not.toBeNull();
+            expect(document.getElementById('btn-create-address')).toBeNull();
+            const ziel = new URL(rahmen.src);
             expect(ziel.pathname.endsWith('/create-address/create-address.html')).toBe(true);
             expect(ziel.searchParams.get('popup')).toBe('1');
             expect(ziel.searchParams.get('tab')).toBe('42');
@@ -373,11 +377,22 @@ describe('popup.ts', () => {
             expect(ziel.searchParams.get('url')).toBe('https://shop.test/anmelden');
         });
 
+        it('WAECHTER: schliesst das Popup auf Bitte des Rahmens, aber nur von gleicher Herkunft', async () => {
+            await importPopup();
+            window.dispatchEvent(new MessageEvent('message', { data: { aiondaAktion: 'popup-schliessen' }, origin: 'https://fremd.example' }));
+            expect(nav.close).not.toHaveBeenCalled();
+            window.dispatchEvent(new MessageEvent('message', { data: { aiondaAktion: 'etwas-anderes' }, origin: window.location.origin }));
+            expect(nav.close).not.toHaveBeenCalled();
+            window.dispatchEvent(new MessageEvent('message', { data: { aiondaAktion: 'popup-schliessen' }, origin: window.location.origin }));
+            // (Frühere Tests haben eigene window-Listener hinterlassen, deshalb keine Anzahl.)
+            expect(nav.close).toHaveBeenCalled();
+        });
+
         it('fuehrt abgemeldet zur Anmeldung statt zum Formular', async () => {
             await importPopup();
             document.getElementById('btn-create-address')!.dispatchEvent(new MouseEvent('click'));
             await tick(4);
-            expect(window.location.assign).not.toHaveBeenCalled();
+            expect(document.getElementById('create-address-frame')).toBeNull();
             expect(mock.windows.created[0]?.['url']).toContain('options/welcome.html');
         });
 

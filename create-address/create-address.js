@@ -81,6 +81,13 @@
   var frameId;
   var aufruf = new URLSearchParams(window.location.search);
   var imPopup = aufruf.get("popup") === "1";
+  function schliessen() {
+    if (imPopup && window.parent !== window) {
+      window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+      return;
+    }
+    window.close();
+  }
   if (aufruf.has("tab")) {
     const tab = Number(aufruf.get("tab"));
     tabId = Number.isInteger(tab) ? tab : void 0;
@@ -267,13 +274,14 @@
         console.warn("[Aionda Mail] Adresse konnte nicht ins Feld eingetragen werden:", err);
         pasted = false;
       }
-      try {
-        await browser.runtime.sendMessage({
-          action: "update_menu",
-          tabId
-        });
-      } catch (err) {
+      const menue = browser.runtime.sendMessage({
+        action: "update_menu",
+        tabId
+      }).catch((err) => {
         console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+      });
+      if (!imPopup) {
+        await menue;
       }
       if (!pasted) {
         error.innerText = browser.i18n.getMessage("errorAddressNotPasted", [address[0]]) || `The address ${address[0]} was created, but could not be inserted into the form. Please copy it manually.`;
@@ -284,7 +292,7 @@
         return;
       }
       if (imPopup) {
-        window.close();
+        schliessen();
         return;
       }
       const currentWindow = await browser.windows.getCurrent();
@@ -317,7 +325,7 @@
   document.querySelector("form").addEventListener("submit", createAddress);
   elById("btn-address-manager").addEventListener("click", addressManager);
   elById("btn-close").addEventListener("click", () => {
-    window.close();
+    schliessen();
   });
   document.addEventListener("DOMContentLoaded", () => {
     if (imPopup) {

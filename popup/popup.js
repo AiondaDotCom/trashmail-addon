@@ -213,8 +213,19 @@
     if (tab?.url) {
       params.set("url", tab.url);
     }
-    window.location.assign(`${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`);
+    const rahmen = document.createElement("iframe");
+    rahmen.id = "create-address-frame";
+    rahmen.src = `${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`;
+    document.body.replaceChildren(rahmen);
+    document.body.classList.add("mit-formular");
   }
+  window.addEventListener("message", (event) => {
+    const daten = event.data;
+    if (event.origin !== window.location.origin || !daten || daten.aiondaAktion !== "popup-schliessen") {
+      return;
+    }
+    window.close();
+  });
   async function isLoggedIn() {
     const sync = await browser.storage.sync.get(["username", "password"]);
     return Boolean(sync.username && sync.password);

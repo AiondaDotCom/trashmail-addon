@@ -287,9 +287,14 @@ function openLoginWindow() {
 
 /**
  * #8d29c6d5 #26f94a61: Adresse fuer die aktuelle Seite anlegen, ohne
- * Kontextmenue. Das Formular laeuft im Popup selbst weiter und bekommt den
- * Tab ueber die Adresszeile; nach dem Anlegen fuegt das Content-Script sie
- * in das zuletzt fokussierte Feld der Seite ein.
+ * Kontextmenue. Das Formular laeuft als Rahmen im Popup und bekommt den Tab
+ * ueber die Adresszeile; nach dem Anlegen fuegt das Content-Script sie in das
+ * zuletzt fokussierte Feld der Seite ein.
+ *
+ * 🚩 Ein Rahmen, keine Navigation: Safari schliesst ein Popup per
+ * `window.close()` nur aus der Seite, mit der es geoeffnet wurde. Lag das
+ * Formular per `location.assign` im Popup, blieb es nach dem Einfuegen offen
+ * und „Abbruch" tat nichts (gemessen 28.10.2026, Safari 26.6, macOS).
  */
 async function createAddressForPage() {
     if (!(await isLoggedIn())) {
@@ -304,8 +309,21 @@ async function createAddressForPage() {
     if (tab?.url) {
         params.set("url", tab.url);
     }
-    window.location.assign(`${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`);
+    const rahmen = document.createElement("iframe");
+    rahmen.id = "create-address-frame";
+    rahmen.src = `${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`;
+    document.body.replaceChildren(rahmen);
+    document.body.classList.add("mit-formular");
 }
+
+/** Der Formular-Rahmen bittet um das Schliessen des Popups (siehe createAddressForPage). */
+window.addEventListener("message", (event: MessageEvent) => {
+    const daten = event.data as { aiondaAktion?: string } | null;
+    if (event.origin !== window.location.origin || !daten || daten.aiondaAktion !== "popup-schliessen") {
+        return;
+    }
+    window.close();
+});
 
 async function isLoggedIn(): Promise<boolean> {
     const sync = await browser.storage.sync.get(["username", "password"]) as { username?: string; password?: string };

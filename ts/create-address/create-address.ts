@@ -96,6 +96,22 @@ let frameId: number | undefined;
  */
 const aufruf = new URLSearchParams(window.location.search);
 const imPopup = aufruf.get("popup") === "1";
+
+/**
+ * Formular schliessen. Im Popup laeuft es als Rahmen (iframe) in popup.html:
+ * Safari schliesst das Popup per `window.close()` nur aus der Seite, mit der es
+ * geoeffnet wurde - gemessen am 28.10.2026 in Safari 26.6 auf macOS, nachdem
+ * das Formular per Navigation IM Popup lag: weder „Abbruch" noch das
+ * erfolgreiche Einfuegen schlossen es. Deshalb bittet der Rahmen die
+ * Popup-Seite darum.
+ */
+function schliessen(): void {
+    if (imPopup && window.parent !== window) {
+        window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+        return;
+    }
+    window.close();
+}
 if (aufruf.has("tab")) {
     const tab = Number(aufruf.get("tab"));
     tabId = Number.isInteger(tab) ? tab : undefined;
@@ -343,14 +359,17 @@ async function createAddress(e: Event) {
             pasted = false;
         }
 
-        // Send message to the background service to update the menu
-        try {
-            await browser.runtime.sendMessage({
-                action: "update_menu",
-                tabId: tabId,
-            });
-        } catch (err) {
+        // Send message to the background service to update the menu.
+        // Im Popup NICHT darauf warten: Das Menue gibt es dort (iOS) nicht,
+        // und ein schlafender Hintergrund darf das Schliessen nicht aufhalten.
+        const menue = browser.runtime.sendMessage({
+            action: "update_menu",
+            tabId: tabId,
+        }).catch((err: unknown) => {
             console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+        });
+        if (!imPopup) {
+            await menue;
         }
 
         if (!pasted) {
@@ -366,7 +385,7 @@ async function createAddress(e: Event) {
         }
 
         if (imPopup) {
-            window.close();
+            schliessen();
             return;
         }
 
@@ -412,7 +431,7 @@ document.querySelector("form")!.addEventListener("submit", createAddress);
 elById("btn-address-manager").addEventListener("click", addressManager);
 
 elById("btn-close").addEventListener("click", () => {
-    window.close();
+    schliessen();
 });
 
 // Auto-resize window to fit content

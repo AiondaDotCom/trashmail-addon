@@ -450,6 +450,34 @@ describe('create-address.ts', () => {
             expect(copy.textContent).toBe('addressCopied');
         });
 
+        it('WAECHTER: bittet als Rahmen die Popup-Seite ums Schliessen, statt selbst window.close zu rufen', async () => {
+            globals.callAPI.mockResolvedValue({});
+            const postMessage = vi.fn();
+            vi.spyOn(window, 'parent', 'get').mockReturnValue({ postMessage } as unknown as Window);
+            await bootImPopup();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: true });
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(postMessage).toHaveBeenCalledWith({ aiondaAktion: 'popup-schliessen' }, window.location.origin);
+            expect(nav.close).not.toHaveBeenCalled();
+            $('btn-close').dispatchEvent(new MouseEvent('click'));
+            expect(postMessage).toHaveBeenCalledTimes(2);
+        });
+
+        it('wartet im Popup nicht auf den Hintergrund (update_menu bleibt unbeantwortet)', async () => {
+            globals.callAPI.mockResolvedValue({});
+            await bootImPopup();
+            vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: true });
+            vi.spyOn(mock.runtime, 'sendMessage').mockReturnValue(new Promise(() => undefined) as never);
+
+            document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(nav.close).toHaveBeenCalled();
+        });
+
         it('passt im Popup keine Fenstergroesse an', async () => {
             await bootImPopup();
             fireDomReady();
