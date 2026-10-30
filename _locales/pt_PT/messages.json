@@ -250,5 +250,13 @@
     "twofaRecoveryInfo": {"message": "Introduz um dos teus códigos de recuperação."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Criar um token no site"},
-    "twofaProgress": {"message": "A concluir o início de sessão ..."}
+    "twofaProgress": {"message": "A concluir o início de sessão ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail: Endereços descartáveis",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Cria endereços de email descartáveis com um clique e protege o teu endereço real do spam.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }

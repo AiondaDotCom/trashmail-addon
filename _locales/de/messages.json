@@ -252,5 +252,13 @@
     "twofaRecoveryInfo": {"message": "Gib einen deiner Wiederherstellungscodes ein."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Stattdessen Token auf der Webseite erstellen"},
-    "twofaProgress": {"message": "Anmeldung wird abgeschlossen ..."}
+    "twofaProgress": {"message": "Anmeldung wird abgeschlossen ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail: Wegwerf-Adressen",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Wegwerf-E-Mail-Adressen mit einem Klick erstellen und deine echte Adresse vor Spam schützen.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }
