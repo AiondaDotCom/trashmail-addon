@@ -252,5 +252,13 @@
     "twofaRecoveryInfo": {"message": "Saisissez l'un de vos codes de récupération."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Créer plutôt un jeton sur le site web"},
-    "twofaProgress": {"message": "Finalisation de la connexion ..."}
+    "twofaProgress": {"message": "Finalisation de la connexion ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail : Adresses jetables",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Créez des adresses e-mail jetables en un clic et protégez votre vraie adresse du spam.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }
