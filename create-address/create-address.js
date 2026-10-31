@@ -1,16 +1,85 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/fenster.ts
+  function api() {
+    return globalThis.browser ?? chrome;
+  }
+  function hat(objekt, name) {
+    return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
+  }
+  async function eigenesFenster() {
+    const fenster = api().windows;
+    if (!hat(fenster, "getCurrent")) {
+      return void 0;
+    }
+    try {
+      const aktuell = await fenster.getCurrent();
+      return aktuell?.id === void 0 ? void 0 : aktuell;
+    } catch {
+      return void 0;
+    }
+  }
+  function fensterVerfuegbar() {
+    const fenster = api().windows;
+    return hat(fenster, "create") && hat(fenster, "remove");
+  }
+  async function eigeneSeiteSchliessen() {
+    const b = api();
+    const fenster = await eigenesFenster();
+    if (fenster !== void 0 && hat(b.windows, "remove")) {
+      try {
+        await b.windows.remove(fenster.id);
+        return;
+      } catch (err) {
+        console.warn("[Aionda Mail] Fenster lie\xDF sich nicht schlie\xDFen:", err);
+      }
+    }
+    if (hat(b.tabs, "getCurrent") && hat(b.tabs, "remove")) {
+      try {
+        const tab = await b.tabs.getCurrent();
+        if (tab?.id !== void 0) {
+          await b.tabs.remove(tab.id);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Aionda Mail] Tab lie\xDF sich nicht schlie\xDFen:", err);
+      }
+    }
+    window.close();
+  }
+  async function fensterAnpassen(berechne) {
+    const b = api();
+    if (!hat(b.windows, "update")) {
+      return false;
+    }
+    const fenster = await eigenesFenster();
+    if (fenster === void 0) {
+      return false;
+    }
+    const neu = berechne(fenster);
+    if (neu === void 0) {
+      return false;
+    }
+    try {
+      await b.windows.update(fenster.id, neu);
+      return true;
+    } catch (err) {
+      console.log("[Aionda Mail] Fenstergr\xF6\xDFe lie\xDF sich nicht \xE4ndern:", err);
+      return false;
+    }
+  }
+
   // trashmail-addon/ts/public-suffix.ts
   var browserApi = globalThis.browser ?? chrome;
   var resolverPromise = null;
   function nativePublicSuffix() {
     return browserApi?.publicSuffix;
   }
-  function nativeResolver(api) {
+  function nativeResolver(api2) {
     return (url) => {
       const hostname = url.hostname;
       try {
-        return api.getDomain(hostname) ?? hostname;
+        return api2.getDomain(hostname) ?? hostname;
       } catch {
         return hostname;
       }
@@ -27,8 +96,8 @@
   }
   function getOrgDomainResolver() {
     if (!resolverPromise) {
-      const api = nativePublicSuffix();
-      resolverPromise = api ? Promise.resolve(nativeResolver(api)) : fallbackResolver().catch((error) => {
+      const api2 = nativePublicSuffix();
+      resolverPromise = api2 ? Promise.resolve(nativeResolver(api2)) : fallbackResolver().catch((error) => {
         resolverPromise = null;
         throw error;
       });
@@ -86,6 +155,10 @@
       window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
       return;
     }
+    if (!fensterVerfuegbar()) {
+      eigeneSeiteSchliessen().catch((err) => console.warn("[Aionda Mail] Schlie\xDFen gescheitert:", err));
+      return;
+    }
     window.close();
   }
   if (aufruf.has("tab")) {
@@ -108,9 +181,7 @@
     }
     function closeOnParentTabRemoved(id) {
       if (id === tabId) {
-        browser.windows.getCurrent().then((window2) => {
-          browser.windows.remove(window2.id);
-        }).catch((error) => console.error("Fenster konnte nicht geschlossen werden:", error));
+        eigeneSeiteSchliessen().catch((error) => console.error("Fenster konnte nicht geschlossen werden:", error));
       }
     }
     if (!browser.tabs.onRemoved.hasListener(closeOnParentTabRemoved)) {
@@ -295,8 +366,7 @@
         schliessen();
         return;
       }
-      const currentWindow = await browser.windows.getCurrent();
-      await browser.windows.remove(currentWindow.id);
+      await eigeneSeiteSchliessen();
     } catch (msg) {
       error.innerText = String(msg);
       error.style.display = "block";
@@ -305,6 +375,7 @@
     }
   }
   function showCopyButton(address) {
+    showShareButton(address);
     if (!navigator.clipboard || document.getElementById("btn-copy-address")) {
       return;
     }
@@ -318,6 +389,22 @@
         button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
       }).catch((err) => {
         console.warn("[Aionda Mail] Kopieren gescheitert:", err);
+      });
+    });
+    elById("error_msg").after(button);
+  }
+  function showShareButton(address) {
+    if (!document.documentElement.classList.contains("ios") || typeof navigator.share !== "function" || document.getElementById("btn-share-address")) {
+      return;
+    }
+    const button = document.createElement("button");
+    button.id = "btn-share-address";
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.textContent = browser.i18n.getMessage("buttonShareAddress") || "Share address";
+    button.addEventListener("click", () => {
+      navigator.share({ "text": address }).catch((err) => {
+        console.warn("[Aionda Mail] Teilen beendet:", err);
       });
     });
     elById("error_msg").after(button);
@@ -339,18 +426,17 @@
         const container = document.querySelector(".container");
         const contentHeight = header.offsetHeight + container.offsetHeight + 40;
         const contentWidth = Math.max(card.offsetWidth + 40, 500);
-        const currentWindow = await browser.windows.getCurrent();
-        const chromeHeight = currentWindow.height - window.innerHeight;
-        const chromeWidth = currentWindow.width - window.innerWidth;
-        const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
-        const newWidth = Math.min(contentWidth + chromeWidth, 650);
-        const left = Math.round((screen.width - newWidth) / 2);
-        const top = Math.round((screen.height - newHeight) / 2);
-        await browser.windows.update(currentWindow.id, {
-          width: newWidth,
-          height: newHeight,
-          left,
-          top
+        await fensterAnpassen((currentWindow) => {
+          const chromeHeight = currentWindow.height - window.innerHeight;
+          const chromeWidth = currentWindow.width - window.innerWidth;
+          const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+          const newWidth = Math.min(contentWidth + chromeWidth, 650);
+          return {
+            width: newWidth,
+            height: newHeight,
+            left: Math.round((screen.width - newWidth) / 2),
+            top: Math.round((screen.height - newHeight) / 2)
+          };
         });
       } catch (err) {
         console.log("[Create Address] Auto-resize failed:", err);

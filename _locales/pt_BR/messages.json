@@ -83,6 +83,7 @@
 
 
     "buttonCopyAddress": {"message": "Copiar endereço"},
+    "buttonShareAddress": {"message": "Compartilhar endereço"},
 
 
     "addressCopied": {"message": "Copiado"},

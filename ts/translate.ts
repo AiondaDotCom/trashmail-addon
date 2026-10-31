@@ -1,5 +1,10 @@
+import { iosVorbereiten } from "./ios";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
+
+// #26f94a61: Nur auf iPhone/iPad - `html.ios` schaltet ios.css ein.
+iosVorbereiten();
 
 document.addEventListener("DOMContentLoaded", () => {
     const numFormat = new Intl.NumberFormat();

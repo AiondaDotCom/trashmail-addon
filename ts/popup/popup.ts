@@ -1,5 +1,7 @@
 "use strict";
 
+import { seiteOeffnen } from "../fenster";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
@@ -226,21 +228,11 @@ async function openGuardianInfoWindow() {
         params.set("tlsFingerprint", tlsFingerprint);
     }
 
-    // Fenstergröße und Position berechnen (zentriert)
-    const width = 450;
-    const height = 595;
-    const left = Math.round((screen.width - width) / 2);
-    const top = Math.round((screen.height - height) / 2);
-
-    // Neues Fenster öffnen
-    browser.windows.create({
-        url: browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
-        type: "popup",
-        width: width,
-        height: height,
-        left: left,
-        top: top,
-    });
+    // Fenstergröße und Position berechnen (zentriert); #26f94a61: ohne
+    // Fenster-API (iOS) als Tab.
+    seiteOeffnen(browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
+        { width: 450, height: 595, bezug: "bildschirm" })
+        .catch((err: unknown) => console.error("[Popup] Guardian-Info konnte nicht geöffnet werden:", err));
 }
 
 // Event Listener für klickbaren Security-Status
@@ -264,22 +256,12 @@ elById("security-status").addEventListener("click", openGuardianInfoWindow);
  * blieb der Knopf dort ohne jede Wirkung.
  */
 function openLoginWindow() {
-    const width = 600;
-    const height = 720;
     const url = browser.runtime.getURL("options/welcome.html");
     (async () => {
         try {
-            const current = await browser.windows.getCurrent();
-            const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
-            const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
-            await browser.windows.create({
-                "url": url,
-                "width": width, "height": height, "left": left, "top": top,
-                "type": "popup",
-            });
+            await seiteOeffnen(url, { width: 600, height: 720, bezug: "aktuell" });
         } catch (err) {
-            console.warn("[Popup] Kein eigenes Fenster moeglich, oeffne Tab:", err);
-            await browser.tabs.create({ "url": url });
+            console.warn("[Popup] Anmeldung konnte nicht geöffnet werden:", err);
         }
         window.close();
     })();

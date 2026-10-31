@@ -1,5 +1,74 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/fenster.ts
+  function api() {
+    return globalThis.browser ?? chrome;
+  }
+  function hat(objekt, name) {
+    return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
+  }
+  async function eigenesFenster() {
+    const fenster = api().windows;
+    if (!hat(fenster, "getCurrent")) {
+      return void 0;
+    }
+    try {
+      const aktuell = await fenster.getCurrent();
+      return aktuell?.id === void 0 ? void 0 : aktuell;
+    } catch {
+      return void 0;
+    }
+  }
+  function fensterVerfuegbar() {
+    const fenster = api().windows;
+    return hat(fenster, "create") && hat(fenster, "remove");
+  }
+  async function eigeneSeiteSchliessen() {
+    const b = api();
+    const fenster = await eigenesFenster();
+    if (fenster !== void 0 && hat(b.windows, "remove")) {
+      try {
+        await b.windows.remove(fenster.id);
+        return;
+      } catch (err) {
+        console.warn("[Aionda Mail] Fenster lie\xDF sich nicht schlie\xDFen:", err);
+      }
+    }
+    if (hat(b.tabs, "getCurrent") && hat(b.tabs, "remove")) {
+      try {
+        const tab = await b.tabs.getCurrent();
+        if (tab?.id !== void 0) {
+          await b.tabs.remove(tab.id);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Aionda Mail] Tab lie\xDF sich nicht schlie\xDFen:", err);
+      }
+    }
+    window.close();
+  }
+  async function fensterAnpassen(berechne) {
+    const b = api();
+    if (!hat(b.windows, "update")) {
+      return false;
+    }
+    const fenster = await eigenesFenster();
+    if (fenster === void 0) {
+      return false;
+    }
+    const neu = berechne(fenster);
+    if (neu === void 0) {
+      return false;
+    }
+    try {
+      await b.windows.update(fenster.id, neu);
+      return true;
+    } catch (err) {
+      console.log("[Aionda Mail] Fenstergr\xF6\xDFe lie\xDF sich nicht \xE4ndern:", err);
+      return false;
+    }
+  }
+
   // trashmail-addon/ts/popup/guardian-info.ts
   var browser = globalThis.browser ?? chrome;
   document.addEventListener("DOMContentLoaded", () => {
@@ -52,6 +121,10 @@
       }
     }
     document.getElementById("btn-close").addEventListener("click", () => {
+      if (!fensterVerfuegbar()) {
+        eigeneSeiteSchliessen().catch((err) => console.warn("[Guardian Info] Schlie\xDFen gescheitert:", err));
+        return;
+      }
       window.close();
     });
     setTimeout(async () => {
@@ -59,18 +132,17 @@
         const container = document.querySelector(".container");
         const contentHeight = container.offsetHeight + 32;
         const contentWidth = container.offsetWidth + 32;
-        const currentWindow = await browser.windows.getCurrent();
-        const chromeHeight = currentWindow.height - window.innerHeight;
-        const chromeWidth = currentWindow.width - window.innerWidth;
-        const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
-        const newWidth = Math.min(contentWidth + chromeWidth, 500);
-        const left = Math.round((screen.width - newWidth) / 2);
-        const top = Math.round((screen.height - newHeight) / 2);
-        await browser.windows.update(currentWindow.id, {
-          width: newWidth,
-          height: newHeight,
-          left,
-          top
+        await fensterAnpassen((currentWindow) => {
+          const chromeHeight = currentWindow.height - window.innerHeight;
+          const chromeWidth = currentWindow.width - window.innerWidth;
+          const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+          const newWidth = Math.min(contentWidth + chromeWidth, 500);
+          return {
+            width: newWidth,
+            height: newHeight,
+            left: Math.round((screen.width - newWidth) / 2),
+            top: Math.round((screen.height - newHeight) / 2)
+          };
         });
       } catch (err) {
         console.log("[Guardian Info] Auto-resize failed:", err);

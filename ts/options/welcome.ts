@@ -1,5 +1,6 @@
 "use strict";
 
+import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
 import { getOrgDomainResolver, type OrgDomainResolver } from "../public-suffix";
 
 // Compatibility layer for browser and chrome
@@ -41,9 +42,9 @@ function changePanel(panel: string) {
 function fitWindowToContent() {
     setTimeout(() => {
         const wanted = Math.min(document.documentElement.scrollHeight + 90, screen.availHeight || 900);
-        browser.windows.getCurrent().then((currentWindow) => {
-            if (currentWindow.id !== undefined && (currentWindow.height === undefined || wanted > currentWindow.height)) {
-                return browser.windows.update(currentWindow.id, { height: wanted });
+        fensterAnpassen((currentWindow) => {
+            if (currentWindow.height === undefined || wanted > currentWindow.height) {
+                return { height: wanted };
             }
             return undefined;
         }).catch(() => undefined);
@@ -701,9 +702,8 @@ function loadDEAAndClose(sessionId?: string): Promise<void> {
             // verloren (Race), und der Background bekommt sie nie.
             return browser.runtime.sendMessage({ "action": "auth_completed" }).catch(() => undefined);
         }).then(() => {
-            return browser.windows.getCurrent();
-        }).then((w) => {
-            browser.windows.remove(w.id!);
+            // #26f94a61: Auf iOS gibt es kein `windows.remove` - dort den Tab schließen.
+            return eigeneSeiteSchliessen();
         });
     });
 }

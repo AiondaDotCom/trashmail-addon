@@ -1,5 +1,6 @@
 "use strict";
 
+import { eigeneSeiteSchliessen, fensterAnpassen, fensterVerfuegbar } from "../fenster";
 import { getOrgDomainResolver } from "../public-suffix";
 
 // Compatibility layer for browser and chrome
@@ -110,6 +111,12 @@ function schliessen(): void {
         window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
         return;
     }
+    // #26f94a61: Ohne Fenster-API (iOS) läuft das Formular als Tab - den
+    // schließt `window.close()` nicht zuverlässig.
+    if (!fensterVerfuegbar()) {
+        eigeneSeiteSchliessen().catch((err: unknown) => console.warn("[Aionda Mail] Schließen gescheitert:", err));
+        return;
+    }
     window.close();
 }
 if (aufruf.has("tab")) {
@@ -139,9 +146,7 @@ browser.runtime.onMessage.addListener((message) => {
     // Event-Listener nur einmal registrieren
     function closeOnParentTabRemoved(id: number) {
         if (id === tabId) {
-            browser.windows.getCurrent().then((window) => {
-                browser.windows.remove(window.id!);
-            }).catch((error) => console.error("Fenster konnte nicht geschlossen werden:", error));
+            eigeneSeiteSchliessen().catch((error: unknown) => console.error("Fenster konnte nicht geschlossen werden:", error));
         }
     }
 
@@ -390,8 +395,7 @@ async function createAddress(e: Event) {
         }
 
         // **Popup schließen**
-        const currentWindow = await browser.windows.getCurrent();
-        await browser.windows.remove(currentWindow.id!);
+        await eigeneSeiteSchliessen();
 
     } catch (msg) {
         error.innerText = String(msg);
@@ -408,6 +412,7 @@ async function createAddress(e: Event) {
  * markieren laesst sich der Meldungstext im Popup schlecht.
  */
 function showCopyButton(address: string): void {
+    showShareButton(address);
     if (!navigator.clipboard || document.getElementById("btn-copy-address")) {
         return;
     }
@@ -421,6 +426,29 @@ function showCopyButton(address: string): void {
             button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
         }).catch((err) => {
             console.warn("[Aionda Mail] Kopieren gescheitert:", err);
+        });
+    });
+    elById("error_msg").after(button);
+}
+
+/**
+ * #26f94a61: Auf iPhone/iPad zusätzlich das native Teilen-Blatt anbieten
+ * (Nachrichten, Notizen, AirDrop …). Nur dort - der Desktop bleibt wie er ist.
+ */
+function showShareButton(address: string): void {
+    if (!document.documentElement.classList.contains("ios") || typeof navigator.share !== "function"
+        || document.getElementById("btn-share-address")) {
+        return;
+    }
+    const button = document.createElement("button");
+    button.id = "btn-share-address";
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.textContent = browser.i18n.getMessage("buttonShareAddress") || "Share address";
+    button.addEventListener("click", () => {
+        navigator.share({ "text": address }).catch((err: unknown) => {
+            // Abbrechen im Teilen-Blatt ist kein Fehler.
+            console.warn("[Aionda Mail] Teilen beendet:", err);
         });
     });
     elById("error_msg").after(button);
@@ -451,25 +479,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const contentHeight = header.offsetHeight + container.offsetHeight + 40; // padding
             const contentWidth = Math.max(card.offsetWidth + 40, 500);
 
-            const currentWindow = await browser.windows.getCurrent();
+            await fensterAnpassen((currentWindow) => {
+                // Calculate the difference between window size and viewport
+                const chromeHeight = currentWindow.height! - window.innerHeight;
+                const chromeWidth = currentWindow.width! - window.innerWidth;
 
-            // Calculate the difference between window size and viewport
-            const chromeHeight = currentWindow.height! - window.innerHeight;
-            const chromeWidth = currentWindow.width! - window.innerWidth;
+                // New window size = content + browser chrome
+                const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+                const newWidth = Math.min(contentWidth + chromeWidth, 650);
 
-            // New window size = content + browser chrome
-            const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
-            const newWidth = Math.min(contentWidth + chromeWidth, 650);
-
-            // Center on screen
-            const left = Math.round((screen.width - newWidth) / 2);
-            const top = Math.round((screen.height - newHeight) / 2);
-
-            await browser.windows.update(currentWindow.id!, {
-                width: newWidth,
-                height: newHeight,
-                left: left,
-                top: top,
+                // Center on screen
+                return {
+                    width: newWidth,
+                    height: newHeight,
+                    left: Math.round((screen.width - newWidth) / 2),
+                    top: Math.round((screen.height - newHeight) / 2),
+                };
             });
         } catch (err) {
             console.log("[Create Address] Auto-resize failed:", err);
