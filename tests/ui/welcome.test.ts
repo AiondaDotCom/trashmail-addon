@@ -972,4 +972,43 @@ describe('welcome.ts', () => {
             expect(document.getElementById('twofa-panel')!.innerHTML).toContain(title);
         });
     });
+    /**
+     * #26f94a61: Safari auf iOS hat kein `browser.windows`. Beim Anmelden kam
+     * „browser.windows.remove is not a function" (31.10.2026): Der Login muss
+     * dort `auth_completed` senden und DANACH den eigenen Tab schließen.
+     */
+    describe('iOS ohne Fenster-API', () => {
+        it('WAECHTER: Login meldet auth_completed und schließt danach den eigenen Tab', async () => {
+            delete (mock as unknown as Record<string, unknown>)['windows'];
+            const reihenfolge: string[] = [];
+            vi.spyOn(mock.runtime, 'sendMessage').mockImplementation(async (m: unknown) => {
+                reihenfolge.push(`send:${String((m as { action?: string }).action)}`);
+                return undefined;
+            });
+            Object.assign(mock.tabs, {
+                getCurrent: vi.fn(async () => ({ id: 31 })),
+                remove: vi.fn(async (id: number) => { reihenfolge.push(`tabs.remove:${id}`); }),
+            });
+            const unhandled = vi.fn();
+            process.on('unhandledRejection', unhandled);
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockResolvedValue({ success: true, session_id: 's9', domain_name_list: [], real_email_list: {} }),
+                createAccessTokenOpaque: vi.fn().mockResolvedValue('tmpat_ios'),
+            });
+            globals.callAPI.mockImplementation(async (data: { cmd: string }) => (data.cmd === 'read_dea' ? [] : { success: true }));
+            await importWelcome();
+
+            input('login-username').value = 'bob';
+            input('login-password').value = 'plainpassword';
+            $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(10);
+            process.off('unhandledRejection', unhandled);
+
+            expect(mock.storage.sync.data.get('password')).toBe('tmpat_ios');
+            expect(reihenfolge.filter((r) => r === 'send:auth_completed' || r.startsWith('tabs.remove')))
+                .toEqual(['send:auth_completed', 'tabs.remove:31']);
+            expect(unhandled).not.toHaveBeenCalled();
+        });
+    });
 });

@@ -1,5 +1,61 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/fenster.ts
+  function api() {
+    return globalThis.browser ?? chrome;
+  }
+  function hat(objekt, name) {
+    return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
+  }
+  async function position(wunsch) {
+    const { width, height } = wunsch;
+    const bezug = wunsch.bezug ?? "zuletzt-fokussiert";
+    if (bezug === "bildschirm") {
+      if (typeof screen === "undefined") {
+        return void 0;
+      }
+      return { left: Math.round((screen.width - width) / 2), top: Math.round((screen.height - height) / 2) };
+    }
+    const fenster = api().windows;
+    const name = bezug === "aktuell" ? "getCurrent" : "getLastFocused";
+    if (!hat(fenster, name)) {
+      return void 0;
+    }
+    try {
+      const f = bezug === "aktuell" ? await fenster.getCurrent() : await fenster.getLastFocused();
+      return {
+        left: Math.max(0, Math.round((f.left ?? 0) + ((f.width ?? width) - width) / 2)),
+        top: Math.max(0, Math.round((f.top ?? 0) + ((f.height ?? height) - height) / 2))
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  async function seiteOeffnen(url, wunsch) {
+    const b = api();
+    if (hat(b.windows, "create")) {
+      try {
+        const pos = await position(wunsch);
+        const fenster = await b.windows.create({
+          "url": url,
+          "type": "popup",
+          "width": wunsch.width,
+          "height": wunsch.height,
+          ...pos
+        });
+        return { alsTab: false, windowId: fenster?.id, tabId: fenster?.tabs?.[0]?.id };
+      } catch (err) {
+        console.warn("[Aionda Mail] Kein eigenes Fenster m\xF6glich, \xF6ffne Tab:", err);
+      }
+    }
+    const tab = await b.tabs.create({ "url": mitTabKennzeichen(url) });
+    return { alsTab: true, windowId: tab?.windowId, tabId: tab?.id };
+  }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function mitTabKennzeichen(url) {
+    return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
+  }
+
   // trashmail-addon/ts/popup/popup.ts
   var browser = globalThis.browser ?? chrome;
   function elById(id) {
@@ -162,40 +218,19 @@
       params.set("tlsVerified", tlsVerified);
       params.set("tlsFingerprint", tlsFingerprint);
     }
-    const width = 450;
-    const height = 595;
-    const left = Math.round((screen.width - width) / 2);
-    const top = Math.round((screen.height - height) / 2);
-    browser.windows.create({
-      url: browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
-      type: "popup",
-      width,
-      height,
-      left,
-      top
-    });
+    seiteOeffnen(
+      browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
+      { width: 450, height: 595, bezug: "bildschirm" }
+    ).catch((err) => console.error("[Popup] Guardian-Info konnte nicht ge\xF6ffnet werden:", err));
   }
   elById("security-status").addEventListener("click", openGuardianInfoWindow);
   function openLoginWindow() {
-    const width = 600;
-    const height = 720;
     const url = browser.runtime.getURL("options/welcome.html");
     (async () => {
       try {
-        const current = await browser.windows.getCurrent();
-        const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
-        await browser.windows.create({
-          "url": url,
-          "width": width,
-          "height": height,
-          "left": left,
-          "top": top,
-          "type": "popup"
-        });
+        await seiteOeffnen(url, { width: 600, height: 720, bezug: "aktuell" });
       } catch (err) {
-        console.warn("[Popup] Kein eigenes Fenster moeglich, oeffne Tab:", err);
-        await browser.tabs.create({ "url": url });
+        console.warn("[Popup] Anmeldung konnte nicht ge\xF6ffnet werden:", err);
       }
       window.close();
     })();

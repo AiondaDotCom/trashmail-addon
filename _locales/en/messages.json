@@ -85,6 +85,7 @@
 
 
     "buttonCopyAddress": {"message": "Copy address"},
+    "buttonShareAddress": {"message": "Share address"},
 
 
     "addressCopied": {"message": "Copied"},

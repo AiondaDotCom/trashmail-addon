@@ -1,16 +1,72 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/fenster.ts
+  function api() {
+    return globalThis.browser ?? chrome;
+  }
+  function hat(objekt, name) {
+    return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
+  }
+  async function position(wunsch) {
+    const { width, height } = wunsch;
+    const bezug = wunsch.bezug ?? "zuletzt-fokussiert";
+    if (bezug === "bildschirm") {
+      if (typeof screen === "undefined") {
+        return void 0;
+      }
+      return { left: Math.round((screen.width - width) / 2), top: Math.round((screen.height - height) / 2) };
+    }
+    const fenster = api().windows;
+    const name = bezug === "aktuell" ? "getCurrent" : "getLastFocused";
+    if (!hat(fenster, name)) {
+      return void 0;
+    }
+    try {
+      const f = bezug === "aktuell" ? await fenster.getCurrent() : await fenster.getLastFocused();
+      return {
+        left: Math.max(0, Math.round((f.left ?? 0) + ((f.width ?? width) - width) / 2)),
+        top: Math.max(0, Math.round((f.top ?? 0) + ((f.height ?? height) - height) / 2))
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  async function seiteOeffnen(url, wunsch) {
+    const b = api();
+    if (hat(b.windows, "create")) {
+      try {
+        const pos = await position(wunsch);
+        const fenster = await b.windows.create({
+          "url": url,
+          "type": "popup",
+          "width": wunsch.width,
+          "height": wunsch.height,
+          ...pos
+        });
+        return { alsTab: false, windowId: fenster?.id, tabId: fenster?.tabs?.[0]?.id };
+      } catch (err) {
+        console.warn("[Aionda Mail] Kein eigenes Fenster m\xF6glich, \xF6ffne Tab:", err);
+      }
+    }
+    const tab = await b.tabs.create({ "url": mitTabKennzeichen(url) });
+    return { alsTab: true, windowId: tab?.windowId, tabId: tab?.id };
+  }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function mitTabKennzeichen(url) {
+    return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
+  }
+
   // trashmail-addon/ts/public-suffix.ts
   var browserApi = globalThis.browser ?? chrome;
   var resolverPromise = null;
   function nativePublicSuffix() {
     return browserApi?.publicSuffix;
   }
-  function nativeResolver(api) {
+  function nativeResolver(api2) {
     return (url) => {
       const hostname = url.hostname;
       try {
-        return api.getDomain(hostname) ?? hostname;
+        return api2.getDomain(hostname) ?? hostname;
       } catch {
         return hostname;
       }
@@ -27,8 +83,8 @@
   }
   function getOrgDomainResolver() {
     if (!resolverPromise) {
-      const api = nativePublicSuffix();
-      resolverPromise = api ? Promise.resolve(nativeResolver(api)) : fallbackResolver().catch((error) => {
+      const api2 = nativePublicSuffix();
+      resolverPromise = api2 ? Promise.resolve(nativeResolver(api2)) : fallbackResolver().catch((error) => {
         resolverPromise = null;
         throw error;
       });
@@ -83,36 +139,19 @@
     return Boolean(sync.username && sync.password);
   }
   function openCenteredPopup(url, width, height) {
-    browser.windows.getLastFocused().then((focused) => {
-      const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
-      const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
-      browser.windows.create({ "url": url, "type": "popup", "width": width, "height": height, "left": left, "top": top });
-    });
+    seiteOeffnen(url, { width, height, bezug: "zuletzt-fokussiert" }).catch((err) => console.error("[Aionda Mail] Seite konnte nicht ge\xF6ffnet werden:", err));
   }
   function openCreateAddressForm(ctx) {
-    const width = 750;
-    const height = 720;
-    browser.windows.getLastFocused().then((focused) => {
-      const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
-      const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
-      const options = {
-        "url": "../create-address/create-address.html",
-        "type": "popup",
-        "width": width,
-        "height": height,
-        "left": left,
-        "top": top
-      };
-      return browser.windows.create(options);
-    }).then((window) => {
+    const url = browser.runtime.getURL("create-address/create-address.html");
+    seiteOeffnen(url, { width: 750, height: 720, bezug: "zuletzt-fokussiert" }).then((seite) => {
       const handler = (tabId, changeInfo, tab) => {
-        if (tabId === window.tabs[0].id && changeInfo.status === "complete") {
+        if (tabId === seite.tabId && changeInfo.status === "complete") {
           browser.tabs.onUpdated.removeListener(handler);
           browser.tabs.sendMessage(tab.id, [ctx.url, ctx.windowId, ctx.tabId, ctx.frameId]);
         }
       };
       browser.tabs.onUpdated.addListener(handler);
-    });
+    }).catch((err) => console.error("[Aionda Mail] Formular konnte nicht ge\xF6ffnet werden:", err));
   }
   async function openCreateAddress(parentTab, frameId) {
     const ctx = { url: parentTab.url, windowId: parentTab.windowId, tabId: parentTab.id, frameId };

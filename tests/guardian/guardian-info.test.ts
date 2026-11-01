@@ -123,13 +123,35 @@ describe('guardian-info TLS-Block (Firefox)', () => {
 });
 
 describe('guardian-info Interaktion', () => {
-    it('schließt das Fenster beim Klick auf Schließen', async () => {
+    it('schließt das eigene Popup-Fenster beim Klick auf Schließen', async () => {
         const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => undefined);
+        const removeSpy = vi.spyOn(mock.windows, 'remove');
         await render('?status=verified&text=X');
 
         byId('btn-close').dispatchEvent(new Event('click'));
+        // Fake-Timer: nur Microtasks abarbeiten.
+        for (let i = 0; i < 10; i++) await Promise.resolve();
 
-        expect(closeSpy).toHaveBeenCalledTimes(1);
+        expect(removeSpy).toHaveBeenCalledWith(1);
+        expect(closeSpy).not.toHaveBeenCalled();
+    });
+
+    // #26f94a61 (Codex-Review): Fenster-API vorhanden, aber sie wirft - dann
+    // muss „Schließen" den eigenen Tab schließen statt beim unzuverlässigen
+    // window.close() stehenzubleiben.
+    it('WAECHTER: wirft windows.remove, schließt Schließen den eigenen Tab', async () => {
+        const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => undefined);
+        vi.spyOn(mock.windows, 'remove').mockRejectedValue(new Error('windows.remove is not supported'));
+        const tabRemove = vi.fn(async () => undefined);
+        Object.assign(mock.tabs, { getCurrent: vi.fn(async () => ({ id: 66 })), remove: tabRemove });
+        await render('?status=verified&text=X');
+
+        byId('btn-close').dispatchEvent(new Event('click'));
+        // Fake-Timer: nur Microtasks abarbeiten.
+        for (let i = 0; i < 10; i++) await Promise.resolve();
+
+        expect(tabRemove).toHaveBeenCalledWith(66);
+        expect(closeSpy).not.toHaveBeenCalled();
     });
 
     it('passt die Fenstergröße nach dem Rendern an (Auto-Resize)', async () => {

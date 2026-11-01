@@ -382,15 +382,36 @@ describe('create-address.ts', () => {
     });
 
     describe('close button', () => {
-        it('closes the popup window', async () => {
+        it('closes its own popup window', async () => {
             mock.storage.local.data.set('session_id', 'sess');
             mock.storage.local.data.set('real_emails', []);
             mock.storage.local.data.set('domains', []);
+            const removeSpy = vi.spyOn(mock.windows, 'remove');
             await importCreateAddress();
             await tick();
 
             $('btn-close').dispatchEvent(new MouseEvent('click'));
-            expect(nav.close).toHaveBeenCalled();
+            await tick();
+            expect(removeSpy).toHaveBeenCalledWith(1);
+            expect(nav.close).not.toHaveBeenCalled();
+        });
+
+        // #26f94a61 (Codex-Review): Fenster-API vorhanden, aber sie wirft -
+        // „Abbruch" muss dann den eigenen Tab schließen.
+        it('WAECHTER: wirft windows.remove, schließt Abbruch den eigenen Tab', async () => {
+            mock.storage.local.data.set('session_id', 'sess');
+            mock.storage.local.data.set('real_emails', []);
+            mock.storage.local.data.set('domains', []);
+            vi.spyOn(mock.windows, 'remove').mockRejectedValue(new Error('windows.remove is not supported'));
+            const tabRemove = vi.fn(async () => undefined);
+            Object.assign(mock.tabs, { getCurrent: vi.fn(async () => ({ id: 66 })), remove: tabRemove });
+            await importCreateAddress();
+            await tick();
+
+            $('btn-close').dispatchEvent(new MouseEvent('click'));
+            await tick();
+            expect(tabRemove).toHaveBeenCalledWith(66);
+            expect(nav.close).not.toHaveBeenCalled();
         });
     });
 
@@ -448,6 +469,37 @@ describe('create-address.ts', () => {
             await tick();
             expect(writeText).toHaveBeenCalledWith('myaddr@d.com');
             expect(copy.textContent).toBe('addressCopied');
+        });
+
+        // #26f94a61 (Codex-Review): Zweimal erstellt, zweimal nicht eingefügt -
+        // Kopieren und Teilen müssen die ZULETZT angezeigte Adresse liefern.
+        it('WAECHTER: Kopieren und Teilen liefern nach erneutem Erstellen die neue Adresse', async () => {
+            globals.callAPI.mockResolvedValue({});
+            const writeText = vi.fn(async () => undefined);
+            const share = vi.fn(async () => undefined);
+            Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+            Object.defineProperty(navigator, 'share', { configurable: true, value: share });
+            document.documentElement.classList.add('ios');
+            try {
+                await bootImPopup();
+                vi.spyOn(mock.tabs, 'sendMessage').mockResolvedValue({ pasted: false });
+
+                document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                await tick(8);
+                (document.getElementById('disposable-name') as HTMLInputElement).value = 'zweite';
+                document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                await tick(8);
+
+                expect(document.querySelectorAll('#btn-share-address')).toHaveLength(1);
+                (document.getElementById('btn-share-address') as HTMLButtonElement).click();
+                (document.getElementById('btn-copy-address') as HTMLButtonElement).click();
+                await tick();
+                expect(share).toHaveBeenCalledWith({ text: 'zweite@d.com' });
+                expect(writeText).toHaveBeenCalledWith('zweite@d.com');
+            } finally {
+                document.documentElement.classList.remove('ios');
+                delete (navigator as unknown as Record<string, unknown>)['share'];
+            }
         });
 
         it('WAECHTER: bittet als Rahmen die Popup-Seite ums Schliessen, statt selbst window.close zu rufen', async () => {

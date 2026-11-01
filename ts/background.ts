@@ -1,3 +1,4 @@
+import { seiteOeffnen } from "./fenster";
 import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
 
 // Compatibility layer for browser and chrome
@@ -93,13 +94,10 @@ async function isLoggedIn(): Promise<boolean> {
     return Boolean(sync.username && sync.password);
 }
 
-/** Zentriert ueber dem zuletzt fokussierten Fenster ein Popup oeffnen. */
+/** Zentriert über dem zuletzt fokussierten Fenster ein Popup öffnen (iOS: Tab). */
 function openCenteredPopup(url: string, width: number, height: number): void {
-    browser.windows.getLastFocused().then((focused) => {
-        const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
-        browser.windows.create({ "url": url, "type": "popup", "width": width, "height": height, "left": left, "top": top });
-    });
+    seiteOeffnen(url, { width, height, bezug: "zuletzt-fokussiert" })
+        .catch((err: unknown) => console.error("[Aionda Mail] Seite konnte nicht geöffnet werden:", err));
 }
 
 /** Eltern-Tab-Kontext fuer das Einfuegen der Adresse in das Formularfeld. */
@@ -117,27 +115,21 @@ interface PendingCreateAddress extends ParentContext {
 
 /** Oeffnet das create-address-Formular und reicht den Eltern-Kontext durch. */
 function openCreateAddressForm(ctx: ParentContext): void {
-    const width = 750;
-    const height = 720;
     // Zentriert ueber dem zuletzt fokussierten Browserfenster oeffnen
-    // (im Service Worker gibt es kein `screen`-Objekt).
-    browser.windows.getLastFocused().then((focused) => {
-        const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
-        const options: chrome.windows.CreateData = {"url": "../create-address/create-address.html",
-            "type": "popup", "width": width, "height": height, "left": left, "top": top};
-        return browser.windows.create(options);
-    }).then((window) => {
+    // (im Service Worker gibt es kein `screen`-Objekt). #26f94a61: Ohne
+    // Fenster-API (iOS) kommt das Formular als Tab - dann zählt dessen Tab-ID.
+    const url = browser.runtime.getURL("create-address/create-address.html");
+    seiteOeffnen(url, { width: 750, height: 720, bezug: "zuletzt-fokussiert" }).then((seite) => {
         // (FF 56) Security policy blocks running code until tab has completed loading.
         const handler = (tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => {
-            if (tabId === window!.tabs![0]!.id && changeInfo.status === "complete") {
+            if (tabId === seite.tabId && changeInfo.status === "complete") {
                 browser.tabs.onUpdated.removeListener(handler);
                 // Send the parent url and window ID through to the new window.
                 browser.tabs.sendMessage(tab.id!, [ctx.url, ctx.windowId, ctx.tabId, ctx.frameId]);
             }
         };
         browser.tabs.onUpdated.addListener(handler);
-    });
+    }).catch((err: unknown) => console.error("[Aionda Mail] Formular konnte nicht geöffnet werden:", err));
 }
 
 async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): Promise<void> {

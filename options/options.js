@@ -1,5 +1,79 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/fenster.ts
+  function api() {
+    return globalThis.browser ?? chrome;
+  }
+  function hat(objekt, name) {
+    return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
+  }
+  async function position(wunsch) {
+    const { width, height } = wunsch;
+    const bezug = wunsch.bezug ?? "zuletzt-fokussiert";
+    if (bezug === "bildschirm") {
+      if (typeof screen === "undefined") {
+        return void 0;
+      }
+      return { left: Math.round((screen.width - width) / 2), top: Math.round((screen.height - height) / 2) };
+    }
+    const fenster = api().windows;
+    const name = bezug === "aktuell" ? "getCurrent" : "getLastFocused";
+    if (!hat(fenster, name)) {
+      return void 0;
+    }
+    try {
+      const f = bezug === "aktuell" ? await fenster.getCurrent() : await fenster.getLastFocused();
+      return {
+        left: Math.max(0, Math.round((f.left ?? 0) + ((f.width ?? width) - width) / 2)),
+        top: Math.max(0, Math.round((f.top ?? 0) + ((f.height ?? height) - height) / 2))
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  async function seiteOeffnen(url, wunsch) {
+    const b = api();
+    if (hat(b.windows, "create")) {
+      try {
+        const pos = await position(wunsch);
+        const fenster = await b.windows.create({
+          "url": url,
+          "type": "popup",
+          "width": wunsch.width,
+          "height": wunsch.height,
+          ...pos
+        });
+        return { alsTab: false, windowId: fenster?.id, tabId: fenster?.tabs?.[0]?.id };
+      } catch (err) {
+        console.warn("[Aionda Mail] Kein eigenes Fenster m\xF6glich, \xF6ffne Tab:", err);
+      }
+    }
+    const tab = await b.tabs.create({ "url": mitTabKennzeichen(url) });
+    return { alsTab: true, windowId: tab?.windowId, tabId: tab?.id };
+  }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function mitTabKennzeichen(url) {
+    return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
+  }
+  function beimSchliessen(seite, rueckruf) {
+    const b = api();
+    if (!seite.alsTab && seite.windowId !== void 0 && hat(b.windows?.onRemoved, "addListener")) {
+      b.windows.onRemoved.addListener((id) => {
+        if (id === seite.windowId) {
+          rueckruf();
+        }
+      });
+      return;
+    }
+    if (seite.tabId !== void 0 && hat(b.tabs?.onRemoved, "addListener")) {
+      b.tabs.onRemoved.addListener((id) => {
+        if (id === seite.tabId) {
+          rueckruf();
+        }
+      });
+    }
+  }
+
   // trashmail-addon/ts/options/options.ts
   var browser = globalThis.browser ?? chrome;
   function elById(id) {
@@ -10,26 +84,9 @@
     return el;
   }
   elById("btn-switch-login").onclick = function() {
-    const width = 600;
-    const height = 720;
-    browser.windows.getCurrent().then((current) => {
-      const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
-      const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
-      return browser.windows.create({
-        "url": browser.runtime.getURL("options/welcome.html"),
-        "width": width,
-        "height": height,
-        "left": left,
-        "top": top,
-        "type": "popup"
-      });
-    }).then((welcomeWindow) => {
-      browser.windows.onRemoved.addListener((id) => {
-        if (id === welcomeWindow.id) {
-          window.location.reload();
-        }
-      });
-    });
+    seiteOeffnen(browser.runtime.getURL("options/welcome.html"), { width: 600, height: 720, bezug: "aktuell" }).then((welcome) => {
+      beimSchliessen(welcome, () => window.location.reload());
+    }).catch((err) => console.error("[Aionda Mail] Anmeldung konnte nicht ge\xF6ffnet werden:", err));
   };
   function logout() {
     browser.storage.local.get(["session_id"]).then((local) => {

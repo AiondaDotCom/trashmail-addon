@@ -194,6 +194,39 @@ describe('contextMenus.onClicked', () => {
     });
 });
 
+describe('iOS ohne Fenster-API (#26f94a61)', () => {
+    it('WAECHTER: öffnet das Formular als Tab und reicht den Eltern-Kontext an DIESEN Tab durch', async () => {
+        delete (mock as unknown as Record<string, unknown>)['windows'];
+        await mock.storage.sync.set({ username: 'bob', password: 'tmpat_x' });
+        await importBackground();
+        mock.contextMenus.onClicked.trigger(
+            { menuItemId: 'paste-email', frameId: 0 },
+            { id: 7, url: 'https://parent.test/', windowId: 3 },
+        );
+        await flush();
+        expect(mock.tabs.list).toHaveLength(1);
+        const formTab = mock.tabs.list[0]!;
+        expect(formTab.url).toContain('create-address/create-address.html');
+        // Ein fremder Tab darf den Kontext nicht bekommen.
+        mock.tabs.onUpdated.trigger(formTab.id + 1, { status: 'complete' }, { id: formTab.id + 1 });
+        mock.tabs.onUpdated.trigger(formTab.id, { status: 'complete' }, { id: formTab.id });
+        await flush();
+        expect(mock.tabs.sentMessages.filter((m) => Array.isArray(m.message)))
+            .toEqual([{ tabId: formTab.id, message: ['https://parent.test/', 3, 7, 0] }]);
+    });
+
+    it('öffnet die Anmeldung als Tab, wenn abgemeldet', async () => {
+        delete (mock as unknown as Record<string, unknown>)['windows'];
+        await importBackground();
+        mock.contextMenus.onClicked.trigger(
+            { menuItemId: 'paste-email', frameId: 0 },
+            { id: 7, url: 'https://site.test/', windowId: 1 },
+        );
+        await flush();
+        expect(mock.tabs.list.map((t) => t.url)).toEqual([expect.stringContaining('options/welcome.html')]);
+    });
+});
+
 describe('updateContextMenu (via tabs.onUpdated)', () => {
     it('adds a previous-address entry using organizational-domain suffix matching', async () => {
         await mock.storage.local.set({ previous_addresses: { 'example.com': [['addr@dev', 'https://example.com/']] } });

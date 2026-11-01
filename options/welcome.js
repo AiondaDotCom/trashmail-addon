@@ -1,16 +1,92 @@
 "use strict";
 (() => {
+  // trashmail-addon/ts/fenster.ts
+  function api() {
+    return globalThis.browser ?? chrome;
+  }
+  function hat(objekt, name) {
+    return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
+  }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function alsTabGeoeffnet() {
+    try {
+      return new URLSearchParams(window.location.search).get(TAB_KENNZEICHEN) === "1";
+    } catch {
+      return false;
+    }
+  }
+  async function eigenesFenster() {
+    const fenster = api().windows;
+    if (alsTabGeoeffnet() || !hat(fenster, "getCurrent")) {
+      return void 0;
+    }
+    try {
+      const aktuell = await fenster.getCurrent({ "populate": true });
+      if (aktuell?.id === void 0 || aktuell.tabs !== void 0 && aktuell.tabs.length > 1) {
+        return void 0;
+      }
+      return aktuell;
+    } catch {
+      return void 0;
+    }
+  }
+  async function eigeneSeiteSchliessen() {
+    const b = api();
+    const fenster = await eigenesFenster();
+    if (fenster !== void 0 && hat(b.windows, "remove")) {
+      try {
+        await b.windows.remove(fenster.id);
+        return;
+      } catch (err) {
+        console.warn("[Aionda Mail] Fenster lie\xDF sich nicht schlie\xDFen:", err);
+      }
+    }
+    if (hat(b.tabs, "getCurrent") && hat(b.tabs, "remove")) {
+      try {
+        const tab = await b.tabs.getCurrent();
+        if (tab?.id !== void 0) {
+          await b.tabs.remove(tab.id);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Aionda Mail] Tab lie\xDF sich nicht schlie\xDFen:", err);
+      }
+    }
+    window.close();
+  }
+  async function fensterAnpassen(berechne) {
+    const b = api();
+    if (!hat(b.windows, "update")) {
+      return false;
+    }
+    const fenster = await eigenesFenster();
+    if (fenster === void 0) {
+      return false;
+    }
+    const neu = berechne(fenster);
+    if (neu === void 0) {
+      return false;
+    }
+    try {
+      await b.windows.update(fenster.id, neu);
+      return true;
+    } catch (err) {
+      console.log("[Aionda Mail] Fenstergr\xF6\xDFe lie\xDF sich nicht \xE4ndern:", err);
+      return false;
+    }
+  }
+
   // trashmail-addon/ts/public-suffix.ts
   var browserApi = globalThis.browser ?? chrome;
   var resolverPromise = null;
   function nativePublicSuffix() {
     return browserApi?.publicSuffix;
   }
-  function nativeResolver(api) {
+  function nativeResolver(api2) {
     return (url) => {
       const hostname = url.hostname;
       try {
-        return api.getDomain(hostname) ?? hostname;
+        return api2.getDomain(hostname) ?? hostname;
       } catch {
         return hostname;
       }
@@ -27,8 +103,8 @@
   }
   function getOrgDomainResolver() {
     if (!resolverPromise) {
-      const api = nativePublicSuffix();
-      resolverPromise = api ? Promise.resolve(nativeResolver(api)) : fallbackResolver().catch((error) => {
+      const api2 = nativePublicSuffix();
+      resolverPromise = api2 ? Promise.resolve(nativeResolver(api2)) : fallbackResolver().catch((error) => {
         resolverPromise = null;
         throw error;
       });
@@ -54,9 +130,9 @@
   function fitWindowToContent() {
     setTimeout(() => {
       const wanted = Math.min(document.documentElement.scrollHeight + 90, screen.availHeight || 900);
-      browser.windows.getCurrent().then((currentWindow) => {
-        if (currentWindow.id !== void 0 && (currentWindow.height === void 0 || wanted > currentWindow.height)) {
-          return browser.windows.update(currentWindow.id, { height: wanted });
+      fensterAnpassen((currentWindow) => {
+        if (currentWindow.height === void 0 || wanted > currentWindow.height) {
+          return { height: wanted };
         }
         return void 0;
       }).catch(() => void 0);
@@ -570,9 +646,7 @@
       return browser.storage.local.set({ "previous_addresses": currentPrevAddresses }).then(() => {
         return browser.runtime.sendMessage({ "action": "auth_completed" }).catch(() => void 0);
       }).then(() => {
-        return browser.windows.getCurrent();
-      }).then((w) => {
-        browser.windows.remove(w.id);
+        return eigeneSeiteSchliessen();
       });
     });
   }
