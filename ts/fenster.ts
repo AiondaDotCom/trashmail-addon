@@ -84,8 +84,26 @@ export async function seiteOeffnen(url: string, wunsch: FensterWunsch): Promise<
             console.warn("[Aionda Mail] Kein eigenes Fenster möglich, öffne Tab:", err);
         }
     }
-    const tab = await b.tabs.create({ "url": url });
+    // Kennzeichen in der Adresse: Die Seite weiß so, dass sie ein Tab im
+    // Browserfenster des Kunden ist - und fasst dieses Fenster nie an.
+    const tab = await b.tabs.create({ "url": mitTabKennzeichen(url) });
     return { alsTab: true, windowId: tab?.windowId, tabId: tab?.id };
+}
+
+/** URL-Parameter, mit dem `seiteOeffnen` eine als Tab geöffnete Seite markiert. */
+export const TAB_KENNZEICHEN = "aiondaTab";
+
+function mitTabKennzeichen(url: string): string {
+    return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
+}
+
+/** Wurde diese Seite per Rückfall als Tab geöffnet? */
+function alsTabGeoeffnet(): boolean {
+    try {
+        return new URLSearchParams(window.location.search).get(TAB_KENNZEICHEN) === "1";
+    } catch {
+        return false;
+    }
 }
 
 /** Meldet, wenn die mit `seiteOeffnen` geöffnete Seite geschlossen wurde. */
@@ -109,34 +127,35 @@ export function beimSchliessen(seite: GeoeffneteSeite, rueckruf: () => void): vo
 }
 
 /**
- * Aktuelles Fenster der Seite, wenn die Fenster-API es liefert. Auf dem
- * Desktop ist das wie bisher das Popup-Fenster der Seite.
+ * Das EIGENE Popup-Fenster der Seite - oder `undefined`, wenn die Seite als
+ * Tab läuft. Ein Tab im Browserfenster des Kunden darf nie dazu führen, dass
+ * dessen ganzes Fenster geschlossen oder in der Größe verändert wird:
+ *  - per Rückfall als Tab geöffnet (Kennzeichen in der Adresse), oder
+ *  - das aktuelle Fenster hat mehr als einen Tab (ein Popup hat genau einen).
+ * Liefert die API keine Tabs (Felder fehlen), gilt wie bisher das aktuelle
+ * Fenster als eigenes.
  */
 async function eigenesFenster(): Promise<chrome.windows.Window | undefined> {
     const fenster = api().windows;
-    if (!hat(fenster, "getCurrent")) {
+    if (alsTabGeoeffnet() || !hat(fenster, "getCurrent")) {
         return undefined;
     }
     try {
-        const aktuell = await fenster.getCurrent();
-        return aktuell?.id === undefined ? undefined : aktuell;
+        const aktuell = await fenster.getCurrent({ "populate": true });
+        if (aktuell?.id === undefined || (aktuell.tabs !== undefined && aktuell.tabs.length > 1)) {
+            return undefined;
+        }
+        return aktuell;
     } catch {
         return undefined;
     }
 }
 
 /**
- * Gibt es eigene Fenster (Desktop)? Auf iOS/iPadOS fehlen `create`/`remove`.
- * Seiten, die bisher `window.close()` riefen, behalten das auf dem Desktop.
- */
-export function fensterVerfuegbar(): boolean {
-    const fenster = api().windows;
-    return hat(fenster, "create") && hat(fenster, "remove");
-}
-
-/**
- * Eigene Seite schließen: eigenes Popup-Fenster per `windows.remove`, sonst
- * den eigenen Tab per `tabs.getCurrent` + `tabs.remove`, sonst `window.close()`.
+ * Eigene Seite schließen, Stufe für Stufe - scheitert eine (fehlt, wirft,
+ * lehnt ab), kommt die nächste: eigenes Popup-Fenster per `windows.remove`,
+ * dann den eigenen Tab per `tabs.getCurrent` + `tabs.remove`, zuletzt
+ * `window.close()`.
  */
 export async function eigeneSeiteSchliessen(): Promise<void> {
     const b = api();

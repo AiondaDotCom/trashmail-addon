@@ -7,14 +7,25 @@
   function hat(objekt, name) {
     return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
   }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function alsTabGeoeffnet() {
+    try {
+      return new URLSearchParams(window.location.search).get(TAB_KENNZEICHEN) === "1";
+    } catch {
+      return false;
+    }
+  }
   async function eigenesFenster() {
     const fenster = api().windows;
-    if (!hat(fenster, "getCurrent")) {
+    if (alsTabGeoeffnet() || !hat(fenster, "getCurrent")) {
       return void 0;
     }
     try {
-      const aktuell = await fenster.getCurrent();
-      return aktuell?.id === void 0 ? void 0 : aktuell;
+      const aktuell = await fenster.getCurrent({ "populate": true });
+      if (aktuell?.id === void 0 || aktuell.tabs !== void 0 && aktuell.tabs.length > 1) {
+        return void 0;
+      }
+      return aktuell;
     } catch {
       return void 0;
     }

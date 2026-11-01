@@ -4,7 +4,7 @@ import { iosVorbereiten } from "./ios";
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
 // #26f94a61: Nur auf iPhone/iPad - `html.ios` schaltet ios.css ein.
-iosVorbereiten();
+iosVorbereiten().catch((err: unknown) => console.warn("[Aionda Mail] iOS-Erkennung gescheitert:", err));
 
 document.addEventListener("DOMContentLoaded", () => {
     const numFormat = new Intl.NumberFormat();

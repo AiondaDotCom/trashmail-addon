@@ -2,7 +2,7 @@
  * #26f94a61: ts/ios.ts - die iPhone/iPad-Darstellung darf NUR auf iOS/iPadOS
  * angehen; Chrome, Firefox und Safari auf macOS bleiben unverändert.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { iosVorbereiten, istIos } from '../../ts/ios';
 
@@ -27,30 +27,72 @@ afterEach(() => {
     document.documentElement.classList.remove('ios');
 });
 
+const mac = async () => ({ os: 'mac' });
+const ios = async () => ({ os: 'ios' });
+
 describe('istIos', () => {
     it.each([
-        ['iPhone', IPHONE, 5, true],
-        ['iPad (alte Kennung)', IPAD_ALT, 5, true],
-        ['iPadOS (meldet sich als Macintosh, mit Touch)', MAC_SAFARI, 5, true],
-        ['Safari auf macOS (kein Touch)', MAC_SAFARI, 0, false],
-        ['Firefox auf macOS', FIREFOX_MAC, 0, false],
-        ['Chrome auf Windows mit Touchscreen', CHROME_WIN, 10, false],
-    ])('%s -> %s', (_name, ua, touch, erwartet) => {
-        expect(istIos({ userAgent: ua, maxTouchPoints: touch })).toBe(erwartet);
+        ['iPhone, Plattform ios', IPHONE, 5, ios, true],
+        ['iPhone ohne getPlatformInfo (Rückfall User-Agent)', IPHONE, 5, undefined, true],
+        ['iPad (alte Kennung) ohne getPlatformInfo', IPAD_ALT, 5, undefined, true],
+        ['iPadOS (Macintosh mit Touch), Plattform ios', MAC_SAFARI, 5, ios, true],
+        ['Mac mit Touch, Plattform mac', MAC_SAFARI, 5, mac, false],
+        ['Mac mit Touch ohne getPlatformInfo', MAC_SAFARI, 5, undefined, false],
+        ['iPhone-Kennung, aber Plattform mac', IPHONE, 5, mac, false],
+        ['Safari auf macOS (kein Touch)', MAC_SAFARI, 0, ios, false],
+        ['Firefox auf macOS', FIREFOX_MAC, 0, undefined, false],
+        ['Chrome auf Windows mit Touchscreen', CHROME_WIN, 10, undefined, false],
+    ] as const)('%s -> %s', async (_name, ua, touch, plattform, erwartet) => {
+        expect(await istIos({ userAgent: ua, maxTouchPoints: touch }, plattform)).toBe(erwartet);
+    });
+
+    it('getPlatformInfo wirft: Rückfall auf den User-Agent, Macintosh nie', async () => {
+        const wirft = async (): Promise<never> => { throw new Error('nicht unterstützt'); };
+        expect(await istIos({ userAgent: IPHONE, maxTouchPoints: 5 }, wirft)).toBe(true);
+        expect(await istIos({ userAgent: MAC_SAFARI, maxTouchPoints: 5 }, wirft)).toBe(false);
     });
 });
 
 describe('iosVorbereiten', () => {
-    it('Desktop: ändert NICHTS am Dokument (keine Klasse, keine Attribute)', () => {
+    it('Desktop: ändert NICHTS am Dokument und fragt die Plattform gar nicht', async () => {
         const doc = neuesDokument();
         const vorher = doc.documentElement.outerHTML;
-        expect(iosVorbereiten(doc, { userAgent: MAC_SAFARI, maxTouchPoints: 0 })).toBe(false);
+        const plattform = vi.fn(ios);
+        expect(await iosVorbereiten(doc, { userAgent: MAC_SAFARI, maxTouchPoints: 0 }, plattform)).toBe(false);
+        expect(doc.documentElement.outerHTML).toBe(vorher);
+        expect(plattform).not.toHaveBeenCalled();
+    });
+
+    // #26f94a61 (Codex-Review): Ein Mac mit Touch-Bildschirm ist Desktop.
+    it('WAECHTER: Mac mit maxTouchPoints 5 und os "mac" bekommt KEIN html.ios und keine Attribute', async () => {
+        const doc = neuesDokument();
+        const vorher = doc.documentElement.outerHTML;
+        expect(await iosVorbereiten(doc, { userAgent: MAC_SAFARI, maxTouchPoints: 5 }, mac)).toBe(false);
+        expect(doc.documentElement.classList.contains('ios')).toBe(false);
         expect(doc.documentElement.outerHTML).toBe(vorher);
     });
 
-    it('iPhone: setzt html.ios, Schalter und Tastatur-Hinweise; vorhandene Werte bleiben', () => {
+    it('iPadOS (Macintosh mit Touch, os "ios") bekommt html.ios', async () => {
         const doc = neuesDokument();
-        expect(iosVorbereiten(doc, { userAgent: IPHONE, maxTouchPoints: 5 })).toBe(true);
+        expect(await iosVorbereiten(doc, { userAgent: MAC_SAFARI, maxTouchPoints: 5 }, ios)).toBe(true);
+        expect(doc.documentElement.classList.contains('ios')).toBe(true);
+    });
+
+    it('bis zur Antwort ist die Seite unsichtbar (kein Umspringen), danach wieder sichtbar', async () => {
+        const doc = neuesDokument();
+        let antworten: (v: { os: string }) => void = () => undefined;
+        const lauf = iosVorbereiten(doc, { userAgent: IPHONE, maxTouchPoints: 5 }, () => new Promise((r) => { antworten = r; }));
+        expect(doc.documentElement.style.visibility).toBe('hidden');
+        expect(doc.documentElement.classList.contains('ios')).toBe(false);
+        antworten({ os: 'ios' });
+        expect(await lauf).toBe(true);
+        expect(doc.documentElement.classList.contains('ios')).toBe(true);
+        expect(doc.documentElement.hasAttribute('style')).toBe(false);
+    });
+
+    it('iPhone: setzt html.ios, Schalter und Tastatur-Hinweise; vorhandene Werte bleiben', async () => {
+        const doc = neuesDokument();
+        expect(await iosVorbereiten(doc, { userAgent: IPHONE, maxTouchPoints: 5 }, ios)).toBe(true);
         expect(doc.documentElement.classList.contains('ios')).toBe(true);
         expect(doc.getElementById('c1')!.hasAttribute('switch')).toBe(true);
         expect(doc.getElementById('t1')!.getAttribute('autocapitalize')).toBe('off');
@@ -64,7 +106,7 @@ describe('iosVorbereiten', () => {
     it('iPhone: stattet auch später eingefügte Felder aus (2FA-Feld)', async () => {
         const doc = document;
         doc.body.innerHTML = '';
-        iosVorbereiten(doc, { userAgent: IPHONE, maxTouchPoints: 5 });
+        await iosVorbereiten(doc, { userAgent: IPHONE, maxTouchPoints: 5 }, ios);
         const panel = doc.createElement('div');
         panel.innerHTML = '<input type="text" id="twofa-code"><input type="checkbox" id="twofa-trust">';
         doc.body.appendChild(panel);

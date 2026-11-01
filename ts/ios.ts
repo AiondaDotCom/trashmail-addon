@@ -14,12 +14,61 @@
  * Läuft über translate.js, das jede Seite als erstes Skript lädt.
  */
 
-/** iPhone/iPod/iPad - auch iPadOS, das sich als „Macintosh" mit Touch meldet. */
-export function istIos(nav: Pick<Navigator, "userAgent" | "maxTouchPoints"> = navigator): boolean {
-    if (/iPhone|iPad|iPod/.test(nav.userAgent)) {
-        return true;
+type Kennung = Pick<Navigator, "userAgent" | "maxTouchPoints">;
+
+/** Liefert `runtime.getPlatformInfo()` der Erweiterung (Safari: os "ios" auf iPhone UND iPad, "mac" auf dem Mac). */
+export type PlattformAbfrage = () => Promise<{ os?: string } | undefined>;
+
+function plattformAbfrage(): PlattformAbfrage | undefined {
+    const erweiterung = (globalThis as { browser?: typeof chrome; chrome?: typeof chrome }).browser
+        ?? (globalThis as { chrome?: typeof chrome }).chrome;
+    const runtime = erweiterung?.runtime;
+    if (typeof runtime?.getPlatformInfo !== "function") {
+        return undefined;
     }
-    return /Macintosh/.test(nav.userAgent) && (nav.maxTouchPoints ?? 0) > 1;
+    return () => runtime.getPlatformInfo() as Promise<{ os?: string }>;
+}
+
+/** Eindeutige iPhone/iPad/iPod-Kennung im User-Agent (nie „Macintosh"). */
+function uaSagtIos(nav: Kennung): boolean {
+    return /iPhone|iPad|iPod/.test(nav.userAgent);
+}
+
+/**
+ * Könnte das iOS/iPadOS sein? iPadOS meldet sich wie ein Mac als
+ * „Macintosh" - mit Touch. Ein Mac mit Touch-Bildschirm ebenso, deshalb
+ * entscheidet in diesem Fall allein `getPlatformInfo`.
+ */
+function koennteIosSein(nav: Kennung): boolean {
+    return uaSagtIos(nav) || (/Macintosh/.test(nav.userAgent) && (nav.maxTouchPoints ?? 0) > 1);
+}
+
+/** Längstens so lange wird auf `getPlatformInfo` gewartet. */
+const PLATTFORM_WARTEZEIT_MS = 500;
+
+/**
+ * iOS/iPadOS? Maßgeblich ist `runtime.getPlatformInfo().os === "ios"`. Nur
+ * wenn die Erweiterungs-API nicht antwortet, zählt der User-Agent - und dann
+ * nur eine eindeutige iPhone/iPad/iPod-Kennung, nie „Macintosh".
+ */
+export async function istIos(nav: Kennung = navigator, plattform: PlattformAbfrage | undefined = plattformAbfrage()): Promise<boolean> {
+    if (!koennteIosSein(nav)) {
+        return false;
+    }
+    if (plattform) {
+        try {
+            const info = await Promise.race([
+                plattform(),
+                new Promise<undefined>((fertig) => setTimeout(() => fertig(undefined), PLATTFORM_WARTEZEIT_MS)),
+            ]);
+            if (typeof info?.os === "string") {
+                return info.os === "ios";
+            }
+        } catch {
+            // Keine Antwort - weiter mit dem User-Agent.
+        }
+    }
+    return uaSagtIos(nav);
 }
 
 /** Native Zusätze an einem Eingabeelement (nur auf iOS aufgerufen). */
@@ -54,12 +103,41 @@ function alleFelderVorbereiten(wurzel: ParentNode): void {
  * Auf iOS: Klasse `ios` setzen und Felder ausstatten - auch solche, die erst
  * später entstehen (z. B. das 2FA-Feld der Anmeldung).
  *
+ * Die Antwort von `getPlatformInfo` kommt asynchron. Damit iPhone und iPad
+ * nicht erst das Desktop-Layout zeigen und dann umspringen, bleibt die Seite
+ * bis zur Entscheidung unsichtbar - aber nur, wenn der User-Agent überhaupt
+ * nach iOS aussieht. Chrome, Firefox und Safari auf einem Mac ohne Touch
+ * werden gar nicht angefasst.
+ *
  * @returns true, wenn iOS erkannt wurde.
  */
-export function iosVorbereiten(doc: Document = document, nav: Pick<Navigator, "userAgent" | "maxTouchPoints"> = navigator): boolean {
-    if (!istIos(nav)) {
+export async function iosVorbereiten(
+    doc: Document = document,
+    nav: Kennung = navigator,
+    plattform: PlattformAbfrage | undefined = plattformAbfrage(),
+): Promise<boolean> {
+    if (!koennteIosSein(nav)) {
         return false;
     }
+    const wurzel = doc.documentElement;
+    const sichtbarkeit = wurzel.style.visibility;
+    wurzel.style.visibility = "hidden";
+    let ios = false;
+    try {
+        ios = await istIos(nav, plattform);
+        if (ios) {
+            einschalten(doc);
+        }
+    } finally {
+        wurzel.style.visibility = sichtbarkeit;
+        if (wurzel.getAttribute("style") === "") {
+            wurzel.removeAttribute("style");
+        }
+    }
+    return ios;
+}
+
+function einschalten(doc: Document): void {
     doc.documentElement.classList.add("ios");
     alleFelderVorbereiten(doc);
     if (typeof MutationObserver === "function") {
@@ -75,5 +153,4 @@ export function iosVorbereiten(doc: Document = document, nav: Pick<Navigator, "u
             }
         }).observe(doc.documentElement, { childList: true, subtree: true });
     }
-    return true;
 }

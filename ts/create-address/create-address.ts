@@ -1,6 +1,6 @@
 "use strict";
 
-import { eigeneSeiteSchliessen, fensterAnpassen, fensterVerfuegbar } from "../fenster";
+import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
 import { getOrgDomainResolver } from "../public-suffix";
 
 // Compatibility layer for browser and chrome
@@ -107,17 +107,20 @@ const imPopup = aufruf.get("popup") === "1";
  * Popup-Seite darum.
  */
 function schliessen(): void {
-    if (imPopup && window.parent !== window) {
-        window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+    if (imPopup) {
+        if (window.parent !== window) {
+            window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+        } else {
+            // Im Popup NIE die Fenster-API: `windows.getCurrent` wäre dort das
+            // Browserfenster des Kunden.
+            window.close();
+        }
         return;
     }
-    // #26f94a61: Ohne Fenster-API (iOS) läuft das Formular als Tab - den
-    // schließt `window.close()` nicht zuverlässig.
-    if (!fensterVerfuegbar()) {
-        eigeneSeiteSchliessen().catch((err: unknown) => console.warn("[Aionda Mail] Schließen gescheitert:", err));
-        return;
-    }
-    window.close();
+    // #26f94a61: Als Tab (iOS, oder wenn die Fenster-API wirft) schließt
+    // `window.close()` nicht zuverlässig - deshalb Stufe für Stufe: eigenes
+    // Popup-Fenster, eigener Tab, zuletzt `window.close()`.
+    eigeneSeiteSchliessen().catch((err: unknown) => console.warn("[Aionda Mail] Schließen gescheitert:", err));
 }
 if (aufruf.has("tab")) {
     const tab = Number(aufruf.get("tab"));
@@ -411,9 +414,22 @@ async function createAddress(e: Event) {
  * Kopieren oft der einzige Weg: Die Seite hat kein Feld im Fokus, und von Hand
  * markieren laesst sich der Meldungstext im Popup schlecht.
  */
+/**
+ * Die zuletzt erstellte, nicht eingefügte Adresse. Kopieren und Teilen lesen
+ * sie erst beim Antippen: Legt der Kunde danach noch eine Adresse an, bleiben
+ * die Knöpfe stehen - sie dürfen dann nicht die alte Adresse liefern.
+ */
+let angezeigteAdresse = "";
+
 function showCopyButton(address: string): void {
-    showShareButton(address);
-    if (!navigator.clipboard || document.getElementById("btn-copy-address")) {
+    angezeigteAdresse = address;
+    showShareButton();
+    const vorhanden = document.getElementById("btn-copy-address");
+    if (vorhanden) {
+        vorhanden.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
+        return;
+    }
+    if (!navigator.clipboard) {
         return;
     }
     const button = document.createElement("button");
@@ -422,7 +438,7 @@ function showCopyButton(address: string): void {
     button.className = "btn btn-secondary";
     button.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
     button.addEventListener("click", () => {
-        navigator.clipboard.writeText(address).then(() => {
+        navigator.clipboard.writeText(angezeigteAdresse).then(() => {
             button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
         }).catch((err) => {
             console.warn("[Aionda Mail] Kopieren gescheitert:", err);
@@ -435,7 +451,7 @@ function showCopyButton(address: string): void {
  * #26f94a61: Auf iPhone/iPad zusätzlich das native Teilen-Blatt anbieten
  * (Nachrichten, Notizen, AirDrop …). Nur dort - der Desktop bleibt wie er ist.
  */
-function showShareButton(address: string): void {
+function showShareButton(): void {
     if (!document.documentElement.classList.contains("ios") || typeof navigator.share !== "function"
         || document.getElementById("btn-share-address")) {
         return;
@@ -446,7 +462,7 @@ function showShareButton(address: string): void {
     button.className = "btn btn-secondary";
     button.textContent = browser.i18n.getMessage("buttonShareAddress") || "Share address";
     button.addEventListener("click", () => {
-        navigator.share({ "text": address }).catch((err: unknown) => {
+        navigator.share({ "text": angezeigteAdresse }).catch((err: unknown) => {
             // Abbrechen im Teilen-Blatt ist kein Fehler.
             console.warn("[Aionda Mail] Teilen beendet:", err);
         });

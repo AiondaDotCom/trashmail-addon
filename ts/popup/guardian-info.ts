@@ -1,4 +1,4 @@
-import { eigeneSeiteSchliessen, fensterAnpassen, fensterVerfuegbar } from "../fenster";
+import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
 
 // Compatibility layer
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -64,14 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Close button
-    // #26f94a61: Ohne Fenster-API (iOS) ist die Seite ein Tab - den schließt
-    // `window.close()` nicht zuverlässig.
+    // #26f94a61: Als Tab (iOS, oder wenn die Fenster-API wirft) schließt
+    // `window.close()` nicht zuverlässig - deshalb Stufe für Stufe: eigenes
+    // Popup-Fenster, eigener Tab, zuletzt `window.close()`.
     (document.getElementById('btn-close') as HTMLElement).addEventListener('click', () => {
-        if (!fensterVerfuegbar()) {
-            eigeneSeiteSchliessen().catch((err: unknown) => console.warn('[Guardian Info] Schließen gescheitert:', err));
-            return;
-        }
-        window.close();
+        eigeneSeiteSchliessen().catch((err: unknown) => console.warn('[Guardian Info] Schließen gescheitert:', err));
     });
 
     // Auto-resize window to fit content

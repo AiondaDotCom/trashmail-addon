@@ -48,8 +48,12 @@
         console.warn("[Aionda Mail] Kein eigenes Fenster m\xF6glich, \xF6ffne Tab:", err);
       }
     }
-    const tab = await b.tabs.create({ "url": url });
+    const tab = await b.tabs.create({ "url": mitTabKennzeichen(url) });
     return { alsTab: true, windowId: tab?.windowId, tabId: tab?.id };
+  }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function mitTabKennzeichen(url) {
+    return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
   }
 
   // trashmail-addon/ts/popup/popup.ts

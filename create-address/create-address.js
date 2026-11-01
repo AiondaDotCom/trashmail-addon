@@ -7,21 +7,28 @@
   function hat(objekt, name) {
     return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
   }
+  var TAB_KENNZEICHEN = "aiondaTab";
+  function alsTabGeoeffnet() {
+    try {
+      return new URLSearchParams(window.location.search).get(TAB_KENNZEICHEN) === "1";
+    } catch {
+      return false;
+    }
+  }
   async function eigenesFenster() {
     const fenster = api().windows;
-    if (!hat(fenster, "getCurrent")) {
+    if (alsTabGeoeffnet() || !hat(fenster, "getCurrent")) {
       return void 0;
     }
     try {
-      const aktuell = await fenster.getCurrent();
-      return aktuell?.id === void 0 ? void 0 : aktuell;
+      const aktuell = await fenster.getCurrent({ "populate": true });
+      if (aktuell?.id === void 0 || aktuell.tabs !== void 0 && aktuell.tabs.length > 1) {
+        return void 0;
+      }
+      return aktuell;
     } catch {
       return void 0;
     }
-  }
-  function fensterVerfuegbar() {
-    const fenster = api().windows;
-    return hat(fenster, "create") && hat(fenster, "remove");
   }
   async function eigeneSeiteSchliessen() {
     const b = api();
@@ -151,15 +158,15 @@
   var aufruf = new URLSearchParams(window.location.search);
   var imPopup = aufruf.get("popup") === "1";
   function schliessen() {
-    if (imPopup && window.parent !== window) {
-      window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+    if (imPopup) {
+      if (window.parent !== window) {
+        window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+      } else {
+        window.close();
+      }
       return;
     }
-    if (!fensterVerfuegbar()) {
-      eigeneSeiteSchliessen().catch((err) => console.warn("[Aionda Mail] Schlie\xDFen gescheitert:", err));
-      return;
-    }
-    window.close();
+    eigeneSeiteSchliessen().catch((err) => console.warn("[Aionda Mail] Schlie\xDFen gescheitert:", err));
   }
   if (aufruf.has("tab")) {
     const tab = Number(aufruf.get("tab"));
@@ -374,9 +381,16 @@
       createButton.disabled = false;
     }
   }
+  var angezeigteAdresse = "";
   function showCopyButton(address) {
-    showShareButton(address);
-    if (!navigator.clipboard || document.getElementById("btn-copy-address")) {
+    angezeigteAdresse = address;
+    showShareButton();
+    const vorhanden = document.getElementById("btn-copy-address");
+    if (vorhanden) {
+      vorhanden.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
+      return;
+    }
+    if (!navigator.clipboard) {
       return;
     }
     const button = document.createElement("button");
@@ -385,7 +399,7 @@
     button.className = "btn btn-secondary";
     button.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
     button.addEventListener("click", () => {
-      navigator.clipboard.writeText(address).then(() => {
+      navigator.clipboard.writeText(angezeigteAdresse).then(() => {
         button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
       }).catch((err) => {
         console.warn("[Aionda Mail] Kopieren gescheitert:", err);
@@ -393,7 +407,7 @@
     });
     elById("error_msg").after(button);
   }
-  function showShareButton(address) {
+  function showShareButton() {
     if (!document.documentElement.classList.contains("ios") || typeof navigator.share !== "function" || document.getElementById("btn-share-address")) {
       return;
     }
@@ -403,7 +417,7 @@
     button.className = "btn btn-secondary";
     button.textContent = browser.i18n.getMessage("buttonShareAddress") || "Share address";
     button.addEventListener("click", () => {
-      navigator.share({ "text": address }).catch((err) => {
+      navigator.share({ "text": angezeigteAdresse }).catch((err) => {
         console.warn("[Aionda Mail] Teilen beendet:", err);
       });
     });

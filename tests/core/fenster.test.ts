@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { installBrowserMock, type BrowserMock } from '../helpers/browser-mock';
-import { beimSchliessen, eigeneSeiteSchliessen, fensterAnpassen, fensterVerfuegbar, seiteOeffnen } from '../../ts/fenster';
+import { beimSchliessen, eigeneSeiteSchliessen, fensterAnpassen, seiteOeffnen } from '../../ts/fenster';
 
 let mock: BrowserMock;
 let tabRemove: ReturnType<typeof vi.fn>;
@@ -177,12 +177,62 @@ describe('fensterAnpassen', () => {
     });
 });
 
-describe('fensterVerfuegbar', () => {
-    it('Desktop true, iOS (undefined) false, ohne remove false', () => {
-        expect(fensterVerfuegbar()).toBe(true);
-        delete (mock.windows as unknown as Record<string, unknown>)['remove'];
-        expect(fensterVerfuegbar()).toBe(false);
-        ohneFenster();
-        expect(fensterVerfuegbar()).toBe(false);
+/**
+ * #26f94a61 (Codex-Review): Nach einem Tab-Rückfall läuft die Seite in einem
+ * Tab des Browserfensters des Kunden. Funktionieren windows.getCurrent/remove
+ * dort weiter, darf trotzdem NIE das ganze Fenster zugehen oder seine Größe
+ * ändern - nur der eigene Tab schließt sich.
+ */
+describe('Seite als Tab im Fenster des Kunden', () => {
+    afterEach(() => {
+        window.history.replaceState({}, '', '/');
+    });
+
+    it('der Tab-Rückfall kennzeichnet die Adresse', async () => {
+        fensterWerfen();
+        await seiteOeffnen('chrome-extension://x/options/welcome.html', { width: 600, height: 720 });
+        await seiteOeffnen('chrome-extension://x/popup/guardian-info.html?status=ok', { width: 450, height: 595 });
+        expect(mock.tabs.list.map((t) => t.url)).toEqual([
+            'chrome-extension://x/options/welcome.html?aiondaTab=1',
+            'chrome-extension://x/popup/guardian-info.html?status=ok&aiondaTab=1',
+        ]);
+    });
+
+    it('WAECHTER: mit Kennzeichen schließt eigeneSeiteSchliessen nur den Tab, nie das Fenster', async () => {
+        window.history.replaceState({}, '', '/options/welcome.html?aiondaTab=1');
+        const remove = vi.spyOn(mock.windows, 'remove');
+        await eigeneSeiteSchliessen();
+        expect(remove).not.toHaveBeenCalled();
+        expect(tabRemove).toHaveBeenCalledWith(77);
+    });
+
+    it('WAECHTER: mit Kennzeichen ändert fensterAnpassen das Fenster nicht', async () => {
+        window.history.replaceState({}, '', '/options/welcome.html?aiondaTab=1');
+        expect(await fensterAnpassen(() => ({ height: 900 }))).toBe(false);
+        expect(mock.windows.updated).toHaveLength(0);
+    });
+
+    it('WAECHTER: Fenster mit mehreren Tabs gilt nicht als eigenes (Schließen und Größe)', async () => {
+        Object.assign(mock.windows, {
+            getCurrent: async () => ({ id: 1, width: 1280, height: 800, type: 'normal', tabs: [{ id: 5 }, { id: 77 }] }),
+        });
+        const remove = vi.spyOn(mock.windows, 'remove');
+        expect(await fensterAnpassen(() => ({ height: 900 }))).toBe(false);
+        await eigeneSeiteSchliessen();
+        expect(mock.windows.updated).toHaveLength(0);
+        expect(remove).not.toHaveBeenCalled();
+        expect(tabRemove).toHaveBeenCalledWith(77);
+    });
+
+    it('eigenes Popup mit genau einem Tab wird wie bisher geschlossen und angepasst', async () => {
+        Object.assign(mock.windows, {
+            getCurrent: async () => ({ id: 4, width: 600, height: 720, type: 'popup', tabs: [{ id: 77 }] }),
+        });
+        const remove = vi.spyOn(mock.windows, 'remove');
+        expect(await fensterAnpassen(() => ({ height: 900 }))).toBe(true);
+        await eigeneSeiteSchliessen();
+        expect(mock.windows.updated).toEqual([{ windowId: 4, info: { height: 900 } }]);
+        expect(remove).toHaveBeenCalledWith(4);
+        expect(tabRemove).not.toHaveBeenCalled();
     });
 });
