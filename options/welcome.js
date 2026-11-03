@@ -44,6 +44,9 @@
     const code = error?.errorCode;
     return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
   }
+  var BACKGROUND_LOGIN_BLOCK_KEY = "background_login_block";
+  var BLOCK_AFTER_SERVER_REJECTION_MS = 6 * 60 * 60 * 1e3;
+  var BLOCK_AFTER_NETWORK_ERROR_MS = 15 * 60 * 1e3;
 
   // trashmail-addon/ts/options/welcome.ts
   var browser = globalThis.browser ?? chrome;
@@ -377,16 +380,22 @@
     await browser.storage.local.set({ "session_id": sessionId });
     return sessionId;
   }
+  var reauthGescheitert = false;
   async function callWithReauth(cmd, extraParams = {}) {
     const sessionId = await currentSessionId();
     try {
       return await callAPI({ "cmd": cmd, "session_id": sessionId, ...extraParams });
     } catch (error) {
-      if (isSessionRejected(error)) {
+      if (!isSessionRejected(error) || reauthGescheitert) {
+        throw error;
+      }
+      try {
         const fresh = await reAuthWithPat();
         return await callAPI({ "cmd": cmd, "session_id": fresh, ...extraParams });
+      } catch (retryError) {
+        reauthGescheitert = true;
+        throw retryError;
       }
-      throw error;
     }
   }
   var resendCooldownTimer;
@@ -503,12 +512,18 @@
     const sessionId = loginDetails["session_id"];
     const isOpaqueAccount = isPAT(password);
     const domainList = loginDetails["domain_name_list"] || [];
-    const p1 = browser.storage.local.set({
-      "domains": Array.isArray(domainList) ? domainList : Object.keys(domainList),
-      "real_emails": Object.keys(loginDetails["real_email_list"] || {}),
-      "session_id": sessionId,
-      "is_opaque_account": isOpaqueAccount
-    });
+    const p1 = Promise.all([
+      browser.storage.local.set({
+        "domains": Array.isArray(domainList) ? domainList : Object.keys(domainList),
+        "real_emails": Object.keys(loginDetails["real_email_list"] || {}),
+        "session_id": sessionId,
+        "is_opaque_account": isOpaqueAccount
+      }),
+      // Erfolgreiche manuelle Anmeldung hebt die Sperre fuer die
+      // Hintergrund-Anmeldung auf (session-codes.ts), auch wenn die
+      // Zugangsdaten dieselben geblieben sind.
+      browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY)
+    ]);
     if (needsPAT && sessionId) {
       return createAccessToken(sessionId, getBrowserName()).then((token) => {
         console.log("[Aionda Mail] PAT created successfully");

@@ -44,6 +44,31 @@
     const code = error?.errorCode;
     return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
   }
+  var BACKGROUND_LOGIN_BLOCK_KEY = "background_login_block";
+  var BLOCK_AFTER_SERVER_REJECTION_MS = 6 * 60 * 60 * 1e3;
+  var BLOCK_AFTER_NETWORK_ERROR_MS = 15 * 60 * 1e3;
+  function backgroundLoginBlockFor(error, now) {
+    const err = error ?? {};
+    const errorCode = typeof err.errorCode === "number" ? err.errorCode : void 0;
+    const httpStatus = typeof err.httpStatus === "number" ? err.httpStatus : void 0;
+    const reachedServer = errorCode !== void 0 || httpStatus !== void 0 || err.requires_2fa === true;
+    let waitMs = reachedServer ? BLOCK_AFTER_SERVER_REJECTION_MS : BLOCK_AFTER_NETWORK_ERROR_MS;
+    if (httpStatus === 429 && typeof err.remainingSeconds === "number" && err.remainingSeconds * 1e3 > waitMs) {
+      waitMs = err.remainingSeconds * 1e3;
+    }
+    const block = { until: now + waitMs };
+    if (errorCode !== void 0) {
+      block.error_code = errorCode;
+    }
+    if (httpStatus !== void 0) {
+      block.http_status = httpStatus;
+    }
+    return block;
+  }
+  function isBackgroundLoginBlocked(stored, now) {
+    const until = stored?.until;
+    return typeof until === "number" && now < until;
+  }
 
   // trashmail-addon/ts/background.ts
   var browser = globalThis.browser ?? chrome;
@@ -158,6 +183,9 @@
     if ("previous_addresses" in changes) {
       currentDomain = "*invalid*";
     }
+    if (area === "sync" && ("username" in changes || "password" in changes)) {
+      browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY);
+    }
   });
   async function updateContextMenu(tabId, changeInfo, tab) {
     try {
@@ -241,6 +269,24 @@
     await browser.storage.local.set(update);
     return sessionId;
   }
+  async function backgroundLogin(username, password) {
+    const local = await browser.storage.local.get([BACKGROUND_LOGIN_BLOCK_KEY]);
+    if (isBackgroundLoginBlocked(local[BACKGROUND_LOGIN_BLOCK_KEY], Date.now())) {
+      console.log("[TrashMail] Background login blocked after an earlier failure, waiting for new credentials");
+      throw new SilentSkip("blocked");
+    }
+    let sessionId;
+    try {
+      sessionId = await classicLoginAndStore(username, password);
+    } catch (error) {
+      await browser.storage.local.set({ [BACKGROUND_LOGIN_BLOCK_KEY]: backgroundLoginBlockFor(error, Date.now()) });
+      throw error;
+    }
+    if (BACKGROUND_LOGIN_BLOCK_KEY in local) {
+      await browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY);
+    }
+    return sessionId;
+  }
   function readDea(sessionId) {
     const data = {
       "cmd": "read_dea",
@@ -264,7 +310,7 @@
         console.log("[TrashMail] No stored session for PAT account, user needs to login via Options");
         throw new SilentSkip("skip");
       }
-      return readDea(await classicLoginAndStore(username, password));
+      return readDea(await backgroundLogin(username, password));
     }
     try {
       return await readDea(storedSession);
@@ -273,7 +319,7 @@
         throw error;
       }
       console.log("[TrashMail] Stored session rejected by server, logging in once");
-      return readDea(await classicLoginAndStore(username, password));
+      return readDea(await backgroundLogin(username, password));
     }
   }
   loadAddressesWithStoredSession().then((values) => {

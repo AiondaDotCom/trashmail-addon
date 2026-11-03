@@ -368,6 +368,14 @@ describe('create-address.ts', () => {
     });
 
     describe('PAT account without a stored session', () => {
+        it('fängt die Ablehnung von loginDetails ab (keine Unhandled Rejection, Abnahme von 3d946a9)', async () => {
+            mock.storage.sync.data.set('password', 'tmpat_expiredtoken');
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+            await importCreateAddress();
+            await tick();
+            expect(warn).toHaveBeenCalledWith('[TrashMail] Login for create-address failed:', expect.anything());
+        });
+
         it('reports an expired session via the address-manager button', async () => {
             mock.storage.sync.data.set('password', 'tmpat_expiredtoken');
             globals.openAddressManagerAuthenticated.mockRejectedValue(new Error('Session expired'));

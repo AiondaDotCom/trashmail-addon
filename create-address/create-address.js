@@ -44,6 +44,8 @@
     const code = error?.errorCode;
     return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
   }
+  var BLOCK_AFTER_SERVER_REJECTION_MS = 6 * 60 * 60 * 1e3;
+  var BLOCK_AFTER_NETWORK_ERROR_MS = 15 * 60 * 1e3;
 
   // trashmail-addon/ts/create-address/create-address.ts
   var browser = globalThis.browser ?? chrome;
@@ -171,6 +173,9 @@
       browser.storage.local.set({ "session_id": response.session_id });
       return response;
     });
+  });
+  loginDetails.catch((error) => {
+    console.warn("[TrashMail] Login for create-address failed:", error?.message ?? error);
   });
   async function addressManager() {
     try {

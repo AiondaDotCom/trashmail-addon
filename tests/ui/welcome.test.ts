@@ -344,6 +344,37 @@ describe('welcome.ts', () => {
             vi.useRealTimers();
         });
 
+        it('Befund 4: lehnt der Server auch die frische Sitzung ab, meldet sich das 3-s-Polling höchstens EINMAL neu an', async () => {
+            vi.useFakeTimers();
+            routeFetch({ success: true, game_session_id: 'gs1' });
+            setOpaqueClient({
+                registerAccountV2: vi.fn().mockResolvedValue({ success: true }),
+                passwordOpaqueLogin: vi.fn().mockResolvedValue({ success: true, session_id: 's9', domain_name_list: [], real_email_list: {} }),
+                createAccessTokenOpaque: vi.fn().mockResolvedValue('tmpat_fresh'),
+            });
+            globals.loginWithStoredPat.mockResolvedValue({ session_id: 'frisch-aber-abgelehnt' });
+            globals.callAPI.mockImplementation(async (data: { cmd: string }) => {
+                if (data.cmd === 'list_real_emails') {
+                    throw Object.assign(new Error('Nicht eingeloggt'), { errorCode: 2 });
+                }
+                return data.cmd === 'read_dea' ? [] : { success: true };
+            });
+            vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+            await importWelcome();
+
+            $('btn-show-register').dispatchEvent(new MouseEvent('click'));
+            fillForm();
+            $('form-register').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            for (let flush = 0; flush < 8; flush++) { await vi.advanceTimersByTimeAsync(1); }
+            // fünf weitere Polling-Runden à 3 s
+            await vi.advanceTimersByTimeAsync(5 * 3000 + 100);
+
+            const polls = globals.callAPI.mock.calls.filter((c) => (c[0] as { cmd: string }).cmd === 'list_real_emails').length;
+            expect(polls).toBeGreaterThanOrEqual(6);
+            expect(globals.loginWithStoredPat).toHaveBeenCalledTimes(1);
+            vi.useRealTimers();
+        });
+
         it('gates resend behind a live countdown, then allows resending or skipping', async () => {
             vi.useFakeTimers();
             mock.i18n.messages.set('confirmResendInMinutes', 'Erneut senden in $1 Min.');
@@ -508,6 +539,22 @@ describe('welcome.ts', () => {
             expect(mock.storage.sync.data.get('password')).toBe('tmpat_token');
             expect(mock.storage.local.data.get('session_id')).toBe('s1');
             expect(mock.storage.local.data.get('domains')).toEqual(['a.com']);
+        });
+
+        it('Sperre: eine erfolgreiche manuelle Anmeldung hebt die Hintergrund-Anmeldesperre auf - auch bei gleichen Zugangsdaten', async () => {
+            globals.loginWithStoredPat.mockResolvedValue({ session_id: 's1', domain_name_list: ['a.com'], real_email_list: {} });
+            routeCallApi({});
+            await mock.storage.sync.set({ username: 'bob', password: 'tmpat_token' });
+            await mock.storage.local.set({ background_login_block: { until: Date.now() + 6 * 3600 * 1000, error_code: 3 } });
+            await importWelcome();
+
+            input('login-username').value = 'bob';
+            input('login-password').value = 'tmpat_token';
+            $('form-login').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            await tick(8);
+
+            expect(mock.storage.local.data.get('session_id')).toBe('s1');
+            expect(mock.storage.local.data.has('background_login_block')).toBe(false);
         });
 
         it('falls back to the original password when PAT creation fails', async () => {

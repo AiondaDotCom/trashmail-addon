@@ -438,6 +438,142 @@ describe('Sitzung wiederverwenden (kein cmd=login pro Aufwachen)', () => {
     });
 });
 
+/**
+ * Nacharbeit nach der Abnahme von 3d946a9 (Befunde M3, M7 und Sperre).
+ */
+describe('Hintergrund-Anmeldung: höchstens eine je Aufwachen, Sperre nach Fehlschlag', () => {
+    const SPERRE = 'background_login_block';
+    const SECHS_STUNDEN = 6 * 60 * 60 * 1000;
+    const rejectedWith = (code: number): Error => Object.assign(new Error(`code ${code}`), { errorCode: code });
+
+    const cmds = (): string[] => callAPI.mock.calls.map((call) => (call[0] as { cmd: string }).cmd);
+    const logins = (): number => cmds().filter((c) => c === 'login').length;
+
+    async function wakeAgain(): Promise<void> {
+        vi.resetModules();
+        await importBackground();
+    }
+
+    beforeEach(async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'plainpass' });
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+
+    it('M3: lehnt der Server auch die FRISCHE Sitzung ab, bleibt es bei einer Anmeldung und das Aufwachen bricht ab', async () => {
+        await mock.storage.local.set({ session_id: 'abgelaufen' });
+        callAPI.mockImplementation(async (data: { cmd: string }) => {
+            if (data.cmd === 'login') { return { session_id: 'frisch-aber-abgelehnt' }; }
+            throw rejectedWith(2);
+        });
+        await importBackground();
+        expect(cmds()).toEqual(['read_dea', 'login', 'read_dea']);
+        expect(logins()).toBe(1);
+    });
+
+    for (const code of [2, 61]) {
+        it(`M7: Ablehnungscode ${code} führt zu genau einer Neuanmeldung`, async () => {
+            await mock.storage.local.set({ session_id: 'abgelaufen' });
+            callAPI.mockImplementation(async (data: { cmd: string; session_id?: string }) => {
+                if (data.cmd === 'login') { return { session_id: 'neu' }; }
+                if (data.session_id === 'abgelaufen') { throw rejectedWith(code); }
+                return [];
+            });
+            await importBackground();
+            expect(cmds()).toEqual(['read_dea', 'login', 'read_dea']);
+        });
+    }
+
+    for (const code of [3, 25, 429]) {
+        it(`M7: Code ${code} beim read_dea ist KEINE Sitzungsablehnung → keine Anmeldung`, async () => {
+            await mock.storage.local.set({ session_id: 'gespeichert' });
+            callAPI.mockImplementation(async (data: { cmd: string }) => {
+                if (data.cmd === 'login') { return { session_id: 'darf-nicht-entstehen' }; }
+                throw rejectedWith(code);
+            });
+            await importBackground();
+            expect(cmds()).toEqual(['read_dea']);
+        });
+    }
+
+    it('Sperre: fehlgeschlagene Anmeldung (Code 3) → keine weitere Anmeldung über mehrere Aufwachen hinweg', async () => {
+        callAPI.mockImplementation(async (data: { cmd: string }) => {
+            if (data.cmd === 'login') { throw Object.assign(new Error('falsches Passwort'), { errorCode: 3 }); }
+            return [];
+        });
+        const vorher = Date.now();
+        await importBackground();
+        await wakeAgain();
+        await wakeAgain();
+        expect(logins()).toBe(1);
+        const sperre = mock.storage.local.data.get(SPERRE) as { until: number; error_code?: number };
+        expect(sperre.error_code).toBe(3);
+        expect(sperre.until).toBeGreaterThanOrEqual(vorher + SECHS_STUNDEN);
+    });
+
+    it('Sperre: 2FA-Pflicht beim Hintergrund-Login sperrt ebenfalls', async () => {
+        callAPI.mockImplementation(async (data: { cmd: string }) => {
+            if (data.cmd === 'login') { throw Object.assign(new Error('2FA'), { requires_2fa: true }); }
+            return [];
+        });
+        await importBackground();
+        await wakeAgain();
+        expect(logins()).toBe(1);
+    });
+
+    it('Sperre: geänderte Zugangsdaten heben sie auf, das nächste Aufwachen meldet sich wieder an', async () => {
+        let richtig = false;
+        callAPI.mockImplementation(async (data: { cmd: string }) => {
+            if (data.cmd === 'login') {
+                if (!richtig) { throw Object.assign(new Error('falsches Passwort'), { errorCode: 3 }); }
+                return { session_id: 'neu' };
+            }
+            return [];
+        });
+        await importBackground();
+        expect(mock.storage.local.data.has(SPERRE)).toBe(true);
+
+        richtig = true;
+        await mock.storage.sync.set({ password: 'neues-passwort' });   // Optionen speichern neue Zugangsdaten
+        await flush();
+        expect(mock.storage.local.data.has(SPERRE)).toBe(false);
+
+        await wakeAgain();
+        expect(logins()).toBe(2);
+        expect(mock.storage.local.data.get('session_id')).toBe('neu');
+    });
+
+    it('Sperre: abgelaufene Sperre erlaubt wieder eine Anmeldung und wird nach Erfolg entfernt', async () => {
+        await mock.storage.local.set({ [SPERRE]: { until: Date.now() - 1000, error_code: 3 } });
+        callAPI.mockImplementation(async (data: { cmd: string }) => (data.cmd === 'login' ? { session_id: 'neu' } : []));
+        await importBackground();
+        expect(logins()).toBe(1);
+        expect(mock.storage.local.data.has(SPERRE)).toBe(false);
+    });
+
+    it('Sperre: 429 mit langer Wartezeit sperrt mindestens so lange wie der Server verlangt', async () => {
+        callAPI.mockImplementation(async (data: { cmd: string }) => {
+            if (data.cmd === 'login') {
+                throw Object.assign(new Error('zu viele Versuche'), { errorCode: 7, httpStatus: 429, remainingSeconds: 86400 });
+            }
+            return [];
+        });
+        const vorher = Date.now();
+        await importBackground();
+        await wakeAgain();
+        expect(logins()).toBe(1);
+        const sperre = mock.storage.local.data.get(SPERRE) as { until: number; http_status?: number };
+        expect(sperre.http_status).toBe(429);
+        expect(sperre.until).toBeGreaterThanOrEqual(vorher + 86400 * 1000);
+    });
+
+    it('Sperre: eine gültige gespeicherte Sitzung wird trotz Sperre weiter benutzt (die Sperre gilt nur der Anmeldung)', async () => {
+        await mock.storage.local.set({ session_id: 'gueltig', [SPERRE]: { until: Date.now() + SECHS_STUNDEN } });
+        callAPI.mockResolvedValue([]);
+        await importBackground();
+        expect(cmds()).toEqual(['read_dea']);
+    });
+});
+
 describe('runtime message: get_guardian_status', () => {
     it('reports guardian state and the active tab', async () => {
         mock.tabs.list.push({ id: 42, url: 'https://protected.test/page', windowId: 1, active: true });

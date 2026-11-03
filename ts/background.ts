@@ -1,5 +1,5 @@
 import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
-import { isSessionRejected } from "./session-codes";
+import { BACKGROUND_LOGIN_BLOCK_KEY, backgroundLoginBlockFor, isBackgroundLoginBlocked, isSessionRejected } from "./session-codes";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -170,6 +170,11 @@ browser.storage.onChanged.addListener((changes, area) => {
     if ("previous_addresses" in changes) {
         currentDomain = "*invalid*";  // Force context menu to reload.
     }
+    // Neue Zugangsdaten → die Sperre nach einem fehlgeschlagenen
+    // Hintergrund-Login gilt nicht mehr (siehe session-codes.ts).
+    if (area === "sync" && ("username" in changes || "password" in changes)) {
+        browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY);
+    }
 });
 
 // Update the currently displayed previous addresses context menu items.
@@ -287,6 +292,30 @@ async function classicLoginAndStore(username: string, password: string): Promise
     return sessionId;
 }
 
+/**
+ * Anmeldung des Hintergrundskripts - höchstens eine je Aufwachen, und nach
+ * einem Fehlschlag gar keine mehr, bis die Sperre aufgehoben ist
+ * (BACKGROUND_LOGIN_BLOCK_KEY in session-codes.ts).
+ */
+async function backgroundLogin(username: string, password: string): Promise<string> {
+    const local = await browser.storage.local.get([BACKGROUND_LOGIN_BLOCK_KEY]);
+    if (isBackgroundLoginBlocked(local[BACKGROUND_LOGIN_BLOCK_KEY], Date.now())) {
+        console.log("[TrashMail] Background login blocked after an earlier failure, waiting for new credentials");
+        throw new SilentSkip("blocked");
+    }
+    let sessionId: string;
+    try {
+        sessionId = await classicLoginAndStore(username, password);
+    } catch (error) {
+        await browser.storage.local.set({ [BACKGROUND_LOGIN_BLOCK_KEY]: backgroundLoginBlockFor(error, Date.now()) });
+        throw error;
+    }
+    if (BACKGROUND_LOGIN_BLOCK_KEY in local) {
+        await browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY);
+    }
+    return sessionId;
+}
+
 function readDea(sessionId: string): Promise<[TmApiResponse, OrgDomainResolver]> {
     const data = {
         "cmd": "read_dea",
@@ -310,7 +339,9 @@ function readDea(sessionId: string): Promise<[TmApiResponse, OrgDomainResolver]>
  * Sekunden lebte (Prod, 03.11.2026: ~48.000 Anmeldungen am Tag von ~766
  * Konten, Spitzenkonto 1.414). Jetzt wird nur angemeldet, wenn keine
  * Sitzung gespeichert ist oder der Server sie ablehnt (isSessionRejected),
- * und dann genau einmal.
+ * und dann höchstens einmal: Lehnt der Server auch die frische Sitzung ab,
+ * bricht das Aufwachen ab. Nach einer fehlgeschlagenen Anmeldung sperrt
+ * backgroundLogin weitere Versuche (BACKGROUND_LOGIN_BLOCK_KEY).
  *
  * Konten mit gespeichertem PAT melden sich hier nie an: Der OPAQUE-Handshake
  * braucht libopaque, die im Service Worker nicht läuft. Sie bekommen ihre
@@ -334,7 +365,7 @@ async function loadAddressesWithStoredSession(): Promise<[TmApiResponse, OrgDoma
             console.log("[TrashMail] No stored session for PAT account, user needs to login via Options");
             throw new SilentSkip("skip");
         }
-        return readDea(await classicLoginAndStore(username, password));
+        return readDea(await backgroundLogin(username, password));
     }
 
     try {
@@ -344,7 +375,7 @@ async function loadAddressesWithStoredSession(): Promise<[TmApiResponse, OrgDoma
             throw error;
         }
         console.log("[TrashMail] Stored session rejected by server, logging in once");
-        return readDea(await classicLoginAndStore(username, password));
+        return readDea(await backgroundLogin(username, password));
     }
 }
 

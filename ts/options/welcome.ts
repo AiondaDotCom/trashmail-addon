@@ -1,7 +1,7 @@
 "use strict";
 
 import { getOrgDomainResolver, type OrgDomainResolver } from "../public-suffix";
-import { isSessionRejected } from "../session-codes";
+import { BACKGROUND_LOGIN_BLOCK_KEY, isSessionRejected } from "../session-codes";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -461,19 +461,34 @@ async function reAuthWithPat(): Promise<string> {
 }
 
 /**
+ * true, sobald eine erneute Anmeldung in diesem Fenster gescheitert ist -
+ * entweder die Anmeldung selbst oder der Server lehnte auch die frische
+ * Sitzung ab. Danach meldet sich callWithReauth nicht mehr neu an: Das
+ * Bestaetigungs-Polling laeuft alle 3 s und haette sonst alle 3 s eine
+ * Anmeldung erzeugt (Abnahme von 3d946a9, Befund 4).
+ */
+let reauthGescheitert = false;
+
+/**
  * Fuehrt einen callAPI-Aufruf aus und meldet sich bei Auth-Fehler (Session
  * abgelaufen/rotiert) einmalig per PAT neu an und wiederholt den Aufruf.
+ * Scheitert das, bleibt es fuer dieses Fenster beim Fehler.
  */
 async function callWithReauth(cmd: string, extraParams: Record<string, unknown> = {}): Promise<TmApiResponse> {
     const sessionId = await currentSessionId();
     try {
         return await callAPI({ "cmd": cmd, "session_id": sessionId, ...extraParams });
     } catch (error) {
-        if (isSessionRejected(error)) {
+        if (!isSessionRejected(error) || reauthGescheitert) {
+            throw error;
+        }
+        try {
             const fresh = await reAuthWithPat();
             return await callAPI({ "cmd": cmd, "session_id": fresh, ...extraParams });
+        } catch (retryError) {
+            reauthGescheitert = true;
+            throw retryError;
         }
-        throw error;
     }
 }
 
@@ -611,12 +626,18 @@ function handleLoginSuccess(username: string, password: string, loginDetails: Tm
 
     // Store session_id and auth type for popup.js to use
     const domainList = loginDetails["domain_name_list"] || [];
-    const p1 = browser.storage.local.set({
-        "domains": Array.isArray(domainList) ? domainList : Object.keys(domainList),
-        "real_emails": Object.keys(loginDetails["real_email_list"] || {}),
-        "session_id": sessionId,
-        "is_opaque_account": isOpaqueAccount,
-    });
+    const p1 = Promise.all([
+        browser.storage.local.set({
+            "domains": Array.isArray(domainList) ? domainList : Object.keys(domainList),
+            "real_emails": Object.keys(loginDetails["real_email_list"] || {}),
+            "session_id": sessionId,
+            "is_opaque_account": isOpaqueAccount,
+        }),
+        // Erfolgreiche manuelle Anmeldung hebt die Sperre fuer die
+        // Hintergrund-Anmeldung auf (session-codes.ts), auch wenn die
+        // Zugangsdaten dieselben geblieben sind.
+        browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY),
+    ]);
 
     // If password is not a PAT, create one for future logins (classic token
     // for classic/SRP accounts - OPAQUE-Konten laufen ueber den Register-Flow,

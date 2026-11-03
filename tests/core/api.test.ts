@@ -400,6 +400,31 @@ describe('Wächter: keine Geheimnisse in der Request-URL', () => {
         expect(JSON.parse(String(createInit.body))).toEqual({ data: { disposable_name: 'x' } });
     });
 
+    it('JEDER fetch von openAddressManagerAuthenticated (Cookie-Login, eigenes fetch neben callAPI) hält die URL frei - klassisches Passwort und PAT', async () => {
+        const opened: string[] = [];
+        const tabsCreate = vi.spyOn(mock.tabs, 'create').mockImplementation(async (props: { url?: string }) => {
+            opened.push(String(props.url));
+            return {} as chrome.tabs.Tab;
+        });
+        for (const passwort of [GEHEIMNIS_PASSWORT, GEHEIMNIS_TOKEN]) {
+            mock.storage.sync.data.set('username', 'alice');
+            mock.storage.sync.data.set('password', passwort);
+            const fetchMock = stubFetch(fakeResponse({ success: true, session_id: GEHEIMNIS_SITZUNG }));
+            await (globalThis as unknown as { openAddressManagerAuthenticated: () => Promise<void> }).openAddressManagerAuthenticated();
+
+            const urls = fetchMock.mock.calls.map((call) => String(call[0])).filter((u) => !u.includes('public_key.json'));
+            expect(urls.length).toBeGreaterThan(0);
+            for (const roh of [...urls, ...opened]) {
+                const url = new URL(roh);
+                expect([...url.searchParams.keys()].filter((k) => !ERLAUBT_IN_DER_URL.includes(k))).toEqual([]);
+                for (const geheimnis of [GEHEIMNIS_PASSWORT, GEHEIMNIS_TOKEN, GEHEIMNIS_SITZUNG, 'alice']) {
+                    expect(decodeURIComponent(roh)).not.toContain(geheimnis);
+                }
+            }
+        }
+        tabsCreate.mockRestore();
+    });
+
     it('Alarmprobe des Wächters selbst: eine URL mit fe-login-pass würde er ablehnen', () => {
         // Die alte Bauform (bis 6.1.2) nachgestellt - der Filter muss sie finden.
         const alt = new URL('https://mail.aionda.com/?api=1&cmd=login&fe-login-user=alice&fe-login-pass=x&lang=de&client=addon-chrome&client_version=6.1.2');

@@ -206,6 +206,15 @@ const loginDetails: Promise<TmApiResponse> = Promise.all([p1, p2]).then((result:
     });
 });
 
+// loginDetails wird erst beim Absenden (createAddress) abgewartet und dort
+// angezeigt. Bis dahin darf eine Ablehnung (z. B. PAT-Konto ohne Sitzung,
+// erneute Anmeldung gescheitert) nicht als "Unhandled Rejection" auflaufen:
+// Bis 6.1.2 fing der Manager-Knopf sie mit ab, seit er ohne loginDetails
+// auskommt, hing sie lose (Abnahme von 3d946a9).
+loginDetails.catch((error: unknown) => {
+    console.warn("[TrashMail] Login for create-address failed:", (error as { message?: string })?.message ?? error);
+});
+
 async function addressManager() {
     try {
         // POST-Login mit Cookies setzt die Browser-Sitzung - der Manager-Tab
