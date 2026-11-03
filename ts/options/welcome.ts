@@ -1,6 +1,7 @@
 "use strict";
 
 import { getOrgDomainResolver, type OrgDomainResolver } from "../public-suffix";
+import { isSessionRejected } from "../session-codes";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -459,8 +460,6 @@ async function reAuthWithPat(): Promise<string> {
     return sessionId;
 }
 
-const AUTH_ERROR_CODES = [2, 61];
-
 /**
  * Fuehrt einen callAPI-Aufruf aus und meldet sich bei Auth-Fehler (Session
  * abgelaufen/rotiert) einmalig per PAT neu an und wiederholt den Aufruf.
@@ -470,8 +469,7 @@ async function callWithReauth(cmd: string, extraParams: Record<string, unknown> 
     try {
         return await callAPI({ "cmd": cmd, "session_id": sessionId, ...extraParams });
     } catch (error) {
-        const code = (error as { errorCode?: number }).errorCode;
-        if (code !== undefined && AUTH_ERROR_CODES.includes(code)) {
+        if (isSessionRejected(error)) {
             const fresh = await reAuthWithPat();
             return await callAPI({ "cmd": cmd, "session_id": fresh, ...extraParams });
         }

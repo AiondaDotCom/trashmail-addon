@@ -323,3 +323,86 @@ describe('loginWithStoredPat', () => {
         expect((loginCall?.[1] as { credentials?: string } | undefined)?.credentials).toBe('include');
     });
 });
+
+/**
+ * Wächter: keine Geheimnisse in der Request-URL (Version 6.1.3).
+ *
+ * Bis 6.1.2 hängte callAPI ALLE Parameter per URLSearchParams an die URL -
+ * `fe-login-pass` (Passwort bzw. Zugriffstoken) und `session_id` standen
+ * damit im Klartext in den Zugriffsprotokollen von nginx und Cloudflare.
+ *
+ * Bauart: Positivliste. Der Wächter fragt nicht „steht ein bekanntes
+ * Geheimnis drin?", sondern „steht irgendetwas anderes drin als die fünf
+ * erlaubten Schlüssel?". Damit fängt er auch Parameter, die es heute noch
+ * nicht gibt. Die Liste steht hier absichtlich noch einmal und wird nicht
+ * aus api.ts gelesen - sonst würde eine erweiterte Liste im Produktivcode
+ * den Wächter gleich mit erweitern.
+ *
+ * Fehltrefferzahl auf dem sauberen Baum (03.11.2026): 0.
+ */
+describe('Wächter: keine Geheimnisse in der Request-URL', () => {
+    const ERLAUBT_IN_DER_URL = ['api', 'cmd', 'lang', 'client', 'client_version'];
+
+    const GEHEIMNIS_PASSWORT = 'Geheim-Passwort-ÄÖÜ-7f3a';
+    const GEHEIMNIS_TOKEN = 'tmpat_wachterprobe0123456789';
+    const GEHEIMNIS_SITZUNG = 'sitzung-wachterprobe-9b1e';
+
+    /** Repräsentative Aufrufe aller callAPI-Stellen des Addons. */
+    const AUFRUFE: Array<{ name: string; data: Record<string, unknown>; json?: Record<string, unknown> | null }> = [
+        { name: 'login (Passwort)', data: { cmd: 'login', 'fe-login-user': 'alice', 'fe-login-pass': GEHEIMNIS_PASSWORT } },
+        { name: 'login (Token)', data: { cmd: 'login', 'fe-login-user': 'alice', 'fe-login-pass': GEHEIMNIS_TOKEN } },
+        { name: 'read_dea', data: { cmd: 'read_dea', session_id: GEHEIMNIS_SITZUNG } },
+        { name: 'create_dea', data: { cmd: 'create_dea', session_id: GEHEIMNIS_SITZUNG }, json: { data: { disposable_name: 'x', destination: '__VAULT__' } } },
+        { name: 'create_access_token', data: { cmd: 'create_access_token', session_id: GEHEIMNIS_SITZUNG }, json: { name: 'Chrome Extension' } },
+        { name: 'add_real_email', data: { cmd: 'add_real_email', session_id: GEHEIMNIS_SITZUNG, email: 'me@example.com' } },
+        { name: 'logout', data: { cmd: 'logout', session_id: GEHEIMNIS_SITZUNG } },
+        { name: 'unbekannter künftiger Parameter', data: { cmd: 'irgendwas', neues_feld: 'nutzdaten' } },
+    ];
+
+    function apiCalls(fetchMock: ReturnType<typeof vi.fn>) {
+        return fetchMock.mock.calls.filter((call) => String(call[0]).includes('?api=1'));
+    }
+
+    for (const aufruf of AUFRUFE) {
+        it(`${aufruf.name}: URL trägt nur ${ERLAUBT_IN_DER_URL.join('/')} und keinen Geheimniswert`, async () => {
+            const fetchMock = stubFetch(fakeResponse({ success: true, message: 'ok' }));
+            await api().callAPI(aufruf.data, aufruf.json ?? null);
+
+            const calls = apiCalls(fetchMock);
+            expect(calls).toHaveLength(1);
+            const url = new URL(String(calls[0]![0]));
+            const schluessel = [...url.searchParams.keys()];
+            expect(schluessel.filter((k) => !ERLAUBT_IN_DER_URL.includes(k))).toEqual([]);
+            const roheUrl = decodeURIComponent(String(calls[0]![0]));
+            for (const geheimnis of [GEHEIMNIS_PASSWORT, GEHEIMNIS_TOKEN, GEHEIMNIS_SITZUNG, 'alice', 'me@example.com', 'nutzdaten']) {
+                expect(roheUrl).not.toContain(geheimnis);
+            }
+            expect(url.searchParams.get('cmd')).toBe(aufruf.data['cmd']);
+        });
+    }
+
+    it('Zugangsdaten gehen als JSON in den Rumpf, die Sitzung in die Kopfzeile X-TrashMail-Session', async () => {
+        const fetchMock = stubFetch(fakeResponse({ success: true, message: 'ok' }));
+        await api().callAPI({ cmd: 'login', 'fe-login-user': 'alice', 'fe-login-pass': GEHEIMNIS_PASSWORT });
+        await api().callAPI({ cmd: 'create_dea', session_id: GEHEIMNIS_SITZUNG }, { data: { disposable_name: 'x' } });
+
+        const [login, create] = apiCalls(fetchMock);
+        const loginInit = login![1] as RequestInit;
+        expect((loginInit.headers as Headers).get('Content-Type')).toBe('application/json');
+        expect(JSON.parse(String(loginInit.body))).toEqual({ 'fe-login-user': 'alice', 'fe-login-pass': GEHEIMNIS_PASSWORT });
+        expect((loginInit.headers as Headers).get('X-TrashMail-Session')).toBeNull();
+        expect(loginInit.credentials).toBe('omit');
+
+        const createInit = create![1] as RequestInit;
+        expect((createInit.headers as Headers).get('X-TrashMail-Session')).toBe(GEHEIMNIS_SITZUNG);
+        // Der Rumpf bleibt für create_dea byte-gleich zum bisherigen json-Argument
+        // (die Controller lesen php://input als {data:{...}}).
+        expect(JSON.parse(String(createInit.body))).toEqual({ data: { disposable_name: 'x' } });
+    });
+
+    it('Alarmprobe des Wächters selbst: eine URL mit fe-login-pass würde er ablehnen', () => {
+        // Die alte Bauform (bis 6.1.2) nachgestellt - der Filter muss sie finden.
+        const alt = new URL('https://mail.aionda.com/?api=1&cmd=login&fe-login-user=alice&fe-login-pass=x&lang=de&client=addon-chrome&client_version=6.1.2');
+        expect([...alt.searchParams.keys()].filter((k) => !ERLAUBT_IN_DER_URL.includes(k))).toEqual(['fe-login-user', 'fe-login-pass']);
+    });
+});

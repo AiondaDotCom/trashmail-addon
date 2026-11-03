@@ -325,6 +325,119 @@ describe('auto-login chain', () => {
     });
 });
 
+/**
+ * Sitzung wiederverwenden statt bei jedem Aufwachen anmelden (Version 6.1.3).
+ *
+ * Unter MV3 wird das Hintergrundskript ständig entladen und neu geweckt;
+ * jedes Aufwachen ist ein neuer Import dieses Moduls. Bis 6.1.2 stand auf
+ * oberster Ebene ein unbedingtes cmd=login (Prod, 03.11.2026: ~48.000
+ * Anmeldungen am Tag von ~766 Konten). Diese Tests importieren das Modul
+ * deshalb mehrfach hintereinander auf DEMSELBEN Speicher - genau das, was
+ * der Browser tut.
+ */
+describe('Sitzung wiederverwenden (kein cmd=login pro Aufwachen)', () => {
+    const sessionRejected = (): Error => Object.assign(new Error('Nicht eingeloggt oder Session abgelaufen.'), { errorCode: 2 });
+
+    /** Server-Attrappe: kennt genau die Sitzungen in `valid`; login vergibt eine neue. */
+    function fakeServer(valid: Set<string>): { logins: () => number } {
+        let counter = 0;
+        callAPI.mockImplementation(async (data: { cmd: string; session_id?: string }) => {
+            if (data.cmd === 'login') {
+                counter += 1;
+                const sid = `neu-${counter}`;
+                valid.add(sid);
+                return { session_id: sid, domain_name_list: ['a.com'], real_email_list: { 'me@x.com': 1 } };
+            }
+            if (data.cmd === 'read_dea') {
+                if (!data.session_id || !valid.has(data.session_id)) {
+                    throw sessionRejected();
+                }
+                return [];
+            }
+            throw new Error(`unerwarteter Befehl ${data.cmd}`);
+        });
+        return { logins: () => counter };
+    }
+
+    async function wakeAgain(): Promise<void> {
+        vi.resetModules();
+        await importBackground();
+    }
+
+    const cmds = (): string[] => callAPI.mock.calls.map((call) => (call[0] as { cmd: string }).cmd);
+
+    it('(a) zweiter Start mit gespeicherter gültiger Sitzung: kein cmd=login, read_dea mit der gespeicherten Sitzung', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'plainpass' });
+        const server = fakeServer(new Set());
+
+        await importBackground();            // erster Start: keine Sitzung → genau eine Anmeldung
+        expect(server.logins()).toBe(1);
+        expect(mock.storage.local.data.get('session_id')).toBe('neu-1');
+
+        callAPI.mockClear();
+        await wakeAgain();                   // zweites Aufwachen
+        await wakeAgain();                   // drittes Aufwachen
+        expect(cmds()).toEqual(['read_dea', 'read_dea']);
+        expect(callAPI).toHaveBeenCalledWith({ cmd: 'read_dea', session_id: 'neu-1' });
+        expect(server.logins()).toBe(1);
+    });
+
+    it('(a) gespeicherte gültige Sitzung schon beim ERSTEN Start: kein cmd=login', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'plainpass' });
+        await mock.storage.local.set({ session_id: 'gespeichert' });
+        const server = fakeServer(new Set(['gespeichert']));
+        await importBackground();
+        expect(cmds()).toEqual(['read_dea']);
+        expect(server.logins()).toBe(0);
+    });
+
+    it('(b) Server lehnt die gespeicherte Sitzung ab: genau eine Anmeldung, neue Sitzung gespeichert, read_dea wiederholt', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'plainpass' });
+        await mock.storage.local.set({ session_id: 'abgelaufen' });
+        const server = fakeServer(new Set());
+        await importBackground();
+
+        expect(cmds()).toEqual(['read_dea', 'login', 'read_dea']);
+        expect(callAPI.mock.calls[0]![0]).toEqual({ cmd: 'read_dea', session_id: 'abgelaufen' });
+        expect(callAPI.mock.calls[2]![0]).toEqual({ cmd: 'read_dea', session_id: 'neu-1' });
+        expect(server.logins()).toBe(1);
+        expect(mock.storage.local.data.get('session_id')).toBe('neu-1');
+        expect(mock.storage.local.data.get('domains')).toEqual(['a.com']);
+
+        // Und danach wieder Ruhe: das nächste Aufwachen nutzt die neue Sitzung.
+        callAPI.mockClear();
+        await wakeAgain();
+        expect(cmds()).toEqual(['read_dea']);
+    });
+
+    it('(b) anderer Fehler als „Sitzung abgelehnt" (Netz, 500): KEINE Anmeldung', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'plainpass' });
+        await mock.storage.local.set({ session_id: 'gespeichert' });
+        callAPI.mockImplementation(async (data: { cmd: string }) => {
+            if (data.cmd === 'read_dea') {
+                throw Object.assign(new Error('502 Bad Gateway'), { httpStatus: 502 });
+            }
+            return { session_id: 'darf-nicht-entstehen' };
+        });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        await importBackground();
+        warnSpy.mockRestore();
+        expect(cmds()).toEqual(['read_dea']);
+        expect(mock.storage.local.data.get('session_id')).toBe('gespeichert');
+    });
+
+    it('(b) abgelehnte Sitzung bei PAT-Konto: KEINE Anmeldung im Hintergrund (OPAQUE läuft dort nicht)', async () => {
+        await mock.storage.sync.set({ username: 'bob', password: 'tmpat_secrettoken' });
+        await mock.storage.local.set({ session_id: 'abgelaufen' });
+        const server = fakeServer(new Set());
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        await importBackground();
+        warnSpy.mockRestore();
+        expect(cmds()).toEqual(['read_dea']);
+        expect(server.logins()).toBe(0);
+    });
+});
+
 describe('runtime message: get_guardian_status', () => {
     it('reports guardian state and the active tab', async () => {
         mock.tabs.list.push({ id: 42, url: 'https://protected.test/page', windowId: 1, active: true });

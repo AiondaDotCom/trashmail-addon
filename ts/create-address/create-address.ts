@@ -1,6 +1,7 @@
 "use strict";
 
 import { getOrgDomainResolver } from "../public-suffix";
+import { isSessionRejected } from "../session-codes";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -38,14 +39,18 @@ function isPAT(password: unknown): boolean {
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
 }
 
-// Serverseitige Fehlercodes, die anzeigen, dass die gespeicherte session_id
-// abgelaufen ist und create_dea auf den anonymen Pfad (accountId=0) zurueckfiel:
+// create_dea faellt bei ungueltiger Session still auf den anonymen Pfad
+// (accountId=0) zurueck und meldet dann je nach Ziel:
 //  - 25: echte Ziel-E-Mail ist "nicht registriert" (Real-Email-DEA)
-//  - 2 : nicht angemeldet - u.a. der Vault-Guard (Vault-DEA ohne Account)
-// In beiden Faellen einmal per PAT neu anmelden und wiederholen.
+//  - sonst die gemeinsamen Sitzungs-Codes aus session-codes.ts (u.a. 2 vom
+//    Vault-Guard bei einer Vault-DEA ohne Account)
+// In beiden Faellen einmal neu anmelden und wiederholen.
 const ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS = 25;
-const ERROR_CODE_NOT_LOGGED_IN = 2;
-const SESSION_EXPIRED_CODES = [ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS, ERROR_CODE_NOT_LOGGED_IN];
+
+function isCreateDeaSessionError(error: unknown): boolean {
+    const code = (error as { errorCode?: unknown } | null | undefined)?.errorCode;
+    return isSessionRejected(error) || code === ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS;
+}
 
 /**
  * Holt eine frische Session, wenn die gespeicherte abgelaufen ist. OPAQUE-Konten
@@ -84,7 +89,6 @@ async function reauthAndGetSession(): Promise<string> {
 }
 
 let parentUrl: string | undefined;
-let parentId: number | undefined;
 let tabId: number | undefined;
 let frameId: number | undefined;
 const p1 = browser.storage.sync.get();
@@ -99,7 +103,9 @@ browser.runtime.onMessage.addListener((message) => {
     }
 
     if (message.length >= 4) {
-        [parentUrl, parentId, tabId, frameId] = message;
+        // Index 1 (Fenster-ID des Eltern-Tabs) wird nicht mehr gebraucht, seit
+        // der Manager-Knopf ueber openAddressManagerAuthenticated oeffnet.
+        [parentUrl, , tabId, frameId] = message;
     } else {
         console.error("Unexpected message format:", message);
         return;
@@ -202,20 +208,11 @@ const loginDetails: Promise<TmApiResponse> = Promise.all([p1, p2]).then((result:
 
 async function addressManager() {
     try {
-        const baseUrl = await getApiBaseUrl();
-        const url = `${baseUrl}/?cmd=manager`;
-        const details = await loginDetails;
-
-        const params = new URLSearchParams({
-            "lang": lang,
-            "session_id": String(details["session_id"]),
-        });
-
-        const options = {
-            "url": url.concat("&", params.toString()),
-            "windowId": parentId,
-        };
-        await browser.tabs.create(options);
+        // POST-Login mit Cookies setzt die Browser-Sitzung - der Manager-Tab
+        // oeffnet ohne session_id in der URL (wie Popup und Optionen). Bis
+        // 6.1.2 stand hier `?cmd=manager&session_id=...`, und die Sitzung
+        // landete im Zugriffsprotokoll.
+        await openAddressManagerAuthenticated();
         window.close();
     } catch (error) {
         const errorMsg = elById("error_msg");
@@ -276,8 +273,7 @@ async function createAddress(e: Event) {
             // create_dea faellt bei ungueltiger Session still auf anonym zurueck.
             // Bei den bekannten Session-Codes (25 Real-Email, 2 Vault-Guard)
             // einmal per PAT neu anmelden und wiederholen.
-            const code = (err as { errorCode?: number }).errorCode;
-            if (typeof code === "number" && SESSION_EXPIRED_CODES.includes(code)) {
+            if (isCreateDeaSessionError(err)) {
                 data.session_id = await reauthAndGetSession();
                 await callAPI(data, json);
             } else {

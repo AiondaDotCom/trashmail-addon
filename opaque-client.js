@@ -217,10 +217,13 @@ class AddonOpaqueClient {
 
         const { clientRegistrationState, registrationRequest } = opaque.client.startRegistration({ password: token });
 
-        const initResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_init&lang=' + lang + '&session_id=' + encodeURIComponent(sessionId), {
+        // session_id als Kopfzeile, nicht in der URL (sonst steht sie im
+        // Zugriffsprotokoll). Der Server wertet X-TrashMail-Session genau wie
+        // ?session_id= nur aus, wenn kein Sitzungs-Cookie mitkommt.
+        const initResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_init&lang=' + lang, {
             credentials: "include",
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-TrashMail-Session': String(sessionId) },
             body: JSON.stringify({ registration_request: registrationRequest })
         });
         const initResult = await initResponse.json();

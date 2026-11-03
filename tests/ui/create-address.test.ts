@@ -280,7 +280,7 @@ describe('create-address.ts', () => {
     });
 
     describe('addressManager button', () => {
-        it('opens the manager tab with the session and closes the window', async () => {
+        it('opens the manager via the cookie login (no session_id in any tab URL) and closes the window', async () => {
             mock.storage.local.data.set('session_id', 'sess-cm');
             mock.storage.local.data.set('real_emails', []);
             mock.storage.local.data.set('domains', []);
@@ -290,9 +290,10 @@ describe('create-address.ts', () => {
             $('btn-address-manager').dispatchEvent(new MouseEvent('click'));
             await tick();
 
-            expect(mock.tabs.list).toHaveLength(1);
-            expect(mock.tabs.list[0].url).toContain('cmd=manager');
-            expect(mock.tabs.list[0].url).toContain('session_id=sess-cm');
+            expect(globals.openAddressManagerAuthenticated).toHaveBeenCalledTimes(1);
+            // Bis 6.1.2 öffnete dieser Knopf `?cmd=manager&session_id=…` - die
+            // Sitzung stand dann im Zugriffsprotokoll.
+            expect(mock.tabs.list.filter((t: { url?: string }) => String(t.url).includes('session_id'))).toHaveLength(0);
             expect(nav.close).toHaveBeenCalled();
         });
     });
@@ -317,13 +318,11 @@ describe('create-address.ts', () => {
     });
 
     describe('addressManager error path', () => {
-        it('shows the error when the base URL cannot be resolved', async () => {
+        it('shows the error when the authenticated manager login fails', async () => {
             mock.storage.local.data.set('session_id', 'sess');
             mock.storage.local.data.set('real_emails', []);
             mock.storage.local.data.set('domains', []);
-            (globalThis as Record<string, unknown>)['getApiBaseUrl'] = vi.fn(async () => {
-                throw new Error('offline');
-            });
+            globals.openAddressManagerAuthenticated.mockRejectedValue(new Error('offline'));
             await importCreateAddress();
             await tick();
 
@@ -331,6 +330,7 @@ describe('create-address.ts', () => {
             await tick();
 
             expect($('error_msg').style.display).toBe('block');
+            expect($('error_msg').textContent).toBe('offline');
             expect(nav.close).not.toHaveBeenCalled();
         });
     });
@@ -370,9 +370,8 @@ describe('create-address.ts', () => {
     describe('PAT account without a stored session', () => {
         it('reports an expired session via the address-manager button', async () => {
             mock.storage.sync.data.set('password', 'tmpat_expiredtoken');
-            // kein session_id -> zweiter then wirft "Session expired".
+            globals.openAddressManagerAuthenticated.mockRejectedValue(new Error('Session expired'));
             await importCreateAddress();
-            // addressManager fängt die Rejection und zeigt den Fehler.
             $('btn-address-manager').dispatchEvent(new MouseEvent('click'));
             await tick();
 

@@ -36,6 +36,15 @@
     return resolverPromise;
   }
 
+  // trashmail-addon/ts/session-codes.ts
+  var ERROR_CODE_NOT_LOGGED_IN = 2;
+  var ERROR_CODE_AUTHENTICATION_ERROR = 61;
+  var SESSION_REJECTED_CODES = [ERROR_CODE_NOT_LOGGED_IN, ERROR_CODE_AUTHENTICATION_ERROR];
+  function isSessionRejected(error) {
+    const code = error?.errorCode;
+    return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
+  }
+
   // trashmail-addon/ts/background.ts
   var browser = globalThis.browser ?? chrome;
   if (typeof importScripts === "function") {
@@ -211,46 +220,63 @@
   function isPAT(password) {
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
   }
-  browser.storage.sync.get(["username", "password"]).then((storage) => {
-    if (!storage["username"] || !storage["password"]) {
-      console.log("[TrashMail] No stored credentials, skipping auto-login");
-      return Promise.reject({ silent: true });
+  var SilentSkip = class extends Error {
+    constructor() {
+      super(...arguments);
+      this.silent = true;
     }
-    if (isPAT(storage["password"])) {
-      console.log("[TrashMail] PAT detected (OPAQUE account), checking for stored session...");
-      return browser.storage.local.get(["session_id"]).then((localData) => {
-        if (localData.session_id) {
-          console.log("[TrashMail] Using stored session_id for auto-refresh");
-          return { session_id: localData.session_id };
-        } else {
-          console.log("[TrashMail] No stored session for OPAQUE account, user needs to login via Options");
-          return Promise.reject({ silent: true });
-        }
-      });
-    }
-    const data = {
+  };
+  async function classicLoginAndStore(username, password) {
+    const login = await callAPI({
       "cmd": "login",
-      "fe-login-user": storage["username"],
-      "fe-login-pass": storage["password"]
-    };
-    return callAPI(data);
-  }).then((login) => {
-    console.log("[TrashMail] Auto-login response:", login);
-    console.log("[TrashMail] Session ID:", login["session_id"]);
+      "fe-login-user": username,
+      "fe-login-pass": password
+    });
+    const sessionId = String(login["session_id"] ?? "");
+    const update = { "session_id": sessionId };
     if (login["domain_name_list"] && login["real_email_list"]) {
-      const domains = Array.isArray(login["domain_name_list"]) ? login["domain_name_list"] : Object.keys(login["domain_name_list"]);
-      browser.storage.local.set({
-        "domains": domains,
-        "real_emails": Object.keys(login["real_email_list"])
-      });
+      update["domains"] = Array.isArray(login["domain_name_list"]) ? login["domain_name_list"] : Object.keys(login["domain_name_list"]);
+      update["real_emails"] = Object.keys(login["real_email_list"]);
     }
+    await browser.storage.local.set(update);
+    return sessionId;
+  }
+  function readDea(sessionId) {
     const data = {
       "cmd": "read_dea",
-      "session_id": login["session_id"]
+      "session_id": sessionId
     };
-    console.log("[TrashMail] read_dea request:", data);
     return Promise.all([callAPI(data), getOrgDomainResolver()]);
-  }).then((values) => {
+  }
+  async function loadAddressesWithStoredSession() {
+    const storage = await browser.storage.sync.get(["username", "password"]);
+    const username = storage.username;
+    const password = storage.password;
+    if (!username || !password) {
+      console.log("[TrashMail] No stored credentials, skipping auto-login");
+      throw new SilentSkip("skip");
+    }
+    const patAccount = isPAT(password);
+    const local = await browser.storage.local.get(["session_id"]);
+    const storedSession = local.session_id;
+    if (!storedSession) {
+      if (patAccount) {
+        console.log("[TrashMail] No stored session for PAT account, user needs to login via Options");
+        throw new SilentSkip("skip");
+      }
+      return readDea(await classicLoginAndStore(username, password));
+    }
+    try {
+      return await readDea(storedSession);
+    } catch (error) {
+      if (patAccount || !isSessionRejected(error)) {
+        throw error;
+      }
+      console.log("[TrashMail] Stored session rejected by server, logging in once");
+      return readDea(await classicLoginAndStore(username, password));
+    }
+  }
+  loadAddressesWithStoredSession().then((values) => {
     const currentPrevAddresses = {};
     const [addresses, orgDomain] = values;
     for (const address of addresses) {

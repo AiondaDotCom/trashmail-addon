@@ -36,6 +36,15 @@
     return resolverPromise;
   }
 
+  // trashmail-addon/ts/session-codes.ts
+  var ERROR_CODE_NOT_LOGGED_IN = 2;
+  var ERROR_CODE_AUTHENTICATION_ERROR = 61;
+  var SESSION_REJECTED_CODES = [ERROR_CODE_NOT_LOGGED_IN, ERROR_CODE_AUTHENTICATION_ERROR];
+  function isSessionRejected(error) {
+    const code = error?.errorCode;
+    return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
+  }
+
   // trashmail-addon/ts/options/welcome.ts
   var browser = globalThis.browser ?? chrome;
   function elById(id) {
@@ -368,14 +377,12 @@
     await browser.storage.local.set({ "session_id": sessionId });
     return sessionId;
   }
-  var AUTH_ERROR_CODES = [2, 61];
   async function callWithReauth(cmd, extraParams = {}) {
     const sessionId = await currentSessionId();
     try {
       return await callAPI({ "cmd": cmd, "session_id": sessionId, ...extraParams });
     } catch (error) {
-      const code = error.errorCode;
-      if (code !== void 0 && AUTH_ERROR_CODES.includes(code)) {
+      if (isSessionRejected(error)) {
         const fresh = await reAuthWithPat();
         return await callAPI({ "cmd": cmd, "session_id": fresh, ...extraParams });
       }

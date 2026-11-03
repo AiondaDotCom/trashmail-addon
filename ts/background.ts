@@ -1,4 +1,5 @@
 import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
+import { isSessionRejected } from "./session-codes";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -253,67 +254,102 @@ function isPAT(password: string): boolean {
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
 }
 
-// Update some settings each time the addon is loaded.
-// Only attempt auto-login if we have stored credentials
-browser.storage.sync.get(["username", "password"]).then((storage) => {
-    // Skip if no credentials stored
-    if (!storage["username"] || !storage["password"]) {
-        console.log("[TrashMail] No stored credentials, skipping auto-login");
-        return Promise.reject({ silent: true });
-    }
+/** Erwarteter Abbruch (keine Zugangsdaten/keine Sitzung) - wird still geschluckt. */
+class SilentSkip extends Error {
+    readonly silent = true;
+}
 
-    // Skip auto-login for OPAQUE accounts (PAT stored)
-    // OPAQUE requires the full library which can't run in Service Worker
-    // User will need to login via Options page, which stores session_id
-    if (isPAT(storage["password"] as string)) {
-        console.log("[TrashMail] PAT detected (OPAQUE account), checking for stored session...");
-        // Try to use stored session_id instead
-        return browser.storage.local.get(["session_id"]).then((localData) => {
-            if (localData.session_id) {
-                console.log("[TrashMail] Using stored session_id for auto-refresh");
-                return { session_id: localData.session_id as string };
-            } else {
-                console.log("[TrashMail] No stored session for OPAQUE account, user needs to login via Options");
-                return Promise.reject({ silent: true });
-            }
-        });
-    }
+/** Gespeicherte Zugangsdaten aus storage.sync. */
+interface StoredCredentials {
+    username?: string;
+    password?: string;
+}
 
-    const data = {
+/**
+ * Klassische Anmeldung (cmd=login). Speichert die neue session_id sowie
+ * Domains und echte E-Mail-Adressen aus der Antwort und liefert die Sitzung.
+ */
+async function classicLoginAndStore(username: string, password: string): Promise<string> {
+    const login = await callAPI({
         "cmd": "login",
-        "fe-login-user": storage["username"],
-        "fe-login-pass": storage["password"]
-    };
-
-    return callAPI(data);
-}).then((login: TmApiResponse) => {
-    console.log("[TrashMail] Auto-login response:", login);
-    console.log("[TrashMail] Session ID:", login["session_id"]);
-
-    // Only update domains/emails if they're in the response (not for stored session_id)
+        "fe-login-user": username,
+        "fe-login-pass": password,
+    });
+    const sessionId = String(login["session_id"] ?? "");
+    const update: Record<string, unknown> = { "session_id": sessionId };
     if (login["domain_name_list"] && login["real_email_list"]) {
-        const domains = Array.isArray(login["domain_name_list"])
+        update["domains"] = Array.isArray(login["domain_name_list"])
             ? login["domain_name_list"]
             : Object.keys(login["domain_name_list"]);
-        browser.storage.local.set({
-            "domains": domains,
-            "real_emails": Object.keys(login["real_email_list"])
-        });
+        update["real_emails"] = Object.keys(login["real_email_list"]);
     }
+    await browser.storage.local.set(update);
+    return sessionId;
+}
 
+function readDea(sessionId: string): Promise<[TmApiResponse, OrgDomainResolver]> {
     const data = {
         "cmd": "read_dea",
-        "session_id": login["session_id"]
+        "session_id": sessionId
     };
-    console.log("[TrashMail] read_dea request:", data);
-
     // On failure we deliberately let the rejection propagate through the chain
     // (instead of swallowing it with .catch(console.error), which used to make
     // the resolver arrive as undefined and blow up later). The outer .catch
     // logs it and the previous_addresses update is aborted - no bogus grouping
     // is written.
     return Promise.all([callAPI(data), getOrgDomainResolver()]);
-}).then((values) => {
+}
+
+/**
+ * Liest die Adressen beim Start des Hintergrundskripts - mit der
+ * GESPEICHERTEN Sitzung.
+ *
+ * Unter MV3 wird das Hintergrundskript ständig entladen und von
+ * tabs.onUpdated/onActivated neu geweckt. Bis 6.1.2 stand hier ein
+ * unbedingtes cmd=login: jedes Aufwachen eine neue Server-Sitzung, die nur
+ * Sekunden lebte (Prod, 03.11.2026: ~48.000 Anmeldungen am Tag von ~766
+ * Konten, Spitzenkonto 1.414). Jetzt wird nur angemeldet, wenn keine
+ * Sitzung gespeichert ist oder der Server sie ablehnt (isSessionRejected),
+ * und dann genau einmal.
+ *
+ * Konten mit gespeichertem PAT melden sich hier nie an: Der OPAQUE-Handshake
+ * braucht libopaque, die im Service Worker nicht läuft. Sie bekommen ihre
+ * Sitzung aus den Optionen bzw. aus create-address (loginWithStoredPat).
+ */
+async function loadAddressesWithStoredSession(): Promise<[TmApiResponse, OrgDomainResolver]> {
+    const storage = await browser.storage.sync.get(["username", "password"]) as StoredCredentials;
+    const username = storage.username;
+    const password = storage.password;
+    if (!username || !password) {
+        console.log("[TrashMail] No stored credentials, skipping auto-login");
+        throw new SilentSkip("skip");
+    }
+
+    const patAccount = isPAT(password);
+    const local = await browser.storage.local.get(["session_id"]) as { session_id?: string };
+    const storedSession = local.session_id;
+
+    if (!storedSession) {
+        if (patAccount) {
+            console.log("[TrashMail] No stored session for PAT account, user needs to login via Options");
+            throw new SilentSkip("skip");
+        }
+        return readDea(await classicLoginAndStore(username, password));
+    }
+
+    try {
+        return await readDea(storedSession);
+    } catch (error) {
+        if (patAccount || !isSessionRejected(error)) {
+            throw error;
+        }
+        console.log("[TrashMail] Stored session rejected by server, logging in once");
+        return readDea(await classicLoginAndStore(username, password));
+    }
+}
+
+// Update the previous-address menu each time the addon is loaded.
+loadAddressesWithStoredSession().then((values) => {
     const currentPrevAddresses: Record<string, [string, string][]> = {};
     const [addresses, orgDomain] = values as unknown as [DeaAddress[], OrgDomainResolver];
 

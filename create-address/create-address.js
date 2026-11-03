@@ -36,6 +36,15 @@
     return resolverPromise;
   }
 
+  // trashmail-addon/ts/session-codes.ts
+  var ERROR_CODE_NOT_LOGGED_IN = 2;
+  var ERROR_CODE_AUTHENTICATION_ERROR = 61;
+  var SESSION_REJECTED_CODES = [ERROR_CODE_NOT_LOGGED_IN, ERROR_CODE_AUTHENTICATION_ERROR];
+  function isSessionRejected(error) {
+    const code = error?.errorCode;
+    return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
+  }
+
   // trashmail-addon/ts/create-address/create-address.ts
   var browser = globalThis.browser ?? chrome;
   var lang = browser.i18n.getUILanguage().substring(0, 2);
@@ -51,8 +60,10 @@
     return Boolean(password) && typeof password === "string" && password.startsWith("tmpat_") && password.length > 6;
   }
   var ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS = 25;
-  var ERROR_CODE_NOT_LOGGED_IN = 2;
-  var SESSION_EXPIRED_CODES = [ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS, ERROR_CODE_NOT_LOGGED_IN];
+  function isCreateDeaSessionError(error) {
+    const code = error?.errorCode;
+    return isSessionRejected(error) || code === ERROR_CODE_UNREGISTERED_REAL_EMAIL_ADDRESS;
+  }
   async function reauthAndGetSession() {
     const sync = await browser.storage.sync.get(["username", "password"]);
     const username = sync["username"];
@@ -76,7 +87,6 @@
     return sessionId;
   }
   var parentUrl;
-  var parentId;
   var tabId;
   var frameId;
   var p1 = browser.storage.sync.get();
@@ -86,7 +96,7 @@
       return;
     }
     if (message.length >= 4) {
-      [parentUrl, parentId, tabId, frameId] = message;
+      [parentUrl, , tabId, frameId] = message;
     } else {
       console.error("Unexpected message format:", message);
       return;
@@ -164,18 +174,7 @@
   });
   async function addressManager() {
     try {
-      const baseUrl = await getApiBaseUrl();
-      const url = `${baseUrl}/?cmd=manager`;
-      const details = await loginDetails;
-      const params = new URLSearchParams({
-        "lang": lang,
-        "session_id": String(details["session_id"])
-      });
-      const options = {
-        "url": url.concat("&", params.toString()),
-        "windowId": parentId
-      };
-      await browser.tabs.create(options);
+      await openAddressManagerAuthenticated();
       window.close();
     } catch (error) {
       const errorMsg = elById("error_msg");
@@ -222,8 +221,7 @@
       try {
         await callAPI(data, json);
       } catch (err) {
-        const code = err.errorCode;
-        if (typeof code === "number" && SESSION_EXPIRED_CODES.includes(code)) {
+        if (isCreateDeaSessionError(err)) {
           data.session_id = await reauthAndGetSession();
           await callAPI(data, json);
         } else {
