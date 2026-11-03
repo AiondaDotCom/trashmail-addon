@@ -1,3 +1,4 @@
+import { seiteOeffnen } from "./fenster";
 import { getOrgDomainResolver, type OrgDomainResolver } from "./public-suffix";
 import { BACKGROUND_LOGIN_BLOCK_KEY, backgroundLoginBlockFor, isBackgroundLoginBlocked, isSessionRejected } from "./session-codes";
 
@@ -5,7 +6,11 @@ import { BACKGROUND_LOGIN_BLOCK_KEY, backgroundLoginBlockFor, isBackgroundLoginB
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
 // Import additional scripts (Service Worker only - Chrome)
-// Firefox with background.scripts loads these via manifest
+// Firefox with background.scripts loads these via manifest.
+// Safari (manifest_safari.json) ebenfalls ueber background.scripts: Mit
+// "service_worker" lief background.js dort in einer Seite (self ist Window,
+// importScripts fehlt) - api.js, publicsuffixlist.js und guardian.js wurden
+// nie geladen (gemessen 28.10.2026, Safari iOS 26.5 im Simulator, #26f94a61).
 if (typeof importScripts === "function") {
     importScripts("api.js", "publicsuffixlist.js", "guardian.js");
 }
@@ -49,12 +54,28 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function" &
     });
 }
 
+/**
+ * #26f94a61: Safari auf iOS und iPadOS fuehrt Kontextmenues von Erweiterungen
+ * als nicht unterstuetzt (Apples Kompatibilitaetsliste; ob ein Eintrag beim
+ * langen Druecken erscheint, ist NICHT gemessen). Das Objekt
+ * `browser.contextMenus` gibt es dort trotzdem (gemessen 28.10.2026, iOS 26.5
+ * im Simulator: typeof === "object"). Der Weg auf iOS ist der Popup-Knopf
+ * „Adresse fuer diese Seite". Zugesichert ist das Objekt nicht: Fehlte es,
+ * braeche ein blanker Zugriff wie `browser.contextMenus.onClicked.addListener`
+ * das ganze Hintergrundskript beim Laden ab, mitsamt dem Nachrichtenkanal fuer
+ * Popup und Formular. Deshalb laeuft jeder Zugriff ueber diese Konstante.
+ */
+const contextMenus: typeof chrome.contextMenus | undefined = browser.contextMenus;
+
 // Check if the context menu item already exists before creating it
 async function createContextMenu() {
+    if (!contextMenus) {
+        return;
+    }
     try {
-        await browser.contextMenus.removeAll();
+        await contextMenus.removeAll();
 
-        await browser.contextMenus.create({
+        await contextMenus.create({
             id: "paste-email",
             contexts: ["editable"],
             title: browser.i18n.getMessage("menuPasteAddress")
@@ -74,13 +95,10 @@ async function isLoggedIn(): Promise<boolean> {
     return Boolean(sync.username && sync.password);
 }
 
-/** Zentriert ueber dem zuletzt fokussierten Fenster ein Popup oeffnen. */
+/** Zentriert über dem zuletzt fokussierten Fenster ein Popup öffnen (iOS: Tab). */
 function openCenteredPopup(url: string, width: number, height: number): void {
-    browser.windows.getLastFocused().then((focused) => {
-        const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
-        browser.windows.create({ "url": url, "type": "popup", "width": width, "height": height, "left": left, "top": top });
-    });
+    seiteOeffnen(url, { width, height, bezug: "zuletzt-fokussiert" })
+        .catch((err: unknown) => console.error("[Aionda Mail] Seite konnte nicht geöffnet werden:", err));
 }
 
 /** Eltern-Tab-Kontext fuer das Einfuegen der Adresse in das Formularfeld. */
@@ -98,27 +116,21 @@ interface PendingCreateAddress extends ParentContext {
 
 /** Oeffnet das create-address-Formular und reicht den Eltern-Kontext durch. */
 function openCreateAddressForm(ctx: ParentContext): void {
-    const width = 750;
-    const height = 720;
     // Zentriert ueber dem zuletzt fokussierten Browserfenster oeffnen
-    // (im Service Worker gibt es kein `screen`-Objekt).
-    browser.windows.getLastFocused().then((focused) => {
-        const left = Math.max(0, Math.round((focused.left ?? 0) + ((focused.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((focused.top ?? 0) + ((focused.height ?? height) - height) / 2));
-        const options: chrome.windows.CreateData = {"url": "../create-address/create-address.html",
-            "type": "popup", "width": width, "height": height, "left": left, "top": top};
-        return browser.windows.create(options);
-    }).then((window) => {
+    // (im Service Worker gibt es kein `screen`-Objekt). #26f94a61: Ohne
+    // Fenster-API (iOS) kommt das Formular als Tab - dann zählt dessen Tab-ID.
+    const url = browser.runtime.getURL("create-address/create-address.html");
+    seiteOeffnen(url, { width: 750, height: 720, bezug: "zuletzt-fokussiert" }).then((seite) => {
         // (FF 56) Security policy blocks running code until tab has completed loading.
         const handler = (tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => {
-            if (tabId === window!.tabs![0]!.id && changeInfo.status === "complete") {
+            if (tabId === seite.tabId && changeInfo.status === "complete") {
                 browser.tabs.onUpdated.removeListener(handler);
                 // Send the parent url and window ID through to the new window.
                 browser.tabs.sendMessage(tab.id!, [ctx.url, ctx.windowId, ctx.tabId, ctx.frameId]);
             }
         };
         browser.tabs.onUpdated.addListener(handler);
-    });
+    }).catch((err: unknown) => console.error("[Aionda Mail] Formular konnte nicht geöffnet werden:", err));
 }
 
 async function openCreateAddress(parentTab: chrome.tabs.Tab, frameId: number): Promise<void> {
@@ -150,7 +162,7 @@ async function resumePendingCreateAddress(): Promise<void> {
     openCreateAddressForm(pending);
 }
 
-browser.contextMenus.onClicked.addListener((event, parentTab) => {
+contextMenus?.onClicked.addListener((event, parentTab) => {
     if (event.menuItemId === "paste-email") {
         openCreateAddress(parentTab!, event.frameId || 0);
     } else {
@@ -179,6 +191,9 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 // Update the currently displayed previous addresses context menu items.
 async function updateContextMenu(tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) {
+    if (!contextMenus) {
+        return;
+    }
     try {
         if (!tab.url) {
             return;
@@ -232,7 +247,7 @@ async function updateContextMenu(tabId: number, changeInfo: chrome.tabs.OnUpdate
                 continue;
             }
 
-            const id = browser.contextMenus.create({
+            const id = contextMenus.create({
                 id: email,
                 contexts: ["editable"],
                 title: `${browser.i18n.getMessage("menuPastePrevious", email)} (${urlDetail})`

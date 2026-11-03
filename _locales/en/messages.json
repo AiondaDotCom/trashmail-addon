@@ -81,6 +81,16 @@
     "createNewAddress": {"message": "New forward email address:"},
 
 
+    "popupCreateAddress": {"message": "Address for this page"},
+
+
+    "buttonCopyAddress": {"message": "Copy address"},
+    "buttonShareAddress": {"message": "Share address"},
+
+
+    "addressCopied": {"message": "Copied"},
+
+
     "buttonCancel": {"message": "Cancel"},
     "buttonLogin": {"message": "Login"},
     "buttonToLogin": {"message": "Enter your username and password"},
@@ -243,5 +253,13 @@
     "twofaRecoveryInfo": {"message": "Enter one of your recovery codes."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Create a token on the website instead"},
-    "twofaProgress": {"message": "Completing sign-in ..."}
+    "twofaProgress": {"message": "Completing sign-in ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail: Disposable Addresses",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Create disposable email addresses in one click and protect your real address from spam.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }

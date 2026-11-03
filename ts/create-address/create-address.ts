@@ -1,5 +1,6 @@
 "use strict";
 
+import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
 import { getOrgDomainResolver } from "../public-suffix";
 import { isSessionRejected } from "../session-codes";
 
@@ -91,6 +92,46 @@ async function reauthAndGetSession(): Promise<string> {
 let parentUrl: string | undefined;
 let tabId: number | undefined;
 let frameId: number | undefined;
+
+/**
+ * #8d29c6d5 #26f94a61: Aus dem Popup aufgerufen (Knopf „Adresse fuer diese
+ * Seite"), steht der Ziel-Tab in der Adresszeile statt in einer Nachricht des
+ * Hintergrunds. In diesem Fall ist das Formular KEIN eigenes Fenster: Ein
+ * `windows.remove(getCurrent())` schloesse das Browserfenster des Kunden.
+ */
+const aufruf = new URLSearchParams(window.location.search);
+const imPopup = aufruf.get("popup") === "1";
+
+/**
+ * Formular schliessen. Im Popup laeuft es als Rahmen (iframe) in popup.html:
+ * Safari schliesst das Popup per `window.close()` nur aus der Seite, mit der es
+ * geoeffnet wurde - gemessen am 28.10.2026 in Safari 26.6 auf macOS, nachdem
+ * das Formular per Navigation IM Popup lag: weder „Abbruch" noch das
+ * erfolgreiche Einfuegen schlossen es. Deshalb bittet der Rahmen die
+ * Popup-Seite darum.
+ */
+function schliessen(): void {
+    if (imPopup) {
+        if (window.parent !== window) {
+            window.parent.postMessage({ "aiondaAktion": "popup-schliessen" }, window.location.origin);
+        } else {
+            // Im Popup NIE die Fenster-API: `windows.getCurrent` wäre dort das
+            // Browserfenster des Kunden.
+            window.close();
+        }
+        return;
+    }
+    // #26f94a61: Als Tab (iOS, oder wenn die Fenster-API wirft) schließt
+    // `window.close()` nicht zuverlässig - deshalb Stufe für Stufe: eigenes
+    // Popup-Fenster, eigener Tab, zuletzt `window.close()`.
+    eigeneSeiteSchliessen().catch((err: unknown) => console.warn("[Aionda Mail] Schließen gescheitert:", err));
+}
+if (aufruf.has("tab")) {
+    const tab = Number(aufruf.get("tab"));
+    tabId = Number.isInteger(tab) ? tab : undefined;
+    frameId = Number(aufruf.get("frame") ?? "0") || 0;
+    parentUrl = aufruf.get("url") ?? undefined;
+}
 const p1 = browser.storage.sync.get();
 const p2 = browser.storage.local.get(["domains", "real_emails", "session_id"]);
 
@@ -114,9 +155,7 @@ browser.runtime.onMessage.addListener((message) => {
     // Event-Listener nur einmal registrieren
     function closeOnParentTabRemoved(id: number) {
         if (id === tabId) {
-            browser.windows.getCurrent().then((window) => {
-                browser.windows.remove(window.id!);
-            }).catch((error) => console.error("Fenster konnte nicht geschlossen werden:", error));
+            eigeneSeiteSchliessen().catch((error: unknown) => console.error("Fenster konnte nicht geschlossen werden:", error));
         }
     }
 
@@ -333,14 +372,17 @@ async function createAddress(e: Event) {
             pasted = false;
         }
 
-        // Send message to the background service to update the menu
-        try {
-            await browser.runtime.sendMessage({
-                action: "update_menu",
-                tabId: tabId,
-            });
-        } catch (err) {
+        // Send message to the background service to update the menu.
+        // Im Popup NICHT darauf warten: Das Menue gibt es dort (iOS) nicht,
+        // und ein schlafender Hintergrund darf das Schliessen nicht aufhalten.
+        const menue = browser.runtime.sendMessage({
+            action: "update_menu",
+            tabId: tabId,
+        }).catch((err: unknown) => {
             console.warn("[Aionda Mail] Menue konnte nicht aktualisiert werden:", err);
+        });
+        if (!imPopup) {
+            await menue;
         }
 
         if (!pasted) {
@@ -351,12 +393,17 @@ async function createAddress(e: Event) {
             error.style.display = "block";
             progress.style.display = "none";
             createButton.disabled = false;
+            showCopyButton(address[0]);
+            return;
+        }
+
+        if (imPopup) {
+            schliessen();
             return;
         }
 
         // **Popup schließen**
-        const currentWindow = await browser.windows.getCurrent();
-        await browser.windows.remove(currentWindow.id!);
+        await eigeneSeiteSchliessen();
 
     } catch (msg) {
         error.innerText = String(msg);
@@ -367,16 +414,83 @@ async function createAddress(e: Event) {
 }
 
 
+/**
+ * #26f94a61: Kopierknopf neben der Meldung „nicht eingefuegt". Auf iOS ist
+ * Kopieren oft der einzige Weg: Die Seite hat kein Feld im Fokus, und von Hand
+ * markieren laesst sich der Meldungstext im Popup schlecht.
+ */
+/**
+ * Die zuletzt erstellte, nicht eingefügte Adresse. Kopieren und Teilen lesen
+ * sie erst beim Antippen: Legt der Kunde danach noch eine Adresse an, bleiben
+ * die Knöpfe stehen - sie dürfen dann nicht die alte Adresse liefern.
+ */
+let angezeigteAdresse = "";
+
+function showCopyButton(address: string): void {
+    angezeigteAdresse = address;
+    showShareButton();
+    const vorhanden = document.getElementById("btn-copy-address");
+    if (vorhanden) {
+        vorhanden.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
+        return;
+    }
+    if (!navigator.clipboard) {
+        return;
+    }
+    const button = document.createElement("button");
+    button.id = "btn-copy-address";
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.textContent = browser.i18n.getMessage("buttonCopyAddress") || "Copy address";
+    button.addEventListener("click", () => {
+        navigator.clipboard.writeText(angezeigteAdresse).then(() => {
+            button.textContent = browser.i18n.getMessage("addressCopied") || "Copied";
+        }).catch((err) => {
+            console.warn("[Aionda Mail] Kopieren gescheitert:", err);
+        });
+    });
+    elById("error_msg").after(button);
+}
+
+/**
+ * #26f94a61: Auf iPhone/iPad zusätzlich das native Teilen-Blatt anbieten
+ * (Nachrichten, Notizen, AirDrop …). Nur dort - der Desktop bleibt wie er ist.
+ */
+function showShareButton(): void {
+    if (!document.documentElement.classList.contains("ios") || typeof navigator.share !== "function"
+        || document.getElementById("btn-share-address")) {
+        return;
+    }
+    const button = document.createElement("button");
+    button.id = "btn-share-address";
+    button.type = "button";
+    button.className = "btn btn-secondary";
+    button.textContent = browser.i18n.getMessage("buttonShareAddress") || "Share address";
+    button.addEventListener("click", () => {
+        navigator.share({ "text": angezeigteAdresse }).catch((err: unknown) => {
+            // Abbrechen im Teilen-Blatt ist kein Fehler.
+            console.warn("[Aionda Mail] Teilen beendet:", err);
+        });
+    });
+    elById("error_msg").after(button);
+}
+
 document.querySelector("form")!.addEventListener("submit", createAddress);
 
 elById("btn-address-manager").addEventListener("click", addressManager);
 
 elById("btn-close").addEventListener("click", () => {
-    window.close();
+    schliessen();
 });
 
 // Auto-resize window to fit content
 document.addEventListener("DOMContentLoaded", () => {
+    // Im Popup bestimmt der Browser die Groesse; `windows.update` traefe dort
+    // das Browserfenster des Kunden.
+    if (imPopup) {
+        document.body.classList.add("im-popup");
+        return;
+    }
     setTimeout(async () => {
         try {
             const card = document.querySelector<HTMLElement>(".card")!;
@@ -386,25 +500,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const contentHeight = header.offsetHeight + container.offsetHeight + 40; // padding
             const contentWidth = Math.max(card.offsetWidth + 40, 500);
 
-            const currentWindow = await browser.windows.getCurrent();
+            await fensterAnpassen((currentWindow) => {
+                // Calculate the difference between window size and viewport
+                const chromeHeight = currentWindow.height! - window.innerHeight;
+                const chromeWidth = currentWindow.width! - window.innerWidth;
 
-            // Calculate the difference between window size and viewport
-            const chromeHeight = currentWindow.height! - window.innerHeight;
-            const chromeWidth = currentWindow.width! - window.innerWidth;
+                // New window size = content + browser chrome
+                const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+                const newWidth = Math.min(contentWidth + chromeWidth, 650);
 
-            // New window size = content + browser chrome
-            const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
-            const newWidth = Math.min(contentWidth + chromeWidth, 650);
-
-            // Center on screen
-            const left = Math.round((screen.width - newWidth) / 2);
-            const top = Math.round((screen.height - newHeight) / 2);
-
-            await browser.windows.update(currentWindow.id!, {
-                width: newWidth,
-                height: newHeight,
-                left: left,
-                top: top,
+                // Center on screen
+                return {
+                    width: newWidth,
+                    height: newHeight,
+                    left: Math.round((screen.width - newWidth) / 2),
+                    top: Math.round((screen.height - newHeight) / 2),
+                };
             });
         } catch (err) {
             console.log("[Create Address] Auto-resize failed:", err);

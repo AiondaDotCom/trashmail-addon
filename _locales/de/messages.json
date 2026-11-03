@@ -81,6 +81,16 @@
     "createNewAddress": {"message": "Wegwerfbare E-Mail-Adresse:"},
 
 
+    "popupCreateAddress": {"message": "Adresse für diese Seite"},
+
+
+    "buttonCopyAddress": {"message": "Adresse kopieren"},
+    "buttonShareAddress": {"message": "Adresse teilen"},
+
+
+    "addressCopied": {"message": "Kopiert"},
+
+
     "buttonCancel": {"message": "Abbruch"},
     "buttonLogin": {"message": "Anmelden"},
     "buttonToLogin": {"message": "Benutzerkennung und Passwort eingeben"},
@@ -243,5 +253,13 @@
     "twofaRecoveryInfo": {"message": "Gib einen deiner Wiederherstellungscodes ein."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Stattdessen Token auf der Webseite erstellen"},
-    "twofaProgress": {"message": "Anmeldung wird abgeschlossen ..."}
+    "twofaProgress": {"message": "Anmeldung wird abgeschlossen ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail: Wegwerf-Adressen",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Wegwerf-E-Mail-Adressen mit einem Klick erstellen und deine echte Adresse vor Spam schützen.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }

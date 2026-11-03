@@ -1,5 +1,7 @@
 "use strict";
 
+import { seiteOeffnen } from "../fenster";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
@@ -226,21 +228,11 @@ async function openGuardianInfoWindow() {
         params.set("tlsFingerprint", tlsFingerprint);
     }
 
-    // Fenstergröße und Position berechnen (zentriert)
-    const width = 450;
-    const height = 595;
-    const left = Math.round((screen.width - width) / 2);
-    const top = Math.round((screen.height - height) / 2);
-
-    // Neues Fenster öffnen
-    browser.windows.create({
-        url: browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
-        type: "popup",
-        width: width,
-        height: height,
-        left: left,
-        top: top,
-    });
+    // Fenstergröße und Position berechnen (zentriert); #26f94a61: ohne
+    // Fenster-API (iOS) als Tab.
+    seiteOeffnen(browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
+        { width: 450, height: 595, bezug: "bildschirm" })
+        .catch((err: unknown) => console.error("[Popup] Guardian-Info konnte nicht geöffnet werden:", err));
 }
 
 // Event Listener für klickbaren Security-Status
@@ -256,22 +248,64 @@ elById("security-status").addEventListener("click", openGuardianInfoWindow);
  * the browser's existing session cookie, causing users to be logged out of
  * their active sessions when the extension opened a new tab.
  */
-/** Anmelde-/Registrier-Fenster (Welcome) zentriert oeffnen. */
+/**
+ * Anmelde-/Registrier-Fenster (Welcome) zentriert oeffnen.
+ *
+ * #26f94a61: Safari auf iOS/iPadOS hat keine eigenen Fenster. Scheitert
+ * `windows.create` (oder fehlt es), oeffnet sich die Seite als Tab - sonst
+ * blieb der Knopf dort ohne jede Wirkung.
+ */
 function openLoginWindow() {
-    const width = 600;
-    const height = 720;
-    browser.windows.getCurrent().then((current) => {
-        const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
-        return browser.windows.create({
-            "url": browser.runtime.getURL("options/welcome.html"),
-            "width": width, "height": height, "left": left, "top": top,
-            "type": "popup",
-        });
-    }).then(() => {
+    const url = browser.runtime.getURL("options/welcome.html");
+    (async () => {
+        try {
+            await seiteOeffnen(url, { width: 600, height: 720, bezug: "aktuell" });
+        } catch (err) {
+            console.warn("[Popup] Anmeldung konnte nicht geöffnet werden:", err);
+        }
         window.close();
-    });
+    })();
 }
+
+/**
+ * #8d29c6d5 #26f94a61: Adresse fuer die aktuelle Seite anlegen, ohne
+ * Kontextmenue. Das Formular laeuft als Rahmen im Popup und bekommt den Tab
+ * ueber die Adresszeile; nach dem Anlegen fuegt das Content-Script sie in das
+ * zuletzt fokussierte Feld der Seite ein.
+ *
+ * 🚩 Ein Rahmen, keine Navigation: Safari schliesst ein Popup per
+ * `window.close()` nur aus der Seite, mit der es geoeffnet wurde. Lag das
+ * Formular per `location.assign` im Popup, blieb es nach dem Einfuegen offen
+ * und „Abbruch" tat nichts (gemessen 28.10.2026, Safari 26.6, macOS).
+ */
+async function createAddressForPage() {
+    if (!(await isLoggedIn())) {
+        openLoginWindow();
+        return;
+    }
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const params = new URLSearchParams({ "popup": "1", "frame": "0" });
+    if (tab?.id !== undefined) {
+        params.set("tab", String(tab.id));
+    }
+    if (tab?.url) {
+        params.set("url", tab.url);
+    }
+    const rahmen = document.createElement("iframe");
+    rahmen.id = "create-address-frame";
+    rahmen.src = `${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`;
+    document.body.replaceChildren(rahmen);
+    document.body.classList.add("mit-formular");
+}
+
+/** Der Formular-Rahmen bittet um das Schliessen des Popups (siehe createAddressForPage). */
+window.addEventListener("message", (event: MessageEvent) => {
+    const daten = event.data as { aiondaAktion?: string } | null;
+    if (event.origin !== window.location.origin || !daten || daten.aiondaAktion !== "popup-schliessen") {
+        return;
+    }
+    window.close();
+});
 
 async function isLoggedIn(): Promise<boolean> {
     const sync = await browser.storage.sync.get(["username", "password"]) as { username?: string; password?: string };
@@ -316,6 +350,7 @@ async function updateLoginStateUI() {
 updateLoginStateUI();
 
 elById("btn-address-manager").addEventListener("click", addressManager);
+elById("btn-create-address").addEventListener("click", () => { void createAddressForPage(); });
 
 elById("btn-options").addEventListener("click", () => {
     browser.runtime.openOptionsPage().then(() => {

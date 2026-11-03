@@ -1,0 +1,535 @@
+/*
+ * #26f94a61: Darstellung auf iPhone und iPad (Safari).
+ *
+ * Gemeldet am 31.10.2026: Auf dem iPhone kamen die Seiten der Erweiterung im
+ * Desktop-Layout - Karten liefen aus dem Bild, winzige Checkboxen, Beschriftung
+ * und Auswahl nebeneinander gequetscht, Knöpfe klein und nebeneinander.
+ *
+ * ALLE Regeln hängen an `html.ios`. Die Klasse setzt ts/ios.ts (über
+ * translate.js) nur auf iOS/iPadOS - Chrome, Firefox und Safari auf macOS
+ * sehen diese Datei, wenden aber keine Regel an.
+ *
+ * Grundsätze: Systemschrift und iOS-Schriftgrade (17 pt Text, 15 pt
+ * Unterzeile, 13 pt Fußnote), Eingabefelder mindestens 16 px (sonst zoomt iOS
+ * beim Antippen), Tippflächen mindestens 44 pt, Knöpfe untereinander in voller
+ * Breite, Einstellungen als gruppierte Liste mit Systemschaltern, native
+ * Auswahlfelder, Hell- und Dunkelmodus.
+ */
+
+html.ios {
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+    --ios-text-gross: 17px;
+    --ios-text-mittel: 15px;
+    --ios-text-klein: 13px;
+    --ios-tippen: 44px;
+    --ios-knopf: 50px;
+    --ios-grund: #f2f2f7;
+    --ios-gruppe: #ffffff;
+    --ios-feld: #ffffff;
+    --ios-linie: #c6c6c8;
+    --ios-text: #000000;
+    --ios-text2: #6c6c70;
+    --ios-akzent: #0e7490;
+    accent-color: var(--ios-akzent);
+}
+@media (prefers-color-scheme: dark) {
+    html.ios {
+        --ios-grund: #000000;
+        --ios-gruppe: #1c1c1e;
+        --ios-feld: #2c2c2e;
+        --ios-linie: #38383a;
+        --ios-text: #ffffff;
+        --ios-text2: #98989f;
+        --ios-akzent: #22a8c7;
+    }
+}
+
+/* ---------- Grundlagen für alle Seiten ---------- */
+
+html.ios body {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    padding: 16px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: var(--ios-text-gross);
+    line-height: 1.35;
+    background: var(--ios-grund);
+    color: var(--ios-text);
+    overflow-wrap: anywhere;
+}
+html.ios :is(input, select, textarea, button) {
+    font-family: inherit;
+}
+html.ios :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea) {
+    min-height: var(--ios-tippen);
+    font-size: var(--ios-text-gross);
+    background: var(--ios-feld);
+    color: var(--ios-text);
+    border-color: var(--ios-linie);
+}
+/* Native Auswahlfelder: Systemaussehen statt nachgebautem Pfeil. */
+html.ios select {
+    appearance: auto;
+    -webkit-appearance: menulist-button;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--ios-tippen);
+    padding: 8px 12px;
+    font-size: var(--ios-text-gross);
+    color: var(--ios-text);
+    background: var(--ios-feld);
+    background-image: none;
+    border: 1px solid var(--ios-linie);
+    border-radius: 10px;
+}
+html.ios select:disabled {
+    color: var(--ios-text2);
+}
+html.ios :is(button, input[type="submit"], input[type="button"]) {
+    min-height: var(--ios-knopf);
+    font-size: var(--ios-text-gross);
+}
+/* Systemschalter (input[switch]) in nativer Größe lassen. */
+html.ios input[type="checkbox"] {
+    width: auto;
+    height: auto;
+    margin: 0;
+    flex-shrink: 0;
+}
+html.ios a {
+    color: var(--ios-akzent);
+}
+html.ios .success,
+html.ios .error {
+    font-size: var(--ios-text-mittel);
+}
+
+/* ---------- Popup (popup.html) ---------- */
+
+html.ios[data-seite="popup"] body,
+html.ios[data-seite="popup"] body.mit-formular {
+    padding: 0;
+}
+html.ios[data-seite="popup"] .header {
+    background: var(--ios-gruppe);
+    border-bottom-color: var(--ios-linie);
+}
+html.ios[data-seite="popup"] .content {
+    padding: 16px;
+}
+html.ios[data-seite="popup"] .btn-group {
+    gap: 12px;
+}
+html.ios[data-seite="popup"] .btn {
+    width: 100%;
+    font-weight: 600;
+}
+html.ios[data-seite="popup"] .btn-icon {
+    font-size: var(--ios-text-gross);
+}
+html.ios[data-seite="popup"] .btn-secondary {
+    background: var(--ios-gruppe);
+    color: var(--ios-text);
+    border-color: var(--ios-linie);
+}
+html.ios[data-seite="popup"] #security-status {
+    font-size: var(--ios-text-mittel);
+}
+html.ios[data-seite="popup"] #security-status .status-text {
+    font-size: var(--ios-text-gross);
+}
+html.ios[data-seite="popup"] #security-status .status-detail {
+    font-size: var(--ios-text-klein);
+}
+html.ios[data-seite="popup"] #security-status.inactive {
+    background: var(--ios-gruppe);
+    color: var(--ios-text2);
+    border-color: var(--ios-linie);
+}
+html.ios[data-seite="popup"] #security-status:hover {
+    transform: none;
+    box-shadow: none;
+}
+html.ios[data-seite="popup"] .error {
+    font-size: var(--ios-text-mittel);
+}
+html.ios[data-seite="popup"] #create-address-frame {
+    height: 640px;
+}
+
+/* ---------- Einstellungen (options.html): gruppierte Liste ---------- */
+
+html.ios[data-seite="einstellungen"] .page {
+    max-width: none;
+}
+html.ios[data-seite="einstellungen"] .brand {
+    padding: 0 0 16px;
+}
+html.ios[data-seite="einstellungen"] .card {
+    padding: 4px 16px;
+    margin-bottom: 24px;
+    background: var(--ios-gruppe);
+    border: 0;
+    border-radius: 12px;
+    box-shadow: none;
+}
+html.ios[data-seite="einstellungen"] .card h1 {
+    margin: 8px 0 4px;
+    font-size: var(--ios-text-klein);
+    font-weight: 400;
+    line-height: 1.3;
+    letter-spacing: 0;
+    color: var(--ios-text2);
+}
+html.ios[data-seite="einstellungen"] #username {
+    font-size: var(--ios-text-gross);
+    color: var(--ios-akzent);
+}
+html.ios[data-seite="einstellungen"] .account-row {
+    padding: 6px 0 10px;
+}
+html.ios[data-seite="einstellungen"] .account-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+}
+html.ios[data-seite="einstellungen"] .account-buttons button {
+    width: 100%;
+}
+/* Eine Zeile je Einstellung, Beschriftung über dem Feld. */
+html.ios[data-seite="einstellungen"] .row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 10px 0;
+}
+html.ios[data-seite="einstellungen"] .row + .row {
+    border-top: 0.5px solid var(--ios-linie);
+}
+html.ios[data-seite="einstellungen"] .row label {
+    flex: none;
+    min-width: 0;
+    font-size: var(--ios-text-mittel);
+    color: var(--ios-text2);
+}
+html.ios[data-seite="einstellungen"] .hint {
+    font-size: var(--ios-text-klein);
+    line-height: 1.4;
+    color: var(--ios-text2);
+}
+/* Schalterzeilen: Text links, Systemschalter rechts, ganze Zeile antippbar. */
+html.ios[data-seite="einstellungen"] .check {
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+}
+html.ios[data-seite="einstellungen"] .check + .check {
+    border-top: 0.5px solid var(--ios-linie);
+}
+html.ios[data-seite="einstellungen"] .check label {
+    display: flex;
+    align-items: center;
+    min-height: var(--ios-tippen);
+    padding: 8px 0;
+    font-size: var(--ios-text-gross);
+}
+html.ios[data-seite="einstellungen"] .check input[type="checkbox"] {
+    accent-color: var(--ios-akzent);
+}
+html.ios[data-seite="einstellungen"] button {
+    color: var(--ios-text);
+    background: var(--ios-gruppe);
+    border-color: var(--ios-linie);
+}
+html.ios[data-seite="einstellungen"] #btn-logout {
+    color: #ff3b30;
+}
+html.ios[data-seite="einstellungen"] .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 0 0 24px;
+}
+html.ios[data-seite="einstellungen"] .actions :is(button, input[type="submit"]) {
+    flex: none;
+    width: 100%;
+}
+html.ios[data-seite="einstellungen"] input[type="submit"] {
+    color: #fff;
+    font-weight: 600;
+}
+html.ios[data-seite="einstellungen"] #undo {
+    display: inline-block;
+    min-height: var(--ios-tippen);
+    line-height: var(--ios-tippen);
+}
+
+/* ---------- Anmelden / Registrieren / 2FA (welcome.html) ---------- */
+
+html.ios[data-seite="anmeldung"] body {
+    padding-top: 16px;
+}
+html.ios[data-seite="anmeldung"] .page {
+    max-width: none;
+}
+html.ios[data-seite="anmeldung"] .brand {
+    padding: 0 0 16px;
+}
+html.ios[data-seite="anmeldung"] .panel {
+    padding: 20px 16px;
+    background: var(--ios-gruppe);
+    border: 0;
+    border-radius: 12px;
+    box-shadow: none;
+}
+html.ios[data-seite="anmeldung"] h1 {
+    font-size: 22px;
+    line-height: 1.3;
+    color: var(--ios-text);
+}
+html.ios[data-seite="anmeldung"] p,
+html.ios[data-seite="anmeldung"] #welcome-panel p {
+    font-size: var(--ios-text-gross);
+    color: var(--ios-text2);
+}
+html.ios[data-seite="anmeldung"] form label {
+    font-size: var(--ios-text-mittel);
+    color: var(--ios-text2);
+}
+html.ios[data-seite="anmeldung"] :is(input[type="text"], input[type="email"], input[type="password"]) {
+    border-width: 1px;
+}
+html.ios[data-seite="anmeldung"] #twofa-code {
+    font-size: 22px;
+}
+html.ios[data-seite="anmeldung"] button,
+html.ios[data-seite="anmeldung"] input[type="submit"] {
+    font-weight: 600;
+}
+html.ios[data-seite="anmeldung"] button:not(#btn-show-register):not(.btn-primary):not(.pw-toggle) {
+    color: var(--ios-text);
+    background: var(--ios-gruppe);
+    border-color: var(--ios-linie);
+}
+/* Knöpfe untereinander, Hauptaktion oben. */
+html.ios[data-seite="anmeldung"] .buttons,
+html.ios[data-seite="anmeldung"] form div.buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+html.ios[data-seite="anmeldung"] .buttons :is(button, input[type="submit"]) {
+    width: 100%;
+}
+html.ios[data-seite="anmeldung"] .pw-toggle {
+    width: var(--ios-tippen);
+    height: var(--ios-tippen);
+    min-height: var(--ios-tippen);
+}
+html.ios[data-seite="anmeldung"] .suggestion-btn {
+    min-height: var(--ios-tippen);
+    font-size: var(--ios-text-mittel) !important;
+}
+html.ios[data-seite="anmeldung"] :is(.field-hint, .pw-checklist, #register-pw-strength-label, .important, #register-panel .hint) {
+    font-size: var(--ios-text-klein);
+}
+html.ios[data-seite="anmeldung"] .important {
+    color: var(--ios-text);
+}
+html.ios[data-seite="anmeldung"] #lost-password,
+html.ios[data-seite="anmeldung"] #twofa-panel .field-hint a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--ios-tippen);
+    font-size: var(--ios-text-mittel);
+}
+html.ios[data-seite="anmeldung"] #twofa-trust-row {
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+html.ios[data-seite="anmeldung"] #twofa-trust-row label {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-height: var(--ios-tippen);
+    font-size: var(--ios-text-gross);
+    color: var(--ios-text);
+}
+html.ios[data-seite="anmeldung"] .confirm-status {
+    font-size: var(--ios-text-mittel);
+}
+
+/* ---------- Adresse erstellen (create-address.html) ---------- */
+
+html.ios[data-seite="adresse"] body {
+    padding: 0;
+    min-height: 0;
+}
+html.ios[data-seite="adresse"] body.im-popup {
+    width: auto;
+}
+html.ios[data-seite="adresse"] .header {
+    background: var(--ios-gruppe);
+    border-bottom-color: var(--ios-linie);
+    box-shadow: none;
+}
+html.ios[data-seite="adresse"] .header h1 {
+    font-size: var(--ios-text-gross);
+    color: var(--ios-text);
+}
+html.ios[data-seite="adresse"] .container,
+html.ios[data-seite="adresse"] body.im-popup .container {
+    max-width: none;
+    padding: 16px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+html.ios[data-seite="adresse"] .card {
+    background: var(--ios-gruppe);
+    border-radius: 12px;
+    box-shadow: none;
+}
+html.ios[data-seite="adresse"] .card-body {
+    padding: 16px;
+}
+html.ios[data-seite="adresse"] .form-label {
+    font-size: var(--ios-text-mittel);
+    font-weight: 400;
+    color: var(--ios-text2);
+}
+html.ios[data-seite="adresse"] input[type="text"] {
+    border-width: 1px;
+    border-radius: 10px;
+}
+html.ios[data-seite="adresse"] .address-row {
+    flex-wrap: wrap;
+}
+html.ios[data-seite="adresse"] .address-row :is(input, select) {
+    flex: 1 1 100%;
+}
+html.ios[data-seite="adresse"] .address-row .at-symbol {
+    display: none;
+}
+html.ios[data-seite="adresse"] .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+html.ios[data-seite="adresse"] .form-row .form-group:last-of-type {
+    margin-bottom: 20px;
+}
+html.ios[data-seite="adresse"] .checkbox-group {
+    gap: 0;
+    padding: 0 16px;
+    background: var(--ios-feld);
+    border-color: var(--ios-linie);
+}
+html.ios[data-seite="adresse"] .checkbox-item {
+    flex-direction: row-reverse;
+    justify-content: space-between;
+}
+html.ios[data-seite="adresse"] .checkbox-item + .checkbox-item {
+    border-top: 0.5px solid var(--ios-linie);
+}
+html.ios[data-seite="adresse"] .checkbox-item label {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-height: var(--ios-tippen);
+    padding: 8px 0;
+    font-size: var(--ios-text-gross);
+    color: var(--ios-text);
+}
+html.ios[data-seite="adresse"] .plus-info {
+    font-size: var(--ios-text-klein);
+    text-align: left;
+    color: var(--ios-text2);
+}
+html.ios[data-seite="adresse"] .btn-group {
+    flex-direction: column;
+    gap: 12px;
+}
+html.ios[data-seite="adresse"] .btn {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+}
+html.ios[data-seite="adresse"] .btn-secondary {
+    background: var(--ios-feld);
+    color: var(--ios-text);
+    border-color: var(--ios-linie);
+}
+html.ios[data-seite="adresse"] .btn-primary:hover {
+    transform: none;
+}
+html.ios[data-seite="adresse"] .btn-icon {
+    font-size: var(--ios-text-gross);
+}
+/* Kopieren/Teilen nach „nicht eingefügt" (create-address.ts). */
+html.ios[data-seite="adresse"] :is(#btn-copy-address, #btn-share-address) {
+    margin-top: 12px;
+}
+
+/* ---------- Guardian-Info (guardian-info.html) ---------- */
+
+html.ios[data-seite="guardian"] body {
+    min-height: 0;
+}
+html.ios[data-seite="guardian"] .container {
+    max-width: none;
+    background: var(--ios-gruppe);
+    box-shadow: none;
+    border-radius: 12px;
+}
+html.ios[data-seite="guardian"] .header::after {
+    background: var(--ios-gruppe);
+}
+html.ios[data-seite="guardian"] .header h1 {
+    font-size: 22px;
+}
+html.ios[data-seite="guardian"] .content p {
+    font-size: var(--ios-text-gross);
+    color: var(--ios-text2);
+}
+html.ios[data-seite="guardian"] .status-box {
+    background: var(--ios-feld);
+    border-color: var(--ios-linie);
+}
+html.ios[data-seite="guardian"] .status-box .label {
+    font-size: var(--ios-text-klein);
+    color: var(--ios-text2);
+}
+html.ios[data-seite="guardian"] .status-box .value {
+    font-size: var(--ios-text-gross);
+}
+html.ios[data-seite="guardian"] .feature-text {
+    font-size: var(--ios-text-mittel);
+    color: var(--ios-text2);
+}
+html.ios[data-seite="guardian"] .feature:hover {
+    transform: none;
+}
+html.ios[data-seite="guardian"] .close-btn {
+    font-size: var(--ios-text-gross);
+}
+@media (prefers-color-scheme: dark) {
+    /* Das Logo (menu@1x.png) hat dunkle Schrift - im Dunkelmodus auf hellem Grund. */
+    html.ios :is(.brand, .header) img {
+        padding: 4px 8px;
+        background: #ffffff;
+        border-radius: 8px;
+    }
+    html.ios[data-seite="guardian"] .feature {
+        background: rgba(250, 204, 21, 0.1);
+        border-color: rgba(250, 204, 21, 0.3);
+    }
+    html.ios[data-seite="adresse"] .error,
+    html.ios[data-seite="popup"] .error {
+        background: rgba(239, 68, 68, 0.15);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #ff6b6b;
+    }
+}

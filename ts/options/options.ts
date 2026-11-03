@@ -1,5 +1,7 @@
 "use strict";
 
+import { beimSchliessen, seiteOeffnen } from "../fenster";
+
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
@@ -35,24 +37,13 @@ function elById<T extends HTMLElement = HTMLElement>(id: string): T {
 }
 
 // Open welcome screen on switch login button.
+// Zentriert über dem Browserfenster öffnen (sonst landet das Popup oben links).
+// #26f94a61: Ohne Fenster-API (iOS) als Tab; neu geladen wird, sobald er zugeht.
 elById("btn-switch-login").onclick = function () {
-    const width = 600;
-    const height = 720;
-    // Zentriert ueber dem Browserfenster oeffnen (sonst landet das Popup oben links)
-    browser.windows.getCurrent().then((current) => {
-        const left = Math.max(0, Math.round((current.left ?? 0) + ((current.width ?? width) - width) / 2));
-        const top = Math.max(0, Math.round((current.top ?? 0) + ((current.height ?? height) - height) / 2));
-        return browser.windows.create({
-            "url": browser.runtime.getURL("options/welcome.html"),
-            "width": width, "height": height, "left": left, "top": top,
-            "type": "popup" as const,
-        });
-    }).then((welcomeWindow) => {
-        browser.windows.onRemoved.addListener((id) => {
-            if (id === welcomeWindow!.id)
-                {window.location.reload();}
-        });
-    });
+    seiteOeffnen(browser.runtime.getURL("options/welcome.html"), { width: 600, height: 720, bezug: "aktuell" })
+        .then((welcome) => {
+            beimSchliessen(welcome, () => window.location.reload());
+        }).catch((err: unknown) => console.error("[Aionda Mail] Anmeldung konnte nicht geöffnet werden:", err));
 };
 
 /**

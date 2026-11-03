@@ -1,3 +1,5 @@
+import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
+
 // Compatibility layer
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
 
@@ -62,8 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Close button
+    // #26f94a61: Als Tab (iOS, oder wenn die Fenster-API wirft) schließt
+    // `window.close()` nicht zuverlässig - deshalb Stufe für Stufe: eigenes
+    // Popup-Fenster, eigener Tab, zuletzt `window.close()`.
     (document.getElementById('btn-close') as HTMLElement).addEventListener('click', () => {
-        window.close();
+        eigeneSeiteSchliessen().catch((err: unknown) => console.warn('[Guardian Info] Schließen gescheitert:', err));
     });
 
     // Auto-resize window to fit content
@@ -73,25 +78,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const contentHeight = container.offsetHeight + 32; // 32px = body padding
             const contentWidth = container.offsetWidth + 32;
 
-            const currentWindow = await browser.windows.getCurrent();
+            await fensterAnpassen((currentWindow) => {
+                // Calculate the difference between window size and viewport
+                const chromeHeight = (currentWindow.height as number) - window.innerHeight;
+                const chromeWidth = (currentWindow.width as number) - window.innerWidth;
 
-            // Calculate the difference between window size and viewport
-            const chromeHeight = (currentWindow.height as number) - window.innerHeight;
-            const chromeWidth = (currentWindow.width as number) - window.innerWidth;
+                // New window size = content + browser chrome
+                const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
+                const newWidth = Math.min(contentWidth + chromeWidth, 500);
 
-            // New window size = content + browser chrome
-            const newHeight = Math.min(contentHeight + chromeHeight, screen.availHeight - 100);
-            const newWidth = Math.min(contentWidth + chromeWidth, 500);
-
-            // Center on screen
-            const left = Math.round((screen.width - newWidth) / 2);
-            const top = Math.round((screen.height - newHeight) / 2);
-
-            await browser.windows.update(currentWindow.id as number, {
-                width: newWidth,
-                height: newHeight,
-                left: left,
-                top: top
+                // Center on screen
+                return {
+                    width: newWidth,
+                    height: newHeight,
+                    left: Math.round((screen.width - newWidth) / 2),
+                    top: Math.round((screen.height - newHeight) / 2)
+                };
             });
         } catch (err) {
             console.log('[Guardian Info] Auto-resize failed:', err);

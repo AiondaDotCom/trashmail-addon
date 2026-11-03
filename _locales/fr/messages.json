@@ -81,6 +81,16 @@
     "createNewAddress": {"message": "Adresse courrielle jetable :"},
 
 
+    "popupCreateAddress": {"message": "Adresse pour cette page"},
+
+
+    "buttonCopyAddress": {"message": "Copier l'adresse"},
+    "buttonShareAddress": {"message": "Partager l'adresse"},
+
+
+    "addressCopied": {"message": "Copiée"},
+
+
     "buttonCancel": {"message": "Abandonner"},
     "buttonLogin": {"message": "Loguer"},
     "buttonToLogin": {"message": "Entrez votre nom de login et votre mot de passe"},
@@ -243,5 +253,13 @@
     "twofaRecoveryInfo": {"message": "Saisissez l'un de vos codes de récupération."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Créer plutôt un jeton sur le site web"},
-    "twofaProgress": {"message": "Finalisation de la connexion ..."}
+    "twofaProgress": {"message": "Finalisation de la connexion ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail : Adresses jetables",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Créez des adresses e-mail jetables en un clic et protégez votre vraie adresse du spam.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }

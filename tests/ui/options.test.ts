@@ -217,6 +217,21 @@ describe('options.ts', () => {
         });
     });
 
+    describe('switch login auf iOS (#26f94a61)', () => {
+        it('öffnet die Anmeldung als Tab und lädt neu, sobald DIESER Tab zugeht', async () => {
+            delete (mock as unknown as Record<string, unknown>)['windows'];
+            await importOptions();
+            $('btn-switch-login').dispatchEvent(new MouseEvent('click'));
+            await tick();
+            expect(mock.tabs.list).toHaveLength(1);
+            expect(mock.tabs.list[0]!.url).toContain('options/welcome.html');
+            mock.tabs.onRemoved.trigger(mock.tabs.list[0]!.id + 1);
+            expect(nav.reload).not.toHaveBeenCalled();
+            mock.tabs.onRemoved.trigger(mock.tabs.list[0]!.id);
+            expect(nav.reload).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('logout', () => {
         it('ends both sessions, clears the stored credentials and reloads', async () => {
             mock.storage.sync.data.set('username', 'bob');

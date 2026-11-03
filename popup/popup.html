@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html data-seite="popup">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="../translate.js" defer></script>
     <script src="../api.js" defer></script>
     <script src="../libopaque.js" defer></script>
@@ -17,6 +18,17 @@
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #fff;
+        }
+        /* #8d29c6d5 #26f94a61: Formular „Adresse fuer diese Seite" als Rahmen. */
+        body.mit-formular {
+            width: 400px;
+            max-width: 100%;
+        }
+        #create-address-frame {
+            display: block;
+            width: 100%;
+            height: 600px;
+            border: 0;
         }
         .header {
             background: #fff;
@@ -147,6 +159,8 @@
             font-size: 12px;
         }
     </style>
+    <!-- #26f94a61: nur auf iPhone/iPad wirksam (html.ios, gesetzt von translate.js) -->
+    <link rel="stylesheet" type="text/css" href="../ios.css" />
 </head>
 <body>
     <div class="header">
@@ -164,6 +178,11 @@
         <div class="divider"></div>
 
         <div class="btn-group">
+            <!-- #8d29c6d5 #26f94a61: der Weg ohne Kontextmenue (Safari auf iOS/iPadOS) -->
+            <button id="btn-create-address" class="btn btn-primary" type="button">
+                <span class="btn-icon">➕</span>
+                <span data-i18n="popupCreateAddress"></span>
+            </button>
             <button id="btn-address-manager" class="btn btn-primary" type="button">
                 <span class="btn-icon">📧</span>
                 <span data-i18n="buttonAddressManagerShort"></span>

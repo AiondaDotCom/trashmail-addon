@@ -79,6 +79,16 @@
     "createNewAddress": {"message": "Novo endereço de e-mail de reencaminhamento:"},
 
 
+    "popupCreateAddress": {"message": "Endereço para esta página"},
+
+
+    "buttonCopyAddress": {"message": "Copiar endereço"},
+    "buttonShareAddress": {"message": "Partilhar endereço"},
+
+
+    "addressCopied": {"message": "Copiado"},
+
+
     "buttonCancel": {"message": "Cancelar"},
     "buttonLogin": {"message": "Iniciar sessão"},
     "buttonToLogin": {"message": "Introduz o teu nome de utilizador e palavra-passe"},
@@ -241,5 +251,13 @@
     "twofaRecoveryInfo": {"message": "Introduz um dos teus códigos de recuperação."},
     "twofaRecoveryPlaceholder": {"message": "XXXX-XXXX-XXXX"},
     "twofaWebsiteFallback": {"message": "Criar um token no site"},
-    "twofaProgress": {"message": "A concluir o início de sessão ..."}
+    "twofaProgress": {"message": "A concluir o início de sessão ..."},
+    "safariExtensionName": {
+        "message": "Aionda Mail: Endereços descartáveis",
+        "description": "Safari (App Store): höchstens 40 Zeichen"
+    },
+    "safariExtensionDescription": {
+        "message": "Cria endereços de email descartáveis com um clique e protege o teu endereço real do spam.",
+        "description": "Safari (App Store): höchstens 112 Zeichen"
+    }
 }
