@@ -189,9 +189,10 @@ class AddonOpaqueClient {
      * (mail_access_tokens) - die sind per patOpaqueLogin NICHT verifizierbar.
      * Fuer OPAQUE-Konten immer diese Methode nutzen.
      *
-     * Konto-Anmeldung: Die Konto-Session steht bei init UND finish als
-     * `session_id` in der Adresse; im finish-Rumpf steht unter `session_id`
-     * die OPAQUE-Registrierungssession. #8d29c6d5 #26f94a61: Hier stand, der
+     * Konto-Anmeldung: Die Konto-Session geht bei init UND finish in der
+     * Kopfzeile X-TrashMail-Session (seit 6.1.3; vorher als `session_id` in
+     * der Adresse und damit im Zugriffsprotokoll); im finish-Rumpf steht
+     * unter `session_id` die OPAQUE-Registrierungssession. #8d29c6d5 #26f94a61: Hier stand, der
      * Rumpf ueberschreibe den URL-Parameter und die Anmeldung gehe nur ueber
      * das Cookie. Gemessen am 28.10.2026 gegen mail.aionda.com stimmt das
      * nicht - mit der Konto-Session in der Adresse kommt finish an der
@@ -263,10 +264,15 @@ class AddonOpaqueClient {
             .map((byte) => byte.toString(16).padStart(2, '0'))
             .join('');
 
-        const finishResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_finish&lang=' + lang + '&session_id=' + encodeURIComponent(sessionId), {
+        // Konto-Sitzung als Kopfzeile wie bei init (6.1.3: keine Sitzung in
+        // der URL). Gemessen gegen dev.mail.aionda.com am 03.11.2026: finish
+        // ohne Konto-Sitzung -> Fehler 70, mit Sitzung in der URL ODER in
+        // X-TrashMail-Session -> beide Male Fehler 11 (erfundene
+        // OPAQUE-Sitzung), also beide an der Anmeldepruefung vorbei.
+        const finishResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_finish&lang=' + lang, {
             credentials: "include",
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-TrashMail-Session': String(sessionId) },
             body: JSON.stringify({
                 session_id: initResult.session_id,
                 user_record: registrationRecord,

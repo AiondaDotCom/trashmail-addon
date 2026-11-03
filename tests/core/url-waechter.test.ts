@@ -5,18 +5,30 @@
  * Anlass: Abnahme von 3d946a9, Befund M5. Der Laufzeit-Wächter in
  * api.test.ts prüfte nur callAPI; `fe-login-pass` in die URL des
  * Cookie-Logins (api.ts, eigenes fetch) blieb grün. Dieser Wächter sucht
- * deshalb nach der BAUFORM einer API- bzw. Manager-URL (`api=1`, `?cmd=`)
- * und nach URLSearchParams-Schlüsseln, egal in welcher Funktion und mit
- * welchem Werkzeug (Template, `+`-Verkettung, URLSearchParams).
+ * deshalb nach der BAUFORM eines URL-Parameters, egal in welcher Funktion
+ * und mit welchem Werkzeug:
+ *   - Text `?schluessel=` / `&schluessel=` in JEDER Codezeile (Template,
+ *     `+`-Verkettung über mehrere Zeilen) - nicht nur in Zeilen mit
+ *     `api=1`/`?cmd=`. Die Abnahme von 6c49902 fand diesen blinden Fleck
+ *     (`?lang=de&cmd=manager&session_id=` wäre durchgerutscht).
+ *   - `new URLSearchParams({ … })` und `params.append/set("…")`
+ *   - `irgendwas.searchParams.append/set("…")`, also auch `new URL(…)`
+ *     (zweiter blinder Fleck aus derselben Abnahme).
+ *
+ * Gefangen hätte er auch die Safari-Stelle aus 3582884 (opaque-client.js,
+ * `'&session_id=' + encodeURIComponent(sessionId)` in der finish-Adresse):
+ * Beim Merge von origin/master fiel genau diese Datei rot (gemessen
+ * 03.11.2026), ebenso die neuen Rahmen-Parameter in popup.ts.
  *
  * Geprüft werden alle handgeschriebenen Quellen: ts/**\/*.ts (ohne .d.ts)
  * sowie opaque-client.js und srp-client.js. Die übrigen .js im Addon-Root
  * sind aus ts/ erzeugt (esbuild) oder Fremdbibliotheken (libopaque,
  * argon2, publicsuffixlist).
  *
- * Fehltrefferzahl auf dem sauberen Baum (03.11.2026): 0 unbegründete
- * Treffer; 2 begründete Ausnahmen in AUSNAHMEN (guardian.ts `hostname`,
- * popup.ts Parameter der internen Seite guardian-info.html).
+ * Fehltrefferzahl auf dem sauberen Baum (03.11.2026, nach dem Merge der
+ * Safari-Arbeit): 0 unbegründete Treffer; begründete Ausnahmen in
+ * AUSNAHMEN (guardian.ts `hostname`, popup.ts Parameter der internen
+ * Seiten guardian-info.html und create-address.html).
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,9 +43,12 @@ const AUSNAHMEN: Record<string, string[]> = {
     // öffentlich, kein Geheimnis, und nur so lässt sich das Zertifikat des
     // richtigen Hosts erfragen (siehe Kommentar in guardian.ts).
     'ts/guardian.ts': ['hostname'],
-    // Parameter der add-on-internen Seite popup/guardian-info.html
-    // (window.open auf eine chrome-extension://-URL), keine Serveranfrage.
-    'ts/popup/popup.ts': ['status', 'text', 'detail', 'tlsVerified', 'tlsFingerprint'],
+    // Parameter add-on-interner Seiten, keine Serveranfrage:
+    //  - popup/guardian-info.html (status … tlsFingerprint)
+    //  - create-address.html als Rahmen im Popup (popup, frame, tab, url;
+    //    Safari-Arbeit #26f94a61): `url` ist die Adresse des offenen Tabs,
+    //    sie bleibt in der chrome-extension://-/safari-web-extension://-URL.
+    'ts/popup/popup.ts': ['status', 'text', 'detail', 'tlsVerified', 'tlsFingerprint', 'popup', 'frame', 'tab', 'url'],
 };
 
 const ADDON = 'trashmail-addon';
@@ -66,12 +81,13 @@ function urlSchluessel(quelle: string): { funde: Fund[]; stellen: number } {
     const funde: Fund[] = [];
     let stellen = 0;
 
-    // 1. URL-Bauform: Zeilen mit `api=1` oder `?cmd=`; Verkettungen mit `+`
-    //    am Zeilenende oder -anfang werden zur nächsten Zeile weiterverfolgt.
+    // 1. URL-Text: JEDE Codezeile mit `?schluessel=` oder `&schluessel=`;
+    //    Verkettungen mit `+` am Zeilenende oder -anfang werden zur nächsten
+    //    Zeile weiterverfolgt.
     for (let i = 0; i < zeilen.length; i++) {
         const zeile = zeilen[i]!;
         if (/^\s*(\/\/|\*)/.test(zeile)) { continue; }
-        if (!/api=1|\?cmd=/.test(zeile)) { continue; }
+        if (!/[?&][A-Za-z0-9_-]+=/.test(zeile)) { continue; }
         stellen += 1;
         let ausschnitt = zeile;
         let j = i;
@@ -104,6 +120,13 @@ function urlSchluessel(quelle: string): { funde: Fund[]; stellen: number } {
         }
     }
 
+    // 4. searchParams.append/set an beliebigem Empfänger (new URL(…), url.searchParams …)
+    for (const treffer of quelle.matchAll(/\.searchParams\.(?:append|set)\(\s*["'`]([A-Za-z0-9_-]+)["'`]/g)) {
+        stellen += 1;
+        const zeile = quelle.slice(0, treffer.index).split('\n').length;
+        funde.push({ schluessel: treffer[1]!, zeile, bauform: 'searchParams.append/set' });
+    }
+
     return { funde, stellen };
 }
 
@@ -116,26 +139,51 @@ describe('Quelltext-Wächter: keine Geheimnisse in Request-URLs (alle Anfrageweg
     const dateien = quelldateien();
 
     it('findet die bekannten Anfragewege überhaupt (Nenner, nicht nur „0 Treffer")', () => {
-        for (const pflicht of ['ts/api.ts', 'ts/options/options.ts', 'ts/options/welcome.ts', 'ts/guardian.ts', 'opaque-client.js', 'srp-client.js']) {
+        for (const pflicht of ['ts/api.ts', 'ts/options/options.ts', 'ts/options/welcome.ts', 'ts/guardian.ts', 'ts/popup/popup.ts', 'opaque-client.js', 'srp-client.js']) {
             expect(dateien).toContain(pflicht);
         }
-        // Rohes Muster daneben: jede Zeile mit `api=1` außerhalb von Kommentaren
-        // muss der Wächter als Stelle gezählt haben.
-        // Stand 03.11.2026: 19 Zeilen roh, davon 1 ohne URL-Bau
-        // (`details.url.includes("api=1")` in guardian.ts), also 18 Stellen.
-        let roh = 0;
-        let ohneUrlBau = 0;
-        let gezaehlt = 0;
+        // Jede Zeile mit `api=1` in URL-Form muss als Fund `api` auftauchen.
+        let apiZeilen = 0;
+        let apiFunde = 0;
         for (const datei of dateien) {
             const quelle = readFileSync(join(ADDON, datei), 'utf8');
-            const zeilen = quelle.split('\n').filter((z) => /api=1/.test(z) && !/^\s*(\/\/|\*)/.test(z));
-            roh += zeilen.length;
-            ohneUrlBau += zeilen.filter((z) => !/[?&]api=1/.test(z)).length;
-            gezaehlt += urlSchluessel(quelle).funde.filter((f) => f.schluessel === 'api').length;
+            apiZeilen += quelle.split('\n').filter((z) => /[?&]api=1/.test(z) && !/^\s*(\/\/|\*)/.test(z)).length;
+            apiFunde += urlSchluessel(quelle).funde.filter((f) => f.schluessel === 'api').length;
         }
-        expect(roh).toBeGreaterThanOrEqual(15);
-        expect(ohneUrlBau).toBe(1);
-        expect(gezaehlt).toBe(roh - ohneUrlBau);
+        expect(apiZeilen).toBeGreaterThanOrEqual(15);
+        expect(apiFunde).toBe(apiZeilen);
+    });
+
+    it('rohes neben verengtem Muster: jede Zeile mit einem URL-Werkzeug, die der Wächter NICHT auswertet, ist eine Lesestelle', () => {
+        // Roh: alles, womit man eine URL bauen oder lesen kann. Verengt: die
+        // Zeilen mit einem Fund. Die Differenz darf nur lesen (get/has,
+        // location.search, hostname/origin einer geparsten URL) - eine
+        // schreibende Stelle in der Differenz wäre ein blinder Fleck.
+        const ROH = /[?&][A-Za-z0-9_-]+=|URLSearchParams|searchParams|new URL\(/;
+        const LESEN = /\.(?:get|has|getAll)\(|location\.search|new URL\([^)]*\)\s*\.(?:hostname|host|origin|pathname|protocol)\b|new URL\((?![^)]*\)\.searchParams\.(?:set|append))|\.searchParams\.(?:get|has)\b|\.toString\(\)/;
+        const SCHREIBEN = /\.(?:append|set)\(|\.search\s*=|\.href\s*=/;
+        const schreibendOhneFund: string[] = [];
+        let roh = 0;
+        let differenz = 0;
+        for (const datei of dateien) {
+            const quelle = readFileSync(join(ADDON, datei), 'utf8');
+            const fundZeilen = new Set(urlSchluessel(quelle).funde.map((f) => f.zeile));
+            quelle.split('\n').forEach((zeile, index) => {
+                if (/^\s*(\/\/|\*)/.test(zeile) || !ROH.test(zeile)) { return; }
+                roh += 1;
+                if (fundZeilen.has(index + 1)) { return; }
+                differenz += 1;
+                // Schreibt die Zeile (append/set, search=, href=), zählt sie
+                // als blinder Fleck - egal, was sie sonst noch liest.
+                const schreibt = SCHREIBEN.test(zeile);
+                if (schreibt || (!LESEN.test(zeile) && !/new URLSearchParams\(\s*\{?\s*$/.test(zeile) && !/new URLSearchParams\(\)/.test(zeile))) {
+                    schreibendOhneFund.push(`${datei}:${index + 1} ${zeile.trim()}`);
+                }
+            });
+        }
+        console.info(`[url-waechter] roh ${roh} Zeilen, davon ${roh - differenz} mit Fund, ${differenz} ohne Fund`);
+        expect(roh).toBeGreaterThan(differenz);
+        expect(schreibendOhneFund).toEqual([]);
     });
 
     for (const datei of dateien) {
@@ -146,7 +194,7 @@ describe('Quelltext-Wächter: keine Geheimnisse in Request-URLs (alle Anfrageweg
     }
 
     describe('Alarmproben (eigene und fremde Schreibweisen müssen fallen, saubere schweigen)', () => {
-        const probe = (snippet: string): string[] => unerlaubt('probe.ts', urlSchluessel(snippet).funde).map((f) => f.split(' ')[1]!);
+        const probe = (snippet: string): string[] => [...new Set(unerlaubt('probe.ts', urlSchluessel(snippet).funde).map((f) => f.split(' ')[1]!))];
 
         it('Template-String im Cookie-Login (Befund M5)', () => {
             expect(probe('const r = await fetch(`${baseUrl}/?api=1&cmd=login&lang=${lang}&fe-login-pass=${secret}`, {')).toEqual(['fe-login-pass']);
@@ -162,6 +210,17 @@ describe('Quelltext-Wächter: keine Geheimnisse in Request-URLs (alle Anfrageweg
         });
         it('URLSearchParams mit append/set', () => {
             expect(probe('const p = new URLSearchParams();\np.append("cmd", c);\np.set("fe-login-user", u);')).toEqual(['fe-login-user']);
+        });
+        it('blinder Fleck 1 (Abnahme 6c49902): Parameter ohne api=1/?cmd= am Anfang', () => {
+            expect(probe('browser.tabs.create({ url: `${base}/?lang=de&cmd=manager&session_id=${sid}` });')).toEqual(['session_id']);
+            expect(probe("const ziel = basis + '?token=' + token;")).toEqual(['token']);
+        });
+        it('blinder Fleck 2 (Abnahme 6c49902): new URL(…) + searchParams.set/append', () => {
+            expect(probe('const u = new URL(`${base}/`);\nu.searchParams.set("cmd", "login");\nu.searchParams.set("fe-login-pass", geheim);')).toEqual(['fe-login-pass']);
+            expect(probe("new URL(base).searchParams.append('session_id', sid);")).toEqual(['session_id']);
+        });
+        it('Safari-Schreibweise aus 3582884 (vor dem Merge-Fix in opaque-client.js)', () => {
+            expect(probe("const finishResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_finish&lang=' + lang + '&session_id=' + encodeURIComponent(sessionId), {")).toEqual(['session_id']);
         });
         it('saubere Bauformen schweigen', () => {
             expect(probe('await fetch(`${API_BASE_URL}/?api=1&cmd=logout&lang=${lang}`, {')).toEqual([]);

@@ -15,6 +15,11 @@
  *     Rumpf kommt finish an der Anmeldung vorbei (Fehler 11 für eine erfundene
  *     OPAQUE-Sitzung, also hinter der Prüfung). Der alte Kommentar „der Rumpf
  *     überschreibt den URL-Parameter, daher nur Cookie" stimmte nicht.
+ *   - Seit 6.1.3 geht die Konto-Sitzung in die Kopfzeile X-TrashMail-Session
+ *     statt in die Adresse (keine Sitzung im Zugriffsprotokoll). Gegen Dev
+ *     gemessen am 03.11.2026: init und finish antworten mit Kopfzeile genau
+ *     wie mit Adresse (Fehler 11 statt 70 ohne Sitzung). In Safari selbst
+ *     ist das NICHT gemessen.
  */
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -65,12 +70,17 @@ describe('createAccessTokenOpaque', () => {
         expect(token).toMatch(/^tmpat_[A-Za-z0-9_-]{43}$/);
     });
 
-    it('WAECHTER: trägt die Konto-Sitzung in der Adresse von finish (Safari schickt kein Cookie)', async () => {
+    it('WAECHTER: trägt die Konto-Sitzung bei init UND finish in der Kopfzeile X-TrashMail-Session (Safari schickt kein Cookie), nie in der Adresse', async () => {
         await ladeClient().createAccessTokenOpaque('konto sitzung/1', 'Safari Add-On');
+        for (const cmd of ['pat_opaque_create_init', 'pat_opaque_create_finish']) {
+            const aufruf = aufrufe.find((a) => a.url.includes(cmd))!;
+            expect((aufruf.init.headers as Record<string, string>)['X-TrashMail-Session']).toBe('konto sitzung/1');
+            expect(new URL(aufruf.url).searchParams.has('session_id')).toBe(false);
+            expect(decodeURIComponent(aufruf.url)).not.toContain('konto sitzung/1');
+        }
+        // Im finish-Rumpf bleibt die OPAQUE-Registrierungssession.
         const finish = aufrufe.find((a) => a.url.includes('pat_opaque_create_finish'))!;
-        expect(new URL(finish.url).searchParams.get('session_id')).toBe('konto sitzung/1');
-        const init = aufrufe.find((a) => a.url.includes('pat_opaque_create_init'))!;
-        expect(new URL(init.url).searchParams.get('session_id')).toBe('konto sitzung/1');
+        expect((JSON.parse(String(finish.init.body)) as Record<string, unknown>)['session_id']).toBe('opaque-sitzung');
     });
 
     it('erzeugt bei jedem Aufruf eine andere Fähigkeit', async () => {

@@ -18,6 +18,8 @@ VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['versi
 EXCLUDE=(
     "manifest_firefox.json"
     "manifest_chrome.json"
+    # Safari wird im Apple-Repo (aionda-mail-apple) gebaut, nicht hier.
+    "manifest_safari.json"
     "ts"
     "tests"
     "tsconfig.json"
