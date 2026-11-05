@@ -5,7 +5,7 @@
     "homepage_url": "https://mail.aionda.com/",
     "name": "__MSG_extensionName__",
     "short_name": "Aionda Mail",
-    "version": "6.1.6",
+    "version": "6.1.7",
     "default_locale": "en",
     "browser_specific_settings": {
         "gecko": {
