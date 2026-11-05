@@ -15,13 +15,13 @@
     }
   }
   function abytes(value, length, title = "") {
-    const bytes = isBytes(value);
+    const bytes2 = isBytes(value);
     const len = value?.length;
     const needsLen = length !== void 0;
-    if (!bytes || needsLen && len !== length) {
+    if (!bytes2 || needsLen && len !== length) {
       const prefix = title && `"${title}" `;
       const ofLen = needsLen ? ` of length ${length}` : "";
-      const got = bytes ? `length=${len}` : `type=${typeof value}`;
+      const got = bytes2 ? `length=${len}` : `type=${typeof value}`;
       throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
     }
     return value;
@@ -31,13 +31,13 @@
     typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
   ))();
   var hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
-  function bytesToHex(bytes) {
-    abytes(bytes);
+  function bytesToHex(bytes2) {
+    abytes(bytes2);
     if (hasHexBuiltin)
-      return bytes.toHex();
+      return bytes2.toHex();
     let hex = "";
-    for (let i = 0; i < bytes.length; i++) {
-      hex += hexes[bytes[i]];
+    for (let i = 0; i < bytes2.length; i++) {
+      hex += hexes[bytes2[i]];
     }
     return hex;
   }
@@ -94,8 +94,8 @@
       throw new Error("hex string expected, got " + typeof hex);
     return hex === "" ? _0n : BigInt("0x" + hex);
   }
-  function bytesToNumberLE(bytes) {
-    return hexToNumber(bytesToHex(copyBytes(abytes(bytes)).reverse()));
+  function bytesToNumberLE(bytes2) {
+    return hexToNumber(bytesToHex(copyBytes(abytes(bytes2)).reverse()));
   }
   function numberToBytesBE(n, len) {
     anumber(len);
@@ -108,8 +108,8 @@
   function numberToBytesLE(n, len) {
     return numberToBytesBE(n, len).reverse();
   }
-  function copyBytes(bytes) {
-    return Uint8Array.from(bytes);
+  function copyBytes(bytes2) {
+    return Uint8Array.from(bytes2);
   }
   var isPosBig = (n) => typeof n === "bigint" && _0n <= n;
   function inRange(n, min, max) {
@@ -297,11 +297,11 @@
     const pow_p_5_8 = pow2(b250, _2n2, P) * x % P;
     return { pow_p_5_8, b2 };
   }
-  function adjustScalarBytes(bytes) {
-    bytes[0] &= 248;
-    bytes[31] &= 127;
-    bytes[31] |= 64;
-    return bytes;
+  function adjustScalarBytes(bytes2) {
+    bytes2[0] &= 248;
+    bytes2[31] &= 127;
+    bytes2[31] |= 64;
+    return bytes2;
   }
   var x25519 = /* @__PURE__ */ (() => {
     const P = ed25519_CURVE_p;
@@ -782,13 +782,13 @@
     }
   }
   function abytes3(value, length, title = "") {
-    const bytes = isBytes3(value);
+    const bytes2 = isBytes3(value);
     const len = value?.length;
     const needsLen = length !== void 0;
-    if (!bytes || needsLen && len !== length) {
+    if (!bytes2 || needsLen && len !== length) {
       const prefix = title && `"${title}" `;
       const ofLen = needsLen ? ` of length ${length}` : "";
-      const got = bytes ? `length=${len}` : `type=${typeof value}`;
+      const got = bytes2 ? `length=${len}` : `type=${typeof value}`;
       throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
     }
     return value;
@@ -992,9 +992,9 @@
         throw new Error("XOF is not possible for this instance");
       return this.writeInto(out);
     }
-    xof(bytes) {
-      anumber3(bytes);
-      return this.xofInto(new Uint8Array(bytes));
+    xof(bytes2) {
+      anumber3(bytes2);
+      return this.xofInto(new Uint8Array(bytes2));
     }
     digestInto(out) {
       aoutput2(out, this);
@@ -1134,8 +1134,8 @@
       diff |= a[i] ^ b[i];
     return diff === 0;
   }
-  function copyBytes2(bytes) {
-    return Uint8Array.from(bytes);
+  function copyBytes2(bytes2) {
+    return Uint8Array.from(bytes2);
   }
   function splitCoder(label, ...lengths) {
     const getLength = (c) => typeof c === "number" ? c : c.bytesLen;
@@ -1272,10 +1272,10 @@
           }
           return r;
         },
-        decode: (bytes) => {
+        decode: (bytes2) => {
           const r = newPoly(N2);
-          for (let i = 0, buf = 0, bufLen = 0, pos = 0; i < bytes.length; i++) {
-            buf |= bytes[i] << bufLen;
+          for (let i = 0, buf = 0, bufLen = 0, pos = 0; i < bytes2.length; i++) {
+            buf |= bytes2[i] << bufLen;
             bufLen += 8;
             for (; bufLen >= d; bufLen -= d, buf >>= d)
               r[pos++] = c.decode(buf & mask);
@@ -1594,9 +1594,9 @@
       this.name = "TransportFehler";
     }
   };
-  function zuBase64(bytes) {
+  function zuBase64(bytes2) {
     let s = "";
-    for (const b of bytes) {
+    for (const b of bytes2) {
       s += String.fromCharCode(b);
     }
     return btoa(s);
@@ -1613,9 +1613,9 @@
     }
     return out;
   }
-  function kopie(bytes) {
-    const neu = new Uint8Array(new ArrayBuffer(bytes.length));
-    neu.set(bytes);
+  function kopie(bytes2) {
+    const neu = new Uint8Array(new ArrayBuffer(bytes2.length));
+    neu.set(bytes2);
     return neu;
   }
   function gemeinsam(x25519Geteilt, mlKemGeteilt) {
@@ -1770,6 +1770,67 @@
   var HILFE_SPRACHEN = ["de", "en", "es", "fr"];
   var MAX_RUNDEN = 3;
   var HILFE_ZEICHEN = 8e3;
+  var GRENZEN = { nachrichten: 16, frageBytes: 1900, werkzeugBytes: 8800, gesamtBytes: 38e3 };
+  var MAX_VERLAUF_NACHRICHTEN = 6;
+  var kodierer = new TextEncoder();
+  var bytes = (s) => kodierer.encode(s).length;
+  function utf8Kuerzen(text, maxBytes) {
+    if (bytes(text) <= maxBytes) {
+      return text;
+    }
+    let aus = "";
+    let n = 0;
+    for (const zeichen of text) {
+      const b = bytes(zeichen);
+      if (n + b > maxBytes) {
+        break;
+      }
+      aus += zeichen;
+      n += b;
+    }
+    return aus;
+  }
+  function werkzeugNachricht(id, thema, text, maxBytes = GRENZEN.werkzeugBytes) {
+    const leer = bytes(JSON.stringify({ topic: thema, content: "" }));
+    let inhalt = utf8Kuerzen(text, Math.max(0, maxBytes - leer));
+    while (bytes(JSON.stringify({ topic: thema, content: inhalt })) > maxBytes && inhalt.length > 0) {
+      inhalt = utf8Kuerzen(inhalt, bytes(inhalt) - 64);
+    }
+    return { role: "tool", tool_call_id: id, content: JSON.stringify({ topic: thema, content: inhalt }) };
+  }
+  function serverBytes(nachrichten) {
+    let summe = 0;
+    for (const m of nachrichten) {
+      summe += bytes(m.content);
+      if (m.tool_call_id) {
+        summe += bytes(m.tool_call_id);
+      }
+      for (const c of m.tool_calls ?? []) {
+        summe += bytes(c.id) + bytes(c.function.arguments);
+      }
+    }
+    return summe;
+  }
+  function gespraechFuerServer(verlauf, runde) {
+    let alt = verlauf.filter((m) => m.role !== "tool" && !m.tool_calls).slice(-MAX_VERLAUF_NACHRICHTEN);
+    const passt = (v) => v.length + runde.length <= GRENZEN.nachrichten && serverBytes([...v, ...runde]) <= GRENZEN.gesamtBytes;
+    while (alt.length > 0 && !passt(alt)) {
+      alt = alt.slice(2);
+    }
+    if (passt(alt)) {
+      return [...alt, ...runde];
+    }
+    const werkzeuge = runde.filter((m) => m.role === "tool");
+    const rest = serverBytes(runde.filter((m) => m.role !== "tool")) + werkzeuge.reduce((s, m) => s + bytes(m.tool_call_id ?? ""), 0);
+    const jeWerkzeug = Math.floor((GRENZEN.gesamtBytes - rest) / Math.max(1, werkzeuge.length));
+    return runde.map((m) => {
+      if (m.role !== "tool") {
+        return m;
+      }
+      const { topic, content } = JSON.parse(m.content);
+      return werkzeugNachricht(m.tool_call_id ?? "", topic, content, jeWerkzeug);
+    });
+  }
   function kanalFuer(ua) {
     if (ua.includes("Firefox")) {
       return "addon-firefox";
@@ -1884,14 +1945,14 @@
       }
       document.getElementById("vorschlaege")?.remove();
       zeige("blase du", t);
-      verlauf.push({ role: "user", content: t.slice(0, 1900) });
+      const runde = [{ role: "user", content: utf8Kuerzen(t, GRENZEN.frageBytes) }];
       eingabe.value = "";
       senden.disabled = true;
       const denkt = zeige("denkt", msg("kiDenkt"));
       try {
-        for (let runde = 0; runde < MAX_RUNDEN; runde++) {
+        for (let zug = 0; zug < MAX_RUNDEN; zug++) {
           const antwort = await client.senden("ai_assistant_public", {
-            messages: verlauf,
+            messages: gespraechFuerServer(verlauf, runde),
             installation_id: installation,
             kanal,
             persona: "nova",
@@ -1901,16 +1962,15 @@
           if (antwort.success !== true) {
             const code = Number(antwort.error_code);
             zeige("fehler", msg(code === 145 ? "kiFehlerLimit" : code === 171 ? "kiFehlerBesetzt" : "kiFehlerAllgemein"));
-            verlauf.pop();
             return;
           }
           const daten = antwort.data ?? antwort;
           if (!daten.tool_calls || daten.tool_calls.length === 0) {
             zeige("blase ki", antwortHtml(daten.content ?? ""), true);
-            verlauf.push({ role: "assistant", content: daten.content ?? "" });
+            verlauf.push(runde[0], { role: "assistant", content: daten.content ?? "" });
             return;
           }
-          verlauf.push({ role: "assistant", content: daten.content ?? "", tool_calls: daten.tool_calls });
+          runde.push({ role: "assistant", content: daten.content ?? "", tool_calls: daten.tool_calls });
           for (const aufruf of daten.tool_calls) {
             const thema = String(JSON.parse(aufruf.function.arguments).topic ?? "");
             let inhalt = { titel: thema, text: "" };
@@ -1921,7 +1981,7 @@
               }
             }
             zeige("quelle", msg("kiLiestHilfe", inhalt.titel || thema));
-            verlauf.push({ role: "tool", tool_call_id: aufruf.id, content: JSON.stringify({ topic: thema, content: inhalt.text || "Help topic not found." }) });
+            runde.push(werkzeugNachricht(aufruf.id, thema, inhalt.text || "Help topic not found."));
           }
         }
         zeige("fehler", msg("kiFehlerAllgemein"));

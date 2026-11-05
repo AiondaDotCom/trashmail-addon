@@ -2,8 +2,8 @@
 
 ## Overview
 
-This Firefox extension is primarily written in plain JavaScript without a build process.
-The source code you see is the actual code used in the extension.
+Our own code is written in TypeScript (`ts/`) and bundled, unminified, with esbuild.
+Build instructions and the bundled npm packages: see `BUILD_README.md`.
 
 ## Third-Party Libraries
 
@@ -29,9 +29,14 @@ The following minified/bundled libraries are included:
 
 ## Build Instructions
 
-**No build process required.**
+```sh
+npm ci
+npm run build
+```
 
-The extension uses plain JavaScript files directly. To test locally:
+Details, versions and the one known difference (esbuild path comments): `BUILD_README.md`.
+
+To test locally:
 
 1. Open Firefox
 2. Navigate to `about:debugging#/runtime/this-firefox`
@@ -60,7 +65,7 @@ trashmail-addon/
 
 - **OS**: Any (Windows, macOS, Linux)
 - **Browser**: Firefox 109+ (Manifest V3)
-- **No Node.js or npm required** for the extension itself
+- Node.js 20+ and npm only to rebuild the bundles
 
 ## Contact
 

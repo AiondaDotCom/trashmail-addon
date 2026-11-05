@@ -65,6 +65,8 @@
   async function kiHilfeOeffnen(frage, letzteMeldung) {
     if (letzteMeldung !== void 0) {
       await browser.storage.local.set({ [SPEICHER_LETZTE_MELDUNG]: letzteMeldung.slice(0, 300) });
+    } else {
+      await browser.storage.local.remove(SPEICHER_LETZTE_MELDUNG);
     }
     await browser.storage.local.set({ [SPEICHER_VORGABE_FRAGE]: frage ? frage.slice(0, 600) : "" });
     await seiteOeffnen(browser.runtime.getURL("help/ki-hilfe.html"), { width: 440, height: 660, bezug: "aktuell" });

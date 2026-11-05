@@ -1,0 +1,14 @@
+{
+  "name": "aionda-mail-extension-build",
+  "private": true,
+  "description": "Bauvorschrift der Browser-Erweiterung: bündelt ts/ mit esbuild zu den ausgelieferten .js-Dateien (siehe BUILD_README.md).",
+  "scripts": {
+    "build": "esbuild ts/api.ts ts/guardian.ts ts/background.ts ts/content-script.ts ts/translate.ts ts/popup/popup.ts ts/popup/guardian-info.ts ts/options/options.ts ts/options/welcome.ts ts/create-address/create-address.ts ts/create-address/mailfaker.ts ts/help/ki-hilfe.ts --bundle --format=iife --target=es2020 --outdir=. --outbase=ts"
+  },
+  "devDependencies": {
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "1.8.0",
+    "@noble/post-quantum": "0.5.4",
+    "esbuild": "0.27.0"
+  }
+}

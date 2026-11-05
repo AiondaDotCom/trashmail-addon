@@ -756,6 +756,8 @@ function login(e: Event) {
     cancelButton.disabled = true;
     progress.style.display = "inline-block";
     loginError.style.display = "none";
+    const kiKnopf = document.getElementById("login-ki-fragen");
+    if (kiKnopf) {kiKnopf.style.display = "none";}
 
     const form = new FormData(e.target as HTMLFormElement);
     const username = form.get("username") as string;

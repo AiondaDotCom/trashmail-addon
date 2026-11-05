@@ -132,6 +132,8 @@
   async function kiHilfeOeffnen(frage, letzteMeldung) {
     if (letzteMeldung !== void 0) {
       await browser.storage.local.set({ [SPEICHER_LETZTE_MELDUNG]: letzteMeldung.slice(0, 300) });
+    } else {
+      await browser.storage.local.remove(SPEICHER_LETZTE_MELDUNG);
     }
     await browser.storage.local.set({ [SPEICHER_VORGABE_FRAGE]: frage ? frage.slice(0, 600) : "" });
     await seiteOeffnen(browser.runtime.getURL("help/ki-hilfe.html"), { width: 440, height: 660, bezug: "aktuell" });
@@ -743,6 +745,10 @@
     cancelButton.disabled = true;
     progress.style.display = "inline-block";
     loginError.style.display = "none";
+    const kiKnopf = document.getElementById("login-ki-fragen");
+    if (kiKnopf) {
+      kiKnopf.style.display = "none";
+    }
     const form = new FormData(e.target);
     const username = form.get("username");
     const password = form.get("password");

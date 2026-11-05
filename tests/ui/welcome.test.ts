@@ -655,9 +655,10 @@ describe('welcome.ts', () => {
         });
 
         it('#329f963f: bei einer Fehlermeldung erscheint "KI fragen"; die Meldung geht mit, das Passwort nie', async () => {
+            const passwordOpaqueLogin = vi.fn().mockRejectedValue(new TypeError('NetworkError when attempting to fetch resource.'));
             setOpaqueClient({
                 checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
-                passwordOpaqueLogin: vi.fn().mockRejectedValue(new TypeError('NetworkError when attempting to fetch resource.')),
+                passwordOpaqueLogin,
                 createAccessTokenOpaque: vi.fn(),
             });
             mock.i18n.messages.set('kiAnmeldeFehlerFrage', 'Bei der Anmeldung erscheint: "$1". Was kann ich tun?');
@@ -674,6 +675,12 @@ describe('welcome.ts', () => {
             expect(String(mock.storage.local.data.get('ki_vorgabe_frage'))).toContain('NetworkError');
             expect(gespeichert).not.toContain('GeheimesPasswort-7731');
             expect(mock.windows.created.at(-1)?.url).toContain('help/ki-hilfe.html');
+
+            // Neuer Versuch: Der Knopf zur alten Meldung verschwindet, solange der Versuch läuft.
+            passwordOpaqueLogin.mockReturnValue(new Promise(() => undefined));
+            await submitLogin('bob', 'GeheimesPasswort-7731');
+            expect($('login-error').style.display).toBe('none');
+            expect($('login-ki-fragen').style.display).toBe('none');
         });
 
         it('shows the in-addon TOTP input when the OPAQUE login requires 2FA', async () => {

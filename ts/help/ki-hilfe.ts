@@ -19,10 +19,83 @@ const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).brows
 
 export const STANDARD_BASIS = "https://mail.aionda.com";
 const HILFE_SPRACHEN = ["de", "en", "es", "fr"];
+/** Der Server erzwingt nach 2 Leserunden die Antwort (MAX_LESERUNDEN), die dritte Anfrage antwortet also. */
 const MAX_RUNDEN = 3;
 const HILFE_ZEICHEN = 8000;
 
-interface Nachricht { role: "user" | "assistant" | "tool"; content: string; tool_calls?: unknown[]; tool_call_id?: string }
+/**
+ * Grenzen des Servers (AiPublicAssistantService::pruefeNachrichten), in
+ * UTF-8-Bytes wie dort gezählt; jeweils mit etwas Abstand.
+ */
+export const GRENZEN = { nachrichten: 16, frageBytes: 1900, werkzeugBytes: 8800, gesamtBytes: 38000 } as const;
+/** Ältere Frage/Antwort-Paare, die als Gesprächsgedächtnis mitgehen. */
+const MAX_VERLAUF_NACHRICHTEN = 6;
+
+interface Werkzeugaufruf { id: string; type?: string; function: { name: string; arguments: string } }
+export interface Nachricht { role: "user" | "assistant" | "tool"; content: string; tool_calls?: Werkzeugaufruf[]; tool_call_id?: string }
+
+const kodierer = new TextEncoder();
+const bytes = (s: string): number => kodierer.encode(s).length;
+
+/** Auf höchstens maxBytes UTF-8 kürzen, ohne ein Zeichen zu zerschneiden. */
+export function utf8Kuerzen(text: string, maxBytes: number): string {
+    if (bytes(text) <= maxBytes) {return text;}
+    let aus = "";
+    let n = 0;
+    for (const zeichen of text) {
+        const b = bytes(zeichen);
+        if (n + b > maxBytes) {break;}
+        aus += zeichen;
+        n += b;
+    }
+    return aus;
+}
+
+/** Ergebnis von read_help als Werkzeugnachricht, innerhalb von maxBytes. */
+export function werkzeugNachricht(id: string, thema: string, text: string, maxBytes: number = GRENZEN.werkzeugBytes): Nachricht {
+    const leer = bytes(JSON.stringify({ topic: thema, content: "" }));
+    let inhalt = utf8Kuerzen(text, Math.max(0, maxBytes - leer));
+    // JSON-Maskierung (" \ Steuerzeichen) kann das Ergebnis verlängern - nachkürzen.
+    while (bytes(JSON.stringify({ topic: thema, content: inhalt })) > maxBytes && inhalt.length > 0) {
+        inhalt = utf8Kuerzen(inhalt, bytes(inhalt) - 64);
+    }
+    return { role: "tool", tool_call_id: id, content: JSON.stringify({ topic: thema, content: inhalt }) };
+}
+
+/** Bytes wie der Server: Inhalt + Werkzeug-Kennungen + Aufrufargumente. */
+export function serverBytes(nachrichten: Nachricht[]): number {
+    let summe = 0;
+    for (const m of nachrichten) {
+        summe += bytes(m.content);
+        if (m.tool_call_id) {summe += bytes(m.tool_call_id);}
+        for (const c of m.tool_calls ?? []) {summe += bytes(c.id) + bytes(c.function.arguments);}
+    }
+    return summe;
+}
+
+/**
+ * Was an den Server geht: die laufende Runde (Frage + Leserunden) und davor so
+ * viele ältere Frage/Antwort-Paare, wie in die Grenzen passen. Der Verlauf
+ * enthält nur Text - Hilfetexte früherer Fragen gehen nie erneut mit, sonst
+ * lehnte der Server spätestens die zweite Frage als zu lang ab.
+ * Passt die Runde allein nicht, werden ihre Hilfetexte gleichmäßig gekürzt.
+ */
+export function gespraechFuerServer(verlauf: Nachricht[], runde: Nachricht[]): Nachricht[] {
+    let alt = verlauf.filter((m) => m.role !== "tool" && !m.tool_calls).slice(-MAX_VERLAUF_NACHRICHTEN);
+    const passt = (v: Nachricht[]): boolean => v.length + runde.length <= GRENZEN.nachrichten && serverBytes([...v, ...runde]) <= GRENZEN.gesamtBytes;
+    while (alt.length > 0 && !passt(alt)) {
+        alt = alt.slice(2);
+    }
+    if (passt(alt)) {return [...alt, ...runde];}
+    const werkzeuge = runde.filter((m) => m.role === "tool");
+    const rest = serverBytes(runde.filter((m) => m.role !== "tool")) + werkzeuge.reduce((s, m) => s + bytes(m.tool_call_id ?? ""), 0);
+    const jeWerkzeug = Math.floor((GRENZEN.gesamtBytes - rest) / Math.max(1, werkzeuge.length));
+    return runde.map((m) => {
+        if (m.role !== "tool") {return m;}
+        const { topic, content } = JSON.parse(m.content) as { topic: string; content: string };
+        return werkzeugNachricht(m.tool_call_id ?? "", topic, content, jeWerkzeug);
+    });
+}
 
 /** Kanal für die KPI, aus dem Browser abgeleitet. */
 export function kanalFuer(ua: string): string {
@@ -146,28 +219,29 @@ async function main(): Promise<void> {
         if (t === "" || senden.disabled) {return;}
         document.getElementById("vorschlaege")?.remove();
         zeige("blase du", t);
-        verlauf.push({ role: "user", content: t.slice(0, 1900) });
+        // Die laufende Runde wird erst bei einer Antwort in den Verlauf übernommen -
+        // ein Fehler mitten in einer Leserunde hinterlässt so keinen halben Verlauf.
+        const runde: Nachricht[] = [{ role: "user", content: utf8Kuerzen(t, GRENZEN.frageBytes) }];
         eingabe.value = "";
         senden.disabled = true;
         const denkt = zeige("denkt", msg("kiDenkt"));
         try {
-            for (let runde = 0; runde < MAX_RUNDEN; runde++) {
+            for (let zug = 0; zug < MAX_RUNDEN; zug++) {
                 const antwort = await client.senden("ai_assistant_public", {
-                    messages: verlauf, installation_id: installation, kanal, persona: "nova", sprache, kontext,
+                    messages: gespraechFuerServer(verlauf, runde), installation_id: installation, kanal, persona: "nova", sprache, kontext,
                 });
                 if (antwort.success !== true) {
                     const code = Number(antwort.error_code);
                     zeige("fehler", msg(code === 145 ? "kiFehlerLimit" : code === 171 ? "kiFehlerBesetzt" : "kiFehlerAllgemein"));
-                    verlauf.pop();
                     return;
                 }
-                const daten = (antwort.data ?? antwort) as { content?: string; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> };
+                const daten = (antwort.data ?? antwort) as { content?: string; tool_calls?: Werkzeugaufruf[] };
                 if (!daten.tool_calls || daten.tool_calls.length === 0) {
                     zeige("blase ki", antwortHtml(daten.content ?? ""), true);
-                    verlauf.push({ role: "assistant", content: daten.content ?? "" });
+                    verlauf.push(runde[0]!, { role: "assistant", content: daten.content ?? "" });
                     return;
                 }
-                verlauf.push({ role: "assistant", content: daten.content ?? "", tool_calls: daten.tool_calls });
+                runde.push({ role: "assistant", content: daten.content ?? "", tool_calls: daten.tool_calls });
                 for (const aufruf of daten.tool_calls) {
                     const thema = String((JSON.parse(aufruf.function.arguments) as { topic?: string }).topic ?? "");
                     let inhalt = { titel: thema, text: "" };
@@ -176,7 +250,7 @@ async function main(): Promise<void> {
                         if (r.ok) {inhalt = hilfeText(await r.text());}
                     }
                     zeige("quelle", msg("kiLiestHilfe", inhalt.titel || thema));
-                    verlauf.push({ role: "tool", tool_call_id: aufruf.id, content: JSON.stringify({ topic: thema, content: inhalt.text || "Help topic not found." }) });
+                    runde.push(werkzeugNachricht(aufruf.id, thema, inhalt.text || "Help topic not found."));
                 }
             }
             zeige("fehler", msg("kiFehlerAllgemein"));

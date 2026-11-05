@@ -15,6 +15,9 @@ const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).brows
 export async function kiHilfeOeffnen(frage?: string, letzteMeldung?: string): Promise<void> {
     if (letzteMeldung !== undefined) {
         await browser.storage.local.set({ [SPEICHER_LETZTE_MELDUNG]: letzteMeldung.slice(0, 300) });
+    } else {
+        // Ohne aktuelle Meldung (Popup, Einstellungen) keine alte Meldung als Kontext mitschicken.
+        await browser.storage.local.remove(SPEICHER_LETZTE_MELDUNG);
     }
     // Die Frage nicht in die Adresse (Wächter "keine Geheimnisse in der URL", 6.1.3).
     await browser.storage.local.set({ [SPEICHER_VORGABE_FRAGE]: frage ? frage.slice(0, 600) : "" });

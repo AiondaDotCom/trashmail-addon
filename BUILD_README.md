@@ -1,10 +1,33 @@
 # TrashMail Browser Extension - Build Instructions
 
-## No Build Required
+## Build from source
 
-This extension uses **plain JavaScript** - no build process, bundling, or minification is required for our own code.
+Our own code is written in TypeScript (`ts/`) and bundled with esbuild into the
+shipped `.js` files. The bundles are **not minified**. Required: Node.js 20+ and npm.
 
-All JavaScript files (except third-party libraries) are unminified source code that can be read directly.
+```sh
+npm ci            # installs exactly the versions in package-lock.json
+npm run build     # esbuild ts/... --bundle --format=iife --target=es2020 --outdir=. --outbase=ts
+```
+
+This rebuilds `api.js`, `guardian.js`, `background.js`, `content-script.js`,
+`translate.js`, `popup/popup.js`, `popup/guardian-info.js`, `options/options.js`,
+`options/welcome.js`, `create-address/create-address.js`,
+`create-address/mailfaker.js` and `help/ki-hilfe.js`.
+
+The only difference to the submitted files are esbuild's path comments: our release
+build runs from the parent directory, so they read `// trashmail-addon/ts/api.ts`
+instead of `// ts/api.ts`. Code is identical (checked for all 12 files on 05.11.2026).
+
+### Bundled npm packages (open source, MIT)
+
+`help/ki-hilfe.js` (the "Ask AI" help window) contains, unmodified:
+
+- `@noble/post-quantum` 0.5.4 (ML-KEM-1024) - https://github.com/paulmillr/noble-post-quantum
+- `@noble/curves` 2.0.1 (X25519) - https://github.com/paulmillr/noble-curves
+- `@noble/hashes` 1.8.0 and 2.0.1 (SHA-256, HKDF, SHA-3) - https://github.com/paulmillr/noble-hashes
+
+They encrypt the help requests end to end (X25519 + ML-KEM-1024, AES-256-GCM).
 
 ## Directory Structure
 
@@ -43,12 +66,7 @@ These are external open-source libraries, not our code:
 
 These libraries are pre-compiled WASM binaries. The original source repositories are linked above.
 
-## How to "Build"
-
-Since no build is required:
-
-1. Clone the repository
-2. The extension is ready to load
+## Load the extension
 
 ### Load in Firefox:
 1. Open `about:debugging#/runtime/this-firefox`
@@ -65,7 +83,7 @@ Since no build is required:
 ## Environment
 
 - **OS**: Any (Windows, macOS, Linux)
-- **Requirements**: None (no Node.js, npm, or build tools needed)
+- **Requirements**: Node.js 20+ and npm, only to rebuild the bundles (see above)
 - **Browser**: Firefox 109+ or Chrome 88+
 
 ## Contact

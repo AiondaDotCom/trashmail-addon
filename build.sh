@@ -103,7 +103,7 @@ build_source() {
 
     rm -f "$outfile"
     cd "$SCRIPT_DIR"
-    zip -r "$outfile" . -x "./.git/*" -x "./.DS_Store" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip" -x "./manifest.json.bak" -x "./store-assets" -x "./store-assets/*"
+    zip -r "$outfile" . -x "./.git/*" -x "./node_modules/*" -x "./.DS_Store" -x "./trashmail-*.zip" -x "./aionda-mail-*.zip" -x "./manifest.json.bak" -x "./store-assets" -x "./store-assets/*"
     echo "  Created: $SCRIPT_DIR/$outfile"
 }
 
