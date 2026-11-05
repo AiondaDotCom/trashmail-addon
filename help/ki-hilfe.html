@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="kiHilfeTitel"></title>
+    <style>
+        :root {
+            --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea;
+            --blase-ki: #f2f2f7; --blase-du: #0a84ff; --blase-du-fg: #ffffff;
+            --chip: #f2f2f7; --chip-fg: #0a66c2; --fehler: #c62828;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1c1c1e; --fg: #f5f5f7; --muted: #a1a1a6; --line: #38383a;
+                --blase-ki: #2c2c2e; --blase-du: #0a84ff; --blase-du-fg: #ffffff;
+                --chip: #2c2c2e; --chip-fg: #64b5f6; --fehler: #ef5350;
+            }
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: var(--bg); color: var(--fg);
+            display: flex; flex-direction: column;
+        }
+        header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+        header img { width: 22px; height: 22px; }
+        header h1 { font-size: 15px; font-weight: 600; margin: 0; }
+        #verlauf { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+        .blase { max-width: 88%; padding: 8px 11px; border-radius: 14px; white-space: pre-wrap; word-wrap: break-word; }
+        .ki { align-self: flex-start; background: var(--blase-ki); border-bottom-left-radius: 4px; }
+        .du { align-self: flex-end; background: var(--blase-du); color: var(--blase-du-fg); border-bottom-right-radius: 4px; }
+        .quelle, .denkt { align-self: flex-start; font-size: 12px; color: var(--muted); }
+        .fehler { align-self: flex-start; color: var(--fehler); font-size: 13px; }
+        .ki code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+        #vorschlaege { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 8px; }
+        #vorschlaege button {
+            border: 0; border-radius: 999px; padding: 6px 11px; background: var(--chip); color: var(--chip-fg);
+            font: inherit; font-size: 13px; cursor: pointer;
+        }
+        #kontext { padding: 6px 14px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+        form { display: flex; gap: 8px; padding: 8px 14px; }
+        textarea {
+            flex: 1; resize: none; height: 38px; max-height: 110px; padding: 8px 10px; border-radius: 10px;
+            border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit;
+        }
+        form button {
+            border: 0; border-radius: 10px; padding: 0 14px; background: var(--blase-du); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+        }
+        form button:disabled { opacity: .5; cursor: default; }
+        footer { padding: 4px 14px 10px; font-size: 11.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; }
+        footer button { border: 0; background: none; color: var(--chip-fg); font: inherit; cursor: pointer; padding: 0; white-space: nowrap; }
+    </style>
+    <link rel="stylesheet" type="text/css" href="../ios.css" />
+</head>
+<body>
+    <header>
+        <img src="../images/Icon-32.png" alt="" />
+        <h1 data-i18n="kiHilfeTitel"></h1>
+    </header>
+    <div id="verlauf" aria-live="polite"></div>
+    <div id="vorschlaege">
+        <button type="button" data-frage-i18n="kiVorschlagAnmeldung" data-i18n="kiVorschlagAnmeldung"></button>
+        <button type="button" data-frage-i18n="kiVorschlagAdresse" data-i18n="kiVorschlagAdresse"></button>
+        <button type="button" data-frage-i18n="kiVorschlagErweiterung" data-i18n="kiVorschlagErweiterung"></button>
+    </div>
+    <div id="kontext"></div>
+    <form id="formular">
+        <textarea id="eingabe" rows="1" data-i18n="kiEingabePlatzhalter|placeholder"></textarea>
+        <button id="senden" type="submit" data-i18n="kiSenden"></button>
+    </form>
+    <footer>
+        <span data-i18n="kiHinweis"></span>
+        <button id="support" type="button" data-i18n="kiSupport"></button>
+    </footer>
+    <script src="../translate.js"></script>
+    <script src="ki-hilfe.js"></script>
+</body>
+</html>

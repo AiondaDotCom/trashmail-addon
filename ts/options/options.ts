@@ -1,6 +1,7 @@
 "use strict";
 
 import { beimSchliessen, seiteOeffnen } from "../fenster";
+import { kiHilfeOeffnen } from "../help/ki-oeffnen";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -232,6 +233,8 @@ function addressManager() {
     });
 }
 elById("btn-address-manager").addEventListener("click", addressManager);
+// #329f963f KI-Hilfe
+elById("btn-ki-fragen").addEventListener("click", () => { void kiHilfeOeffnen(); });
 
 // ============================================================
 // Hidden Debug Panel - Click title 5 times to reveal

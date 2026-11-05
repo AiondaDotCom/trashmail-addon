@@ -261,5 +261,27 @@
     "safariExtensionDescription": {
         "message": "Wegwerf-E-Mail-Adressen mit einem Klick erstellen und deine echte Adresse vor Spam schützen.",
         "description": "Safari (App Store): höchstens 112 Zeichen"
-    }
+    },
+    "kiFragen": {"message": "KI fragen"},
+    "kiHilfeTitel": {"message": "KI-Hilfe"},
+    "kiHilfeAbschnitt": {"message": "Hilfe & Support"},
+    "kiHilfeAbschnittText": {"message": "Fragen zur Erweiterung oder zur Anmeldung? Die KI liest unsere Hilfe und antwortet sofort."},
+    "kiBegruessung": {"message": "Hallo! Wobei kann ich dir mit Aionda Mail helfen?"},
+    "kiVorschlagAnmeldung": {"message": "Die Anmeldung klappt nicht"},
+    "kiVorschlagAdresse": {"message": "Wie lege ich eine Adresse an?"},
+    "kiVorschlagErweiterung": {"message": "Was kann die Erweiterung?"},
+    "kiEingabePlatzhalter": {"message": "Deine Frage …"},
+    "kiSenden": {"message": "Senden"},
+    "kiDenkt": {"message": "Die KI denkt nach …"},
+    "kiLiestHilfe": {"message": "Liest in der Hilfe: $1"},
+    "kiKontextTitel": {"message": "Die KI sieht:"},
+    "kiKontextZugriffAn": {"message": "Websitezugriff erteilt"},
+    "kiKontextZugriffAus": {"message": "Websitezugriff nicht erteilt"},
+    "kiKontextFehler": {"message": "letzte Meldung: $1"},
+    "kiHinweis": {"message": "Deine Fragen gehen zur Beantwortung an die Aionda-KI. Es wird nichts gespeichert. Passwort und Zugangsdaten werden nie übermittelt."},
+    "kiSupport": {"message": "Support kontaktieren"},
+    "kiFehlerLimit": {"message": "Für heute sind keine weiteren Fragen möglich. Morgen geht es wieder."},
+    "kiFehlerBesetzt": {"message": "Die KI ist gerade ausgelastet. Bitte versuche es gleich noch einmal."},
+    "kiFehlerAllgemein": {"message": "Die KI ist gerade nicht erreichbar. Bitte versuche es später noch einmal."},
+    "kiAnmeldeFehlerFrage": {"message": "Bei der Anmeldung in der Erweiterung erscheint: „$1“. Was kann ich tun?"}
 }

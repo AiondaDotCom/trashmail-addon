@@ -1,6 +1,7 @@
 "use strict";
 
 import { seiteOeffnen } from "../fenster";
+import { kiHilfeOeffnen } from "../help/ki-oeffnen";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -352,6 +353,10 @@ updateLoginStateUI();
 elById("btn-address-manager").addEventListener("click", addressManager);
 elById("btn-create-address").addEventListener("click", () => { void createAddressForPage(); });
 
+// #329f963f KI-Hilfe öffnen (eigenes Fenster), Popup danach schließen
+elById("btn-ki-fragen").addEventListener("click", () => {
+    void kiHilfeOeffnen().catch((err: unknown) => console.warn("[Popup] KI-Hilfe konnte nicht geöffnet werden:", err)).finally(() => window.close());
+});
 elById("btn-options").addEventListener("click", () => {
     browser.runtime.openOptionsPage().then(() => {
         window.close();

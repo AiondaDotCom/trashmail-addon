@@ -1,6 +1,7 @@
 "use strict";
 
 import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
+import { kiHilfeOeffnen } from "../help/ki-oeffnen";
 import { getOrgDomainResolver, type OrgDomainResolver } from "../public-suffix";
 import { BACKGROUND_LOGIN_BLOCK_KEY, isSessionRejected } from "../session-codes";
 
@@ -804,6 +805,20 @@ function showLoginError(error: unknown, loginError: HTMLElement, progress: HTMLE
     progress.style.display = "none";
     cancelButton.disabled = false;
     loginButton.disabled = false;
+    kiKnopfFuerMeldung(message);
+}
+
+/**
+ * #329f963f Unter einer Fehlermeldung „KI fragen“ anbieten. Die Meldung geht
+ * als Kontext und vorbelegte Frage mit - Benutzername und Passwort nicht.
+ */
+function kiKnopfFuerMeldung(meldung: string) {
+    const knopf = document.getElementById("login-ki-fragen");
+    if (!knopf) {return;}
+    knopf.style.display = "inline-block";
+    knopf.onclick = () => {
+        void kiHilfeOeffnen(browser.i18n.getMessage("kiAnmeldeFehlerFrage", [meldung]) || meldung, meldung);
+    };
 }
 
 /**
@@ -983,6 +998,7 @@ function performClassicLoginWithMigration(username: string, password: string, lo
             progress.style.display = "none";
             cancelButton.disabled = false;
             loginButton.disabled = false;
+            kiKnopfFuerMeldung(error.message || String(error));
         });
 }
 

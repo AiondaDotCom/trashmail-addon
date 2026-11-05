@@ -56,8 +56,22 @@
     return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
   }
 
-  // trashmail-addon/ts/popup/popup.ts
+  // trashmail-addon/ts/help/ki-hilfe-konstanten.ts
+  var SPEICHER_LETZTE_MELDUNG = "ki_letzte_meldung";
+  var SPEICHER_VORGABE_FRAGE = "ki_vorgabe_frage";
+
+  // trashmail-addon/ts/help/ki-oeffnen.ts
   var browser = globalThis.browser ?? chrome;
+  async function kiHilfeOeffnen(frage, letzteMeldung) {
+    if (letzteMeldung !== void 0) {
+      await browser.storage.local.set({ [SPEICHER_LETZTE_MELDUNG]: letzteMeldung.slice(0, 300) });
+    }
+    await browser.storage.local.set({ [SPEICHER_VORGABE_FRAGE]: frage ? frage.slice(0, 600) : "" });
+    await seiteOeffnen(browser.runtime.getURL("help/ki-hilfe.html"), { width: 440, height: 660, bezug: "aktuell" });
+  }
+
+  // trashmail-addon/ts/popup/popup.ts
+  var browser2 = globalThis.browser ?? chrome;
   function elById(id) {
     const el = document.getElementById(id);
     if (el === null) {
@@ -72,7 +86,7 @@
     }
     try {
       console.log("[Popup] Requesting guardian status...");
-      const response = await browser.runtime.sendMessage({ action: "get_guardian_status" });
+      const response = await browser2.runtime.sendMessage({ action: "get_guardian_status" });
       console.log("[Popup] Received response:", response);
       const iconEl = statusEl.querySelector(".status-icon");
       const textEl = statusEl.querySelector(".status-text");
@@ -82,44 +96,44 @@
         console.log("[Popup] No response from Guardian");
         statusEl.className = "inactive";
         iconEl.textContent = "\u26A0\uFE0F";
-        textEl.textContent = browser.i18n.getMessage("guardianNotInitialized");
-        detailEl.textContent = browser.i18n.getMessage("guardianFailedToLoad");
+        textEl.textContent = browser2.i18n.getMessage("guardianNotInitialized");
+        detailEl.textContent = browser2.i18n.getMessage("guardianFailedToLoad");
         return;
       }
       if (!response.enabled) {
         statusEl.className = "inactive";
         iconEl.textContent = "\u{1F512}";
-        textEl.textContent = browser.i18n.getMessage("guardianDisabled");
-        detailEl.textContent = browser.i18n.getMessage("guardianEnableInOptions");
+        textEl.textContent = browser2.i18n.getMessage("guardianDisabled");
+        detailEl.textContent = browser2.i18n.getMessage("guardianEnableInOptions");
         return;
       }
       if (!response.initialized) {
         console.log("[Popup] Guardian not initialized, response:", response);
         statusEl.className = "inactive";
         iconEl.textContent = "\u26A0\uFE0F";
-        textEl.textContent = browser.i18n.getMessage("guardianNotInitialized");
-        detailEl.textContent = browser.i18n.getMessage("guardianFailedToLoad");
+        textEl.textContent = browser2.i18n.getMessage("guardianNotInitialized");
+        detailEl.textContent = browser2.i18n.getMessage("guardianFailedToLoad");
         return;
       }
       if (response.ed25519Supported === false) {
         statusEl.className = "warning";
         iconEl.textContent = "\u26A0\uFE0F";
-        textEl.textContent = browser.i18n.getMessage("guardianEd25519NotSupported") || "Ed25519 not supported";
+        textEl.textContent = browser2.i18n.getMessage("guardianEd25519NotSupported") || "Ed25519 not supported";
         detailEl.textContent = "Chrome 113+ required";
         return;
       }
       if (!response.isProtected) {
         statusEl.className = "inactive";
         iconEl.textContent = "\u{1F512}";
-        textEl.textContent = browser.i18n.getMessage("guardianMitmProtection");
-        detailEl.textContent = browser.i18n.getMessage("guardianVisitToActivate");
+        textEl.textContent = browser2.i18n.getMessage("guardianMitmProtection");
+        detailEl.textContent = browser2.i18n.getMessage("guardianVisitToActivate");
         return;
       }
       const status = response.status;
       if (!status || status.status === "PROTECTED") {
         statusEl.className = "protected";
         iconEl.textContent = "\u{1F6E1}\uFE0F";
-        textEl.textContent = browser.i18n.getMessage("guardianProtected");
+        textEl.textContent = browser2.i18n.getMessage("guardianProtected");
         detailEl.textContent = response.hostname ?? "";
         return;
       }
@@ -127,52 +141,52 @@
         case "VERIFIED":
           statusEl.className = "verified";
           iconEl.textContent = "\u2705";
-          textEl.textContent = browser.i18n.getMessage("guardianVerified");
+          textEl.textContent = browser2.i18n.getMessage("guardianVerified");
           if (status.verified === 1) {
-            detailEl.textContent = browser.i18n.getMessage("guardianResponseVerified");
+            detailEl.textContent = browser2.i18n.getMessage("guardianResponseVerified");
           } else {
-            detailEl.textContent = browser.i18n.getMessage("guardianResponsesVerified", [status.verified.toString()]);
+            detailEl.textContent = browser2.i18n.getMessage("guardianResponsesVerified", [status.verified.toString()]);
           }
           break;
         case "VERIFIED_DEPRECATED":
           statusEl.className = "warning";
           iconEl.textContent = "\u26A0\uFE0F";
-          textEl.textContent = browser.i18n.getMessage("guardianKeyExpiringSoon");
-          detailEl.textContent = browser.i18n.getMessage("guardianKeyNeedsRenewal");
+          textEl.textContent = browser2.i18n.getMessage("guardianKeyExpiringSoon");
+          detailEl.textContent = browser2.i18n.getMessage("guardianKeyNeedsRenewal");
           break;
         case "KEY_EXPIRED":
           statusEl.className = "danger";
           iconEl.textContent = "\u23F0";
-          textEl.textContent = browser.i18n.getMessage("guardianKeyExpired");
-          detailEl.textContent = browser.i18n.getMessage("guardianServerKeyNeedsRenewal");
+          textEl.textContent = browser2.i18n.getMessage("guardianKeyExpired");
+          detailEl.textContent = browser2.i18n.getMessage("guardianServerKeyNeedsRenewal");
           break;
         case "COMPROMISED":
           statusEl.className = "danger";
           iconEl.textContent = "\u{1F6A8}";
-          textEl.textContent = browser.i18n.getMessage("guardianMitmDetected");
-          detailEl.textContent = browser.i18n.getMessage("guardianSignatureVerificationFailed");
+          textEl.textContent = browser2.i18n.getMessage("guardianMitmDetected");
+          detailEl.textContent = browser2.i18n.getMessage("guardianSignatureVerificationFailed");
           break;
         case "UNSIGNED":
           statusEl.className = "danger";
           iconEl.textContent = "\u26A0\uFE0F";
-          textEl.textContent = browser.i18n.getMessage("guardianUnsigned");
+          textEl.textContent = browser2.i18n.getMessage("guardianUnsigned");
           if ((status.unsigned || 0) === 1) {
-            detailEl.textContent = browser.i18n.getMessage("guardianMissingSignature");
+            detailEl.textContent = browser2.i18n.getMessage("guardianMissingSignature");
           } else {
-            detailEl.textContent = browser.i18n.getMessage("guardianMissingSignatures", [(status.unsigned || 0).toString()]);
+            detailEl.textContent = browser2.i18n.getMessage("guardianMissingSignatures", [(status.unsigned || 0).toString()]);
           }
           break;
         default:
           statusEl.className = "inactive";
           iconEl.textContent = "\u2753";
-          textEl.textContent = browser.i18n.getMessage("guardianUnknown");
+          textEl.textContent = browser2.i18n.getMessage("guardianUnknown");
           detailEl.textContent = status.status ?? "";
       }
     } catch (err) {
       console.error("[Popup] Failed to get guardian status:", err);
       statusEl.className = "inactive";
       statusEl.querySelector(".status-icon").textContent = "\u274C";
-      statusEl.querySelector(".status-text").textContent = browser.i18n.getMessage("guardianError");
+      statusEl.querySelector(".status-text").textContent = browser2.i18n.getMessage("guardianError");
       statusEl.querySelector(".status-detail").textContent = err.message || "Unknown error";
     }
   }
@@ -198,7 +212,7 @@
     let tlsFingerprint = "";
     let isFirefox = false;
     try {
-      const response = await browser.runtime.sendMessage({ action: "get_guardian_status" });
+      const response = await browser2.runtime.sendMessage({ action: "get_guardian_status" });
       if (response) {
         isFirefox = response.isFirefox === true;
         if (isFirefox && response.status) {
@@ -219,13 +233,13 @@
       params.set("tlsFingerprint", tlsFingerprint);
     }
     seiteOeffnen(
-      browser.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
+      browser2.runtime.getURL(`popup/guardian-info.html?${params.toString()}`),
       { width: 450, height: 595, bezug: "bildschirm" }
     ).catch((err) => console.error("[Popup] Guardian-Info konnte nicht ge\xF6ffnet werden:", err));
   }
   elById("security-status").addEventListener("click", openGuardianInfoWindow);
   function openLoginWindow() {
-    const url = browser.runtime.getURL("options/welcome.html");
+    const url = browser2.runtime.getURL("options/welcome.html");
     (async () => {
       try {
         await seiteOeffnen(url, { width: 600, height: 720, bezug: "aktuell" });
@@ -240,7 +254,7 @@
       openLoginWindow();
       return;
     }
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await browser2.tabs.query({ active: true, currentWindow: true });
     const params = new URLSearchParams({ "popup": "1", "frame": "0" });
     if (tab?.id !== void 0) {
       params.set("tab", String(tab.id));
@@ -250,7 +264,7 @@
     }
     const rahmen = document.createElement("iframe");
     rahmen.id = "create-address-frame";
-    rahmen.src = `${browser.runtime.getURL("create-address/create-address.html")}?${params.toString()}`;
+    rahmen.src = `${browser2.runtime.getURL("create-address/create-address.html")}?${params.toString()}`;
     document.body.replaceChildren(rahmen);
     document.body.classList.add("mit-formular");
   }
@@ -262,7 +276,7 @@
     window.close();
   });
   async function isLoggedIn() {
-    const sync = await browser.storage.sync.get(["username", "password"]);
+    const sync = await browser2.storage.sync.get(["username", "password"]);
     return Boolean(sync.username && sync.password);
   }
   async function addressManager() {
@@ -286,7 +300,7 @@
     if (!await isLoggedIn()) {
       const label = elById("btn-address-manager").querySelector("span:last-child");
       if (label) {
-        label.textContent = browser.i18n.getMessage("popupLoginButton");
+        label.textContent = browser2.i18n.getMessage("popupLoginButton");
       }
     }
   }
@@ -295,8 +309,11 @@
   elById("btn-create-address").addEventListener("click", () => {
     void createAddressForPage();
   });
+  elById("btn-ki-fragen").addEventListener("click", () => {
+    void kiHilfeOeffnen().catch((err) => console.warn("[Popup] KI-Hilfe konnte nicht ge\xF6ffnet werden:", err)).finally(() => window.close());
+  });
   elById("btn-options").addEventListener("click", () => {
-    browser.runtime.openOptionsPage().then(() => {
+    browser2.runtime.openOptionsPage().then(() => {
       window.close();
     });
   });
