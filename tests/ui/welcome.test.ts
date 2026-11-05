@@ -275,7 +275,8 @@ describe('welcome.ts', () => {
 
             expect(registerAccountV2).toHaveBeenCalledWith('newuser', 'secret123', 'gs1');
             // v2-Konten sind OPAQUE-only -> Login via OPAQUE, nicht classic
-            expect(passwordOpaqueLogin).toHaveBeenCalledWith('newuser', 'secret123', { establishBrowserSession: true });
+            // #48779b5c WAECHTER: ohne Optionen = ohne Cookie (mit Cookie scheitert Firefox ohne Host-Berechtigung an der CORS-Vorabanfrage)
+            expect(passwordOpaqueLogin).toHaveBeenCalledWith('newuser', 'secret123');
             // OPAQUE-PAT automatisch angelegt (pat_opaque_create_*, NICHT
             // create_access_token - Classic-Tokens kann patOpaqueLogin nicht
             // verifizieren) und statt des Passworts hinterlegt
@@ -646,8 +647,8 @@ describe('welcome.ts', () => {
 
             // Kein manueller PAT-Dialog mehr
             expect(document.getElementById('opaque-pat-required-panel')).toBeNull();
-            // Login via OPAQUE-Passwort + Website-Session, dann PAT automatisch
-            expect(passwordOpaqueLogin).toHaveBeenCalledWith('bob', 'plainpassword', { establishBrowserSession: true });
+            // Login via OPAQUE-Passwort OHNE Cookie (#48779b5c), dann PAT automatisch
+            expect(passwordOpaqueLogin).toHaveBeenCalledWith('bob', 'plainpassword');
             expect(createAccessTokenOpaque).toHaveBeenCalledWith('s9', expect.any(String));
             expect(mock.storage.sync.data.get('password')).toBe('tmpat_auto');
             expect(windowsRemove).toHaveBeenCalled();
@@ -694,11 +695,124 @@ describe('welcome.ts', () => {
             $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
             await tick(8);
 
-            expect(verifyTotpLogin).toHaveBeenCalledWith('123456', true);
+            // Server ohne Sitzungskennung im 2FA-Fall: leer -> alter Cookie-Weg
+            expect(verifyTotpLogin).toHaveBeenCalledWith('123456', true, '');
             expect(createAccessTokenOpaque).toHaveBeenCalledWith('', expect.any(String));
             expect(patOpaqueLogin).toHaveBeenCalledWith('bob', 'tmpat_after2fa');
             expect(mock.storage.sync.data.get('password')).toBe('tmpat_after2fa');
             expect(windowsRemove).toHaveBeenCalled();
+        });
+
+        it('#48779b5c: 2FA ohne Cookie - schwebende Sitzung an die Pruefung, neue Kennung an die PAT-Anlage', async () => {
+            const verifyTotpLogin = vi.fn().mockResolvedValue({ success: true, session_id: 'sitzung-nach-2fa' });
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_after2fa');
+            const patOpaqueLogin = vi.fn().mockResolvedValue({ session_id: 's-2fa', domain_name_list: [], real_email_list: {} });
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true, pendingSessionId: 'sitzung-2fa' })),
+                createAccessTokenOpaque,
+                patOpaqueLogin,
+                verifyTotpLogin,
+                useRecoveryCode: vi.fn(),
+            });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : { success: true }));
+            await importWelcome();
+
+            await submitLogin('bob', 'plainpassword');
+            input('twofa-code').value = '123456';
+            $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
+            await tick(8);
+
+            expect(verifyTotpLogin).toHaveBeenCalledWith('123456', false, 'sitzung-2fa');
+            // Der Server tauscht die Kennung nach bestandener Pruefung (Session::regenerate).
+            expect(createAccessTokenOpaque).toHaveBeenCalledWith('sitzung-nach-2fa', expect.any(String));
+            expect(mock.storage.sync.data.get('password')).toBe('tmpat_after2fa');
+        });
+
+        it('#48779b5c: Wiederherstellungscode ohne Cookie - schwebende Sitzung an useRecoveryCode, neue Kennung an die PAT-Anlage', async () => {
+            const useRecoveryCode = vi.fn().mockResolvedValue({ success: true, session_id: 'sitzung-nach-rec' });
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_rec2');
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin: vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true, pendingSessionId: 'sitzung-2fa' })),
+                createAccessTokenOpaque,
+                patOpaqueLogin: vi.fn().mockResolvedValue({ session_id: 's-rec2', domain_name_list: [], real_email_list: {} }),
+                verifyTotpLogin: vi.fn(),
+                useRecoveryCode,
+            });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : { success: true }));
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            // Ohne Cookie kann der Browser das Vertrauens-Cookie nicht speichern: Option ausgeblendet.
+            expect($('twofa-trust-row').style.display).toBe('none');
+
+            $('twofa-recovery-toggle').dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+            input('twofa-code').value = 'ABCD-EFGH-IJKL';
+            $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
+            await tick(8);
+
+            expect(useRecoveryCode).toHaveBeenCalledWith('ABCD-EFGH-IJKL', 'sitzung-2fa');
+            expect(createAccessTokenOpaque).toHaveBeenCalledWith('sitzung-nach-rec', expect.any(String));
+        });
+
+        it('#48779b5c: alter Server (keine Sitzung im 2FA-Fall) - meldet sich fuer die 2FA einmal MIT Cookie neu an', async () => {
+            const passwordOpaqueLogin = vi.fn().mockRejectedValue(Object.assign(new Error('2FA required'), { requires_2fa: true }));
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin,
+                createAccessTokenOpaque: vi.fn(),
+                verifyTotpLogin: vi.fn(),
+                useRecoveryCode: vi.fn(),
+            });
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            expect(passwordOpaqueLogin).toHaveBeenCalledTimes(2);
+            expect(passwordOpaqueLogin.mock.calls[0]).toEqual(['bob', 'plainpassword']);
+            expect(passwordOpaqueLogin.mock.calls[1]).toEqual(['bob', 'plainpassword', { establishBrowserSession: true }]);
+            expect(document.getElementById('twofa-panel')!.style.display).toBe('block');
+            // Mit Cookie-Sitzung bleibt "Geraet vertrauen" sichtbar.
+            expect($('twofa-trust-row').style.display).toBe('flex');
+        });
+
+        it('#48779b5c: alter Server, Cookie-Anmeldung vom Browser gesperrt - zeigt den Fehler statt eines toten 2FA-Felds', async () => {
+            const passwordOpaqueLogin = vi.fn()
+                .mockRejectedValueOnce(Object.assign(new Error('2FA required'), { requires_2fa: true }))
+                .mockRejectedValueOnce(new TypeError('NetworkError when attempting to fetch resource.'));
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin,
+                createAccessTokenOpaque: vi.fn(),
+                verifyTotpLogin: vi.fn(),
+                useRecoveryCode: vi.fn(),
+            });
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            expect(document.getElementById('twofa-panel')).toBeNull();
+            expect($('login-error').textContent).toContain('NetworkError');
+        });
+
+        it('#48779b5c: alter Server, zweite Anmeldung MIT Cookie gelingt voll (Vertrauens-Cookie) - kein totes 2FA-Feld', async () => {
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_vertraut');
+            const passwordOpaqueLogin = vi.fn()
+                .mockRejectedValueOnce(Object.assign(new Error('2FA required'), { requires_2fa: true }))
+                .mockResolvedValueOnce({ success: true, session_id: 's-vertraut', domain_name_list: [], real_email_list: {} });
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin,
+                createAccessTokenOpaque,
+                verifyTotpLogin: vi.fn(),
+                useRecoveryCode: vi.fn(),
+            });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : { success: true }));
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            expect(document.getElementById('twofa-panel')).toBeNull();
+            expect(createAccessTokenOpaque).toHaveBeenCalledWith('s-vertraut', expect.any(String));
+            expect(mock.storage.sync.data.get('password')).toBe('tmpat_vertraut');
         });
 
         it('rejects a malformed TOTP code without calling the server', async () => {
@@ -743,7 +857,7 @@ describe('welcome.ts', () => {
             $('twofa-submit').dispatchEvent(new Event('click', { bubbles: true }));
             await tick(8);
 
-            expect(useRecoveryCode).toHaveBeenCalledWith('ABCD-EFGH-IJKL');
+            expect(useRecoveryCode).toHaveBeenCalledWith('ABCD-EFGH-IJKL', '');
             expect(patOpaqueLogin).toHaveBeenCalledWith('bob', 'tmpat_rec');
         });
     });

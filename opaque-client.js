@@ -213,6 +213,13 @@ class AddonOpaqueClient {
      */
     async createAccessTokenOpaque(sessionId, name) {
         await this.initialize();
+        // #48779b5c Mit bekannter Konto-Sitzung OHNE Cookie: Eine Anfrage mit
+        // credentials:"include" scheitert in Firefox ohne Host-Berechtigung
+        // schon an der CORS-Vorabanfrage (der Server antwortet mit
+        // Access-Control-Allow-Origin: *). Ohne Kennung (2FA gegen einen Server
+        // vor src #294) traegt das Cookie - welcome.ts meldet sich dafuer
+        // vorher eigens MIT Cookie an; ohne Host-Berechtigung geht das nicht.
+        const credentialsMode = sessionId ? "omit" : "include";
 
         const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
         const lang = browser.i18n.getUILanguage().substr(0, 2);
@@ -233,7 +240,7 @@ class AddonOpaqueClient {
         // Zugriffsprotokoll). Der Server wertet X-TrashMail-Session genau wie
         // ?session_id= nur aus, wenn kein Sitzungs-Cookie mitkommt.
         const initResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_init&lang=' + lang, {
-            credentials: "include",
+            credentials: credentialsMode,
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-TrashMail-Session': String(sessionId) },
             body: JSON.stringify({ registration_request: registrationRequest })
@@ -270,7 +277,7 @@ class AddonOpaqueClient {
         // X-TrashMail-Session -> beide Male Fehler 11 (erfundene
         // OPAQUE-Sitzung), also beide an der Anmeldepruefung vorbei.
         const finishResponse = await fetch(baseUrl + '/?api=1&cmd=pat_opaque_create_finish&lang=' + lang, {
-            credentials: "include",
+            credentials: credentialsMode,
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-TrashMail-Session': String(sessionId) },
             body: JSON.stringify({
@@ -303,10 +310,12 @@ class AddonOpaqueClient {
      *
      * @param {string} code - 6-stelliger TOTP-Code
      * @param {boolean} trustDevice - Geraet 30 Tage als vertrauenswuerdig merken
-     * @returns {Promise<{success: boolean}>}
+     * @param {string} [pendingSessionId] - Sitzung aus dem 2FA-Fehler von
+     *   passwordOpaqueLogin (`error.pendingSessionId`); leer = Cookie-Weg
+     * @returns {Promise<{success: boolean, session_id: string}>}
      */
-    async verifyTotpLogin(code, trustDevice = false) {
-        return this._completePending2fa('totp_verify', { code, trust_device: !!trustDevice });
+    async verifyTotpLogin(code, trustDevice = false, pendingSessionId = '') {
+        return this._completePending2fa('totp_verify', { code, trust_device: !!trustDevice }, pendingSessionId);
     }
 
     /**
@@ -314,26 +323,36 @@ class AddonOpaqueClient {
      * wenn der Authenticator nicht verfuegbar ist.
      *
      * @param {string} code - Wiederherstellungscode (XXXX-XXXX-XXXX)
+     * @param {string} [pendingSessionId] - wie bei verifyTotpLogin
      * @returns {Promise<{success: boolean}>}
      */
-    async useRecoveryCode(code) {
-        return this._completePending2fa('totp_recovery_use', { code });
+    async useRecoveryCode(code, pendingSessionId = '') {
+        return this._completePending2fa('totp_recovery_use', { code }, pendingSessionId);
     }
 
     /**
-     * Gemeinsamer Aufruf fuer die 2FA-Abschluss-Endpoints. credentials:include
-     * ist Pflicht, damit das Cookie mit der 2fa_pending-Session mitgeht.
+     * Gemeinsamer Aufruf fuer die 2FA-Abschluss-Endpoints.
+     *
+     * #48779b5c Mit Sitzungskennung geht die 2fa_pending-Sitzung in der
+     * Kopfzeile X-TrashMail-Session, OHNE Cookie (sonst scheitert Firefox ohne
+     * Host-Berechtigung an der CORS-Vorabanfrage, und Safari schickt das Cookie
+     * ohnehin nicht). Ohne Kennung (Server vor src #294) geht das Cookie mit;
+     * das traegt nur, wenn welcome.ts sich vorher MIT Cookie angemeldet hat.
      * @private
      */
-    async _completePending2fa(cmd, body) {
+    async _completePending2fa(cmd, body, pendingSessionId = '') {
         await this.initialize();
         const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
         const lang = browser.i18n.getUILanguage().substr(0, 2);
 
+        const headers = { 'Content-Type': 'application/json' };
+        if (pendingSessionId) {
+            headers['X-TrashMail-Session'] = String(pendingSessionId);
+        }
         const response = await fetch(baseUrl + '/?api=1&cmd=' + cmd + '&lang=' + lang, {
-            credentials: "include",
+            credentials: pendingSessionId ? "omit" : "include",
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(body)
         });
         const result = await response.json();
@@ -349,7 +368,9 @@ class AddonOpaqueClient {
             throw error;
         }
 
-        return { success: true };
+        // #48779b5c Der Server tauscht nach bestandener Pruefung die Kennung
+        // (Session::regenerate) und nennt sie nur Clients ohne Cookie.
+        return { success: true, session_id: result.session_id || '' };
     }
 
     /**
@@ -492,6 +513,9 @@ class AddonOpaqueClient {
         if (data.requires_2fa) {
             const error = new Error('2FA required');
             error.requires_2fa = true;
+            // #48779b5c Ohne Cookie kennt nur diese Antwort die Sitzung, in der
+            // der Server den 2FA-Zustand haelt. Aeltere Server liefern sie nicht.
+            error.pendingSessionId = data.session_id || '';
             throw error;
         }
 

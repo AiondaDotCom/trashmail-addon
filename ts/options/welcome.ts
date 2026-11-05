@@ -381,10 +381,12 @@ function register(e: Event) {
         return browser.storage.local.set({ "previous_addresses": {} });
     }).then(() => {
         // v2-Konten sind OPAQUE-only - klassischer Login geht nicht.
-        // establishBrowserSession setzt zugleich das Website-Cookie: noetig
-        // fuer die OPAQUE-PAT-Erstellung gleich danach, und der User ist im
-        // Browser direkt eingeloggt.
-        return opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true });
+        // #48779b5c Ohne Cookie: Die Konto-Sitzung kommt aus der Antwort und
+        // traegt die PAT-Erstellung gleich danach per X-TrashMail-Session.
+        // Mit Cookie scheiterte Firefox ohne Host-Berechtigung schon an der
+        // CORS-Vorabanfrage. Die Webseiten-Sitzung stellt "Manager oeffnen"
+        // bei Bedarf selbst her.
+        return opaqueClient.passwordOpaqueLogin(username, password);
     }).then((loginDetails) => {
         // Speichert Zugangsdaten + Session (needsPAT=false: der PAT kommt
         // gleich als OPAQUE-Token, nicht als Classic-Token)
@@ -886,19 +888,44 @@ function loginWithOpaquePassword(username: string, password: string, loginButton
     }
     const opaqueClient = addonOpaqueClient;
 
-    // establishBrowserSession setzt zugleich das Website-Cookie (noetig fuer die
-    // PAT-Erstellung und den direkten Login).
-    opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true })
-        .then((loginDetails) => handleLoginSuccess(username, password, loginDetails, false))
-        .then((loginDetails) =>
-            // OPAQUE-PAT anlegen und statt des Passworts hinterlegen
-            opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName())
-                .then((token) => browser.storage.sync.set({ "password": token }))
-                .then(() => loginDetails))
-        .then((loginDetails) => loadDEAAndClose(loginDetails["session_id"] as string))
+    // #48779b5c Ohne Cookie (siehe Registrierung oben): Kunde AM-000075 kam
+    // mit Firefox ohne Host-Berechtigung nie ueber opaque_login_init hinaus,
+    // weil die Anfrage mit Cookie an der CORS-Vorabanfrage scheiterte.
+    // Erfolgskette nach einer vollstaendigen Anmeldung: speichern, OPAQUE-PAT
+    // anlegen und statt des Passworts hinterlegen, Adressen laden.
+    const nachAnmeldung = (anmeldung: TmApiResponse): Promise<void> =>
+        handleLoginSuccess(username, password, anmeldung, false)
+            .then((loginDetails) =>
+                opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName())
+                    .then((token) => browser.storage.sync.set({ "password": token }))
+                    .then(() => loginDetails))
+            .then((loginDetails) => loadDEAAndClose(loginDetails["session_id"] as string));
+
+    opaqueClient.passwordOpaqueLogin(username, password)
+        .then(nachAnmeldung)
         .catch((error: AppError) => {
             if (error.requires_2fa) {
-                show2FAInput(username, password);
+                const pending = typeof error.pendingSessionId === "string" ? error.pendingSessionId : "";
+                if (pending) {
+                    show2FAInput(username, password, pending);
+                    return;
+                }
+                // #48779b5c Server ohne session_id im 2FA-Fall (vor src #294):
+                // Die schwebende Sitzung der cookielosen Anmeldung erreicht hier
+                // niemand mehr. Einmal MIT Cookie neu anmelden, damit der Browser
+                // die 2FA-Sitzung haelt - der alte Weg, der mit Host-Berechtigung
+                // (Chrome, Firefox mit Freigabe) funktionierte.
+                // Gelingt die zweite Anmeldung voll (z. B. Vertrauens-Cookie im
+                // Browser), geht es normal weiter statt in ein totes 2FA-Feld.
+                opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true })
+                    .then(nachAnmeldung)
+                    .catch((zweiter: AppError) => {
+                        if (zweiter.requires_2fa) {
+                            show2FAInput(username, password, "");
+                            return;
+                        }
+                        showLoginError(zweiter, loginError, progress, cancelButton, loginButton);
+                    });
                 return;
             }
             showLoginError(error, loginError, progress, cancelButton, loginButton);
@@ -960,14 +987,20 @@ function performClassicLoginWithMigration(username: string, password: string, lo
 }
 
 /**
+ * Sitzung, in der der Server die schwebende 2FA-Anmeldung haelt (#48779b5c).
+ * Leer = Server ohne Sitzungskennung im 2FA-Fall, dann traegt das Cookie.
+ */
+let pending2faSessionId = "";
+
+/**
  * 2FA-Abschluss direkt im Addon: Nach erfolgreicher Code-Pruefung ist die
- * Cookie-Session authentifiziert. Wir legen den OPAQUE-PAT an (Zero-Knowledge),
+ * schwebende Sitzung authentifiziert. Wir legen den OPAQUE-PAT an (Zero-Knowledge),
  * hinterlegen ihn statt des Passworts und melden uns damit final an. Danach ist
  * der User eingeloggt - kein Umweg mehr ueber die Webseite noetig.
  */
 function finish2faLogin(username: string): Promise<void> {
     let pat = "";
-    return addonOpaqueClient!.createAccessTokenOpaque("", getBrowserName())
+    return addonOpaqueClient!.createAccessTokenOpaque(pending2faSessionId, getBrowserName())
         .then((token) => {
             pat = token;
             return addonOpaqueClient!.patOpaqueLogin(username, token);
@@ -1003,11 +1036,17 @@ function submit2fa(username: string, recoveryMode: boolean) {
     progress.style.display = "inline-block";
 
     const verify = recoveryMode
-        ? addonOpaqueClient!.useRecoveryCode(code)
-        : addonOpaqueClient!.verifyTotpLogin(code, trust.checked);
+        ? addonOpaqueClient!.useRecoveryCode(code, pending2faSessionId)
+        : addonOpaqueClient!.verifyTotpLogin(code, trust.checked, pending2faSessionId);
 
     verify
-        .then(() => finish2faLogin(username))
+        .then((ergebnis) => {
+            // #48779b5c Nach bestandener Pruefung gilt die NEUE Kennung des
+            // Servers (Session::regenerate); ohne Cookie steht sie nur hier.
+            // Leer = Cookie-Weg (alter Server oder Anmeldung mit Cookie).
+            pending2faSessionId = typeof ergebnis?.session_id === "string" ? ergebnis.session_id : "";
+            return finish2faLogin(username);
+        })
         .catch((error: AppError) => {
             progress.style.display = "none";
             submitButton.disabled = false;
@@ -1026,7 +1065,8 @@ function submit2fa(username: string, recoveryMode: boolean) {
  * ein Passkey wird an dieser Stelle nie verlangt (und liesse sich aus dem
  * chrome-extension://-Kontext wegen der rpId-Bindung ohnehin nicht nutzen).
  */
-function show2FAInput(username: string, _password: string) {
+function show2FAInput(username: string, _password: string, pendingSessionId = "") {
+    pending2faSessionId = pendingSessionId;
     const loginProgress = document.getElementById("progress-login");
     if (loginProgress) {loginProgress.style.display = "none";}
 
@@ -1075,7 +1115,10 @@ function show2FAInput(username: string, _password: string) {
         info.textContent = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryInfo" : "info2FA");
         input.placeholder = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryPlaceholder" : "twofaCodePlaceholder");
         input.setAttribute("inputmode", recoveryMode ? "text" : "numeric");
-        trustRow.style.display = recoveryMode ? "none" : "flex";
+        // #48779b5c Ohne Cookie (schwebende Sitzung per Kopfzeile) kann der
+        // Browser das Vertrauens-Cookie tm_trusted_device nicht speichern -
+        // die Option waere ein leeres Versprechen.
+        trustRow.style.display = recoveryMode || pending2faSessionId !== "" ? "none" : "flex";
         toggle.textContent = browser.i18n.getMessage(recoveryMode ? "twofaUseAuthenticator" : "twofaUseRecovery");
         input.value = "";
         errorBox.style.display = "none";
