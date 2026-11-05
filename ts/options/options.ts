@@ -91,6 +91,17 @@ function restoreOptions() {
         const pairs: [string, string][] = [["real_emails", "default_email"], ["domains", "default_domain"]];
         for (const [list, prop] of pairs) {
             const select = elById<HTMLSelectElement>(prop);
+
+            // Internes Postfach als erste Wahl, wie im Fenster "Adresse erstellen".
+            // Ohne gespeicherten Wert (Erstinstallation, "Zurücksetzen") ist sie
+            // ausgewählt, weil sie als erste Option den Vorrang hat.
+            if (prop === "default_email") {
+                const vaultOption = document.createElement("option");
+                vaultOption.value = "vault";
+                vaultOption.text = browser.i18n.getMessage("optionsInternalMailbox") || "Internal Mailbox";
+                select.add(vaultOption);
+            }
+
             const raw = local[list];
             const items = Array.isArray(raw) ? raw : Object.keys((raw as Record<string, unknown> | undefined) || {});
             for (const item of items) {

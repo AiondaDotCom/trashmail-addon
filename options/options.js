@@ -120,6 +120,12 @@
       const pairs = [["real_emails", "default_email"], ["domains", "default_domain"]];
       for (const [list, prop] of pairs) {
         const select = elById(prop);
+        if (prop === "default_email") {
+          const vaultOption = document.createElement("option");
+          vaultOption.value = "vault";
+          vaultOption.text = browser.i18n.getMessage("optionsInternalMailbox") || "Internal Mailbox";
+          select.add(vaultOption);
+        }
         const raw = local[list];
         const items = Array.isArray(raw) ? raw : Object.keys(raw || {});
         for (const item of items) {

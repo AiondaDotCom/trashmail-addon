@@ -59,6 +59,33 @@ describe('options.ts', () => {
             expect(select('default_email').disabled).toBe(false);
         });
 
+        it('offers the internal mailbox first and preselects it without a saved default', async () => {
+            mock.storage.sync.data.set('username', 'alice');
+            mock.storage.local.data.set('real_emails', ['a@b.com']);
+            mock.i18n.messages.set('optionsInternalMailbox', 'Im internen Postfach speichern');
+
+            await importOptions();
+            fireDomReady();
+            await tick();
+
+            const first = select('default_email').options[0];
+            expect(first.value).toBe('vault');
+            expect(first.text).toBe('Im internen Postfach speichern');
+            expect(select('default_email').value).toBe('vault');
+        });
+
+        it('restores a saved internal-mailbox default', async () => {
+            mock.storage.sync.data.set('username', 'alice');
+            mock.storage.sync.data.set('default_email', 'vault');
+            mock.storage.local.data.set('real_emails', ['a@b.com']);
+
+            await importOptions();
+            fireDomReady();
+            await tick();
+
+            expect(select('default_email').value).toBe('vault');
+        });
+
         it('keeps fields disabled and shows the localized logged-out state without a username', async () => {
             mock.storage.local.data.set('real_emails', ['a@b.com']);
             mock.i18n.messages.set('optionsNotLoggedIn', 'Nicht angemeldet');
