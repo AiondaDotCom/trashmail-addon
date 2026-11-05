@@ -794,6 +794,27 @@ describe('welcome.ts', () => {
             expect($('login-error').textContent).toContain('NetworkError');
         });
 
+        it('#48779b5c: alter Server, zweite Anmeldung MIT Cookie gelingt voll (Vertrauens-Cookie) - kein totes 2FA-Feld', async () => {
+            const createAccessTokenOpaque = vi.fn().mockResolvedValue('tmpat_vertraut');
+            const passwordOpaqueLogin = vi.fn()
+                .mockRejectedValueOnce(Object.assign(new Error('2FA required'), { requires_2fa: true }))
+                .mockResolvedValueOnce({ success: true, session_id: 's-vertraut', domain_name_list: [], real_email_list: {} });
+            setOpaqueClient({
+                checkOpaqueEnabled: vi.fn().mockResolvedValue({ opaque_enabled: true, srp_enabled: false }),
+                passwordOpaqueLogin,
+                createAccessTokenOpaque,
+                verifyTotpLogin: vi.fn(),
+                useRecoveryCode: vi.fn(),
+            });
+            globals.callAPI.mockImplementation(async (d: { cmd: string }) => (d.cmd === 'read_dea' ? [] : { success: true }));
+            await importWelcome();
+            await submitLogin('bob', 'plainpassword');
+
+            expect(document.getElementById('twofa-panel')).toBeNull();
+            expect(createAccessTokenOpaque).toHaveBeenCalledWith('s-vertraut', expect.any(String));
+            expect(mock.storage.sync.data.get('password')).toBe('tmpat_vertraut');
+        });
+
         it('rejects a malformed TOTP code without calling the server', async () => {
             const verifyTotpLogin = vi.fn();
             setOpaqueClient({

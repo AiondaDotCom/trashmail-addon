@@ -891,14 +891,18 @@ function loginWithOpaquePassword(username: string, password: string, loginButton
     // #48779b5c Ohne Cookie (siehe Registrierung oben): Kunde AM-000075 kam
     // mit Firefox ohne Host-Berechtigung nie ueber opaque_login_init hinaus,
     // weil die Anfrage mit Cookie an der CORS-Vorabanfrage scheiterte.
+    // Erfolgskette nach einer vollstaendigen Anmeldung: speichern, OPAQUE-PAT
+    // anlegen und statt des Passworts hinterlegen, Adressen laden.
+    const nachAnmeldung = (anmeldung: TmApiResponse): Promise<void> =>
+        handleLoginSuccess(username, password, anmeldung, false)
+            .then((loginDetails) =>
+                opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName())
+                    .then((token) => browser.storage.sync.set({ "password": token }))
+                    .then(() => loginDetails))
+            .then((loginDetails) => loadDEAAndClose(loginDetails["session_id"] as string));
+
     opaqueClient.passwordOpaqueLogin(username, password)
-        .then((loginDetails) => handleLoginSuccess(username, password, loginDetails, false))
-        .then((loginDetails) =>
-            // OPAQUE-PAT anlegen und statt des Passworts hinterlegen
-            opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName())
-                .then((token) => browser.storage.sync.set({ "password": token }))
-                .then(() => loginDetails))
-        .then((loginDetails) => loadDEAAndClose(loginDetails["session_id"] as string))
+        .then(nachAnmeldung)
         .catch((error: AppError) => {
             if (error.requires_2fa) {
                 const pending = typeof error.pendingSessionId === "string" ? error.pendingSessionId : "";
@@ -911,8 +915,10 @@ function loginWithOpaquePassword(username: string, password: string, loginButton
                 // niemand mehr. Einmal MIT Cookie neu anmelden, damit der Browser
                 // die 2FA-Sitzung haelt - der alte Weg, der mit Host-Berechtigung
                 // (Chrome, Firefox mit Freigabe) funktionierte.
+                // Gelingt die zweite Anmeldung voll (z. B. Vertrauens-Cookie im
+                // Browser), geht es normal weiter statt in ein totes 2FA-Feld.
                 opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true })
-                    .then(() => { throw Object.assign(new Error("2FA required"), { requires_2fa: true }); })
+                    .then(nachAnmeldung)
                     .catch((zweiter: AppError) => {
                         if (zweiter.requires_2fa) {
                             show2FAInput(username, password, "");

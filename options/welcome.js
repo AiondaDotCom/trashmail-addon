@@ -772,19 +772,15 @@
       return;
     }
     const opaqueClient = addonOpaqueClient;
-    opaqueClient.passwordOpaqueLogin(username, password).then((loginDetails) => handleLoginSuccess(username, password, loginDetails, false)).then((loginDetails) => (
-      // OPAQUE-PAT anlegen und statt des Passworts hinterlegen
-      opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails)
-    )).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"])).catch((error) => {
+    const nachAnmeldung = (anmeldung) => handleLoginSuccess(username, password, anmeldung, false).then((loginDetails) => opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails)).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"]));
+    opaqueClient.passwordOpaqueLogin(username, password).then(nachAnmeldung).catch((error) => {
       if (error.requires_2fa) {
         const pending = typeof error.pendingSessionId === "string" ? error.pendingSessionId : "";
         if (pending) {
           show2FAInput(username, password, pending);
           return;
         }
-        opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true }).then(() => {
-          throw Object.assign(new Error("2FA required"), { requires_2fa: true });
-        }).catch((zweiter) => {
+        opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true }).then(nachAnmeldung).catch((zweiter) => {
           if (zweiter.requires_2fa) {
             show2FAInput(username, password, "");
             return;
