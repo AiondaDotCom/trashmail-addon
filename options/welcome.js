@@ -844,7 +844,10 @@
     submitButton.disabled = true;
     progress.style.display = "inline-block";
     const verify = recoveryMode ? addonOpaqueClient.useRecoveryCode(code, pending2faSessionId) : addonOpaqueClient.verifyTotpLogin(code, trust.checked, pending2faSessionId);
-    verify.then(() => finish2faLogin(username)).catch((error) => {
+    verify.then((ergebnis) => {
+      pending2faSessionId = typeof ergebnis?.session_id === "string" ? ergebnis.session_id : "";
+      return finish2faLogin(username);
+    }).catch((error) => {
       progress.style.display = "none";
       submitButton.disabled = false;
       errorBox.textContent = error.message || String(error);
