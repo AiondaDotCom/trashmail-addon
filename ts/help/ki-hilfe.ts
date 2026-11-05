@@ -141,13 +141,16 @@ export function kontextFuerKi(version: string, kanal: string, zugriff: boolean, 
 }
 
 /** HTML einer Hilfeseite → Klartext (wie read_help im Web-Manager) und Titel. */
+const entitaeten = (s: string): string =>
+    s.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&amp;/g, "&");
+
 export function hilfeText(html: string): { titel: string; text: string } {
-    const titel = (html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
-    const text = html
+    // Auch der Titel wird entschlüsselt - er erscheint als Text im Fenster ("Zustellung &amp; Header", 05.11.2026).
+    const titel = entitaeten((html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] ?? "").replace(/<[^>]+>/g, "")).trim();
+    const text = entitaeten(html
         .replace(/<style[\s\S]*?<\/style>/gi, " ")
         .replace(/<script[\s\S]*?<\/script>/gi, " ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"")
+        .replace(/<[^>]+>/g, " "))
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, HILFE_ZEICHEN);

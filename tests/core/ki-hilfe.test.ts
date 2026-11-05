@@ -61,5 +61,8 @@ describe("KI-Hilfe", () => {
         expect(titel).toBe("Browser-Erweiterung");
         expect(text.startsWith('Browser-Erweiterung Schalte "Auf Ihre Daten" ein.')).toBe(true);
         expect(text.length).toBeLessThanOrEqual(8000);
+        // Titel erscheint als Text im Fenster: Entitäten entschlüsselt, &amp;lt; bleibt wörtlich "&lt;".
+        expect(kiHilfe.hilfeText("<h2>Zustellung &amp; Header</h2>").titel).toBe("Zustellung & Header");
+        expect(kiHilfe.hilfeText("<h2>a</h2><p>&amp;lt;b&amp;gt;</p>").text).toBe("a &lt;b&gt;");
     });
 });
