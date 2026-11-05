@@ -74,8 +74,24 @@
     }
   }
 
-  // trashmail-addon/ts/options/options.ts
+  // trashmail-addon/ts/help/ki-hilfe-konstanten.ts
+  var SPEICHER_LETZTE_MELDUNG = "ki_letzte_meldung";
+  var SPEICHER_VORGABE_FRAGE = "ki_vorgabe_frage";
+
+  // trashmail-addon/ts/help/ki-oeffnen.ts
   var browser = globalThis.browser ?? chrome;
+  async function kiHilfeOeffnen(frage, letzteMeldung) {
+    if (letzteMeldung !== void 0) {
+      await browser.storage.local.set({ [SPEICHER_LETZTE_MELDUNG]: letzteMeldung.slice(0, 300) });
+    } else {
+      await browser.storage.local.remove(SPEICHER_LETZTE_MELDUNG);
+    }
+    await browser.storage.local.set({ [SPEICHER_VORGABE_FRAGE]: frage ? frage.slice(0, 600) : "" });
+    await seiteOeffnen(browser.runtime.getURL("help/ki-hilfe.html"), { width: 440, height: 660, bezug: "aktuell" });
+  }
+
+  // trashmail-addon/ts/options/options.ts
+  var browser2 = globalThis.browser ?? chrome;
   function elById(id) {
     const el = document.getElementById(id);
     if (el === null) {
@@ -84,12 +100,12 @@
     return el;
   }
   elById("btn-switch-login").onclick = function() {
-    seiteOeffnen(browser.runtime.getURL("options/welcome.html"), { width: 600, height: 720, bezug: "aktuell" }).then((welcome) => {
+    seiteOeffnen(browser2.runtime.getURL("options/welcome.html"), { width: 600, height: 720, bezug: "aktuell" }).then((welcome) => {
       beimSchliessen(welcome, () => window.location.reload());
     }).catch((err) => console.error("[Aionda Mail] Anmeldung konnte nicht ge\xF6ffnet werden:", err));
   };
   function logout() {
-    browser.storage.local.get(["session_id"]).then((local) => {
+    browser2.storage.local.get(["session_id"]).then((local) => {
       const sessionId = local["session_id"];
       const requests = [];
       if (sessionId) {
@@ -101,8 +117,8 @@
       }).catch(() => void 0));
       return Promise.all(requests);
     }).then(() => Promise.all([
-      browser.storage.sync.remove(["username", "password"]),
-      browser.storage.local.remove(["session_id", "is_opaque_account", "real_emails", "domains", "previous_addresses"])
+      browser2.storage.sync.remove(["username", "password"]),
+      browser2.storage.local.remove(["session_id", "is_opaque_account", "real_emails", "domains", "previous_addresses"])
     ])).then(() => {
       window.location.reload();
     });
@@ -112,8 +128,8 @@
     function setCurrentOptions(result) {
       const [sync, local] = result;
       const isLoggedIn = Boolean(sync["username"]);
-      elById("username").textContent = isLoggedIn ? String(sync["username"]) : browser.i18n.getMessage("optionsNotLoggedIn");
-      elById("btn-switch-login").textContent = browser.i18n.getMessage(
+      elById("username").textContent = isLoggedIn ? String(sync["username"]) : browser2.i18n.getMessage("optionsNotLoggedIn");
+      elById("btn-switch-login").textContent = browser2.i18n.getMessage(
         isLoggedIn ? "optionsSwitchLoginButton" : "optionsLoginButton"
       );
       elById("btn-logout").style.display = isLoggedIn ? "" : "none";
@@ -123,7 +139,7 @@
         if (prop === "default_email") {
           const vaultOption = document.createElement("option");
           vaultOption.value = "vault";
-          vaultOption.text = browser.i18n.getMessage("optionsInternalMailbox") || "Internal Mailbox";
+          vaultOption.text = browser2.i18n.getMessage("optionsInternalMailbox") || "Internal Mailbox";
           select.add(vaultOption);
         }
         const raw = local[list];
@@ -161,8 +177,8 @@
         }
       }
     }
-    const p1 = browser.storage.sync.get();
-    const p2 = browser.storage.local.get(["real_emails", "domains"]);
+    const p1 = browser2.storage.sync.get();
+    const p2 = browser2.storage.local.get(["real_emails", "domains"]);
     Promise.all([p1, p2]).then(setCurrentOptions);
     if (sessionStorage !== null && sessionStorage.getItem("reset")) {
       const msg = elById("saved_msg");
@@ -174,7 +190,7 @@
   function saveOptions(e) {
     e.preventDefault();
     elById("saved_msg").style.display = "none";
-    const getter = browser.storage.sync.get();
+    const getter = browser2.storage.sync.get();
     const form = new FormData(e.target);
     const formObj = {};
     for (const [key, value] of form) {
@@ -195,7 +211,7 @@
       if (sessionStorage !== null) {
         sessionStorage.setItem("undo", JSON.stringify(storage));
       }
-      browser.storage.sync.set(formObj).then(() => {
+      browser2.storage.sync.set(formObj).then(() => {
         const msg = elById("saved_msg");
         msg.style.display = "block";
         if (sessionStorage === null) {
@@ -207,7 +223,7 @@
   document.querySelector("form").addEventListener("submit", saveOptions);
   function undoOptions() {
     const undo = JSON.parse(sessionStorage.getItem("undo"));
-    browser.storage.sync.set(undo).then(() => {
+    browser2.storage.sync.set(undo).then(() => {
       window.location.reload();
     });
   }
@@ -222,12 +238,12 @@
       "default_send",
       "default_domain"
     ];
-    browser.storage.sync.get().then((storage) => {
+    browser2.storage.sync.get().then((storage) => {
       if (sessionStorage !== null) {
         sessionStorage.setItem("undo", JSON.stringify(storage));
         sessionStorage.setItem("reset", String(true));
       }
-      browser.storage.sync.remove(options).then(() => {
+      browser2.storage.sync.remove(options).then(() => {
         window.location.reload(true);
       });
     });
@@ -246,6 +262,9 @@
     });
   }
   elById("btn-address-manager").addEventListener("click", addressManager);
+  elById("btn-ki-fragen").addEventListener("click", () => {
+    void kiHilfeOeffnen();
+  });
   var debugClickCount = 0;
   var debugClickTimer;
   function initDebugPanel() {
@@ -273,7 +292,7 @@
         const isHidden = !debugPanel.style.display || debugPanel.style.display === "none";
         debugPanel.style.display = isHidden ? "block" : "none";
         console.log("[Debug] Panel toggled:", isHidden ? "shown" : "hidden");
-        browser.storage.local.get("debugApiUrl").then((result) => {
+        browser2.storage.local.get("debugApiUrl").then((result) => {
           const select = elById("debug_api_url");
           if (result.debugApiUrl) {
             select.value = result.debugApiUrl;
@@ -288,7 +307,7 @@
   document.addEventListener("DOMContentLoaded", initDebugPanel);
   function updateDebugStatus() {
     const status = elById("debug-status");
-    browser.storage.local.get("debugApiUrl").then((result) => {
+    browser2.storage.local.get("debugApiUrl").then((result) => {
       if (result.debugApiUrl && result.debugApiUrl !== "https://mail.aionda.com") {
         status.textContent = `\u26A0\uFE0F Debug mode active: ${result.debugApiUrl}`;
         status.style.color = "#c00";
@@ -300,14 +319,14 @@
   }
   elById("btn-save-debug").addEventListener("click", () => {
     const url = elById("debug_api_url").value;
-    browser.storage.local.set({ debugApiUrl: url }).then(() => {
+    browser2.storage.local.set({ debugApiUrl: url }).then(() => {
       globalThis.API_BASE_URL = url;
       updateDebugStatus();
       alert("Debug settings saved! Please reload the extension or restart the browser for changes to take full effect.");
     });
   });
   elById("btn-reset-debug").addEventListener("click", () => {
-    browser.storage.local.remove("debugApiUrl").then(() => {
+    browser2.storage.local.remove("debugApiUrl").then(() => {
       globalThis.API_BASE_URL = DEFAULT_API_URL;
       elById("debug_api_url").value = "https://mail.aionda.com";
       updateDebugStatus();

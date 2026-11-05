@@ -261,5 +261,27 @@
     "safariExtensionDescription": {
         "message": "Créez des adresses e-mail jetables en un clic et protégez votre vraie adresse du spam.",
         "description": "Safari (App Store): höchstens 112 Zeichen"
-    }
+    },
+    "kiFragen": {"message": "Demander à l'IA"},
+    "kiHilfeTitel": {"message": "Aide par l'IA"},
+    "kiHilfeAbschnitt": {"message": "Aide et assistance"},
+    "kiHilfeAbschnittText": {"message": "Des questions sur l'extension ou la connexion ? L'IA lit notre aide et répond aussitôt."},
+    "kiBegruessung": {"message": "Bonjour ! Comment puis-je vous aider avec Aionda Mail ?"},
+    "kiVorschlagAnmeldung": {"message": "Je n'arrive pas à me connecter"},
+    "kiVorschlagAdresse": {"message": "Comment créer une adresse ?"},
+    "kiVorschlagErweiterung": {"message": "Que peut faire l'extension ?"},
+    "kiEingabePlatzhalter": {"message": "Votre question …"},
+    "kiSenden": {"message": "Envoyer"},
+    "kiDenkt": {"message": "L'IA réfléchit …"},
+    "kiLiestHilfe": {"message": "Lecture de l'aide : $1"},
+    "kiKontextTitel": {"message": "L'IA voit :"},
+    "kiKontextZugriffAn": {"message": "Accès aux sites web accordé"},
+    "kiKontextZugriffAus": {"message": "Accès aux sites web non accordé"},
+    "kiKontextFehler": {"message": "dernier message : $1"},
+    "kiHinweis": {"message": "Vos questions sont envoyées à l'IA d'Aionda pour y répondre. Rien n'est conservé. Votre mot de passe et vos identifiants ne sont jamais transmis."},
+    "kiSupport": {"message": "Contacter l'assistance"},
+    "kiFehlerLimit": {"message": "Plus aucune question n'est possible aujourd'hui. Réessayez demain."},
+    "kiFehlerBesetzt": {"message": "L'IA est occupée pour le moment. Réessayez dans un instant."},
+    "kiFehlerAllgemein": {"message": "L'IA est injoignable pour le moment. Réessayez plus tard."},
+    "kiAnmeldeFehlerFrage": {"message": "À la connexion dans l'extension, j'obtiens : « $1 ». Que faire ?"}
 }

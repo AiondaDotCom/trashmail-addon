@@ -259,5 +259,27 @@
     "safariExtensionDescription": {
         "message": "Crie endereços de email descartáveis com um clique e proteja seu endereço real do spam.",
         "description": "Safari (App Store): höchstens 112 Zeichen"
-    }
+    },
+    "kiFragen": {"message": "Perguntar à IA"},
+    "kiHilfeTitel": {"message": "Ajuda por IA"},
+    "kiHilfeAbschnitt": {"message": "Ajuda e suporte"},
+    "kiHilfeAbschnittText": {"message": "Dúvidas sobre a extensão ou o login? A IA lê nossa ajuda e responde na hora."},
+    "kiBegruessung": {"message": "Olá! Como posso ajudar você com o Aionda Mail?"},
+    "kiVorschlagAnmeldung": {"message": "Não consigo fazer login"},
+    "kiVorschlagAdresse": {"message": "Como crio um endereço?"},
+    "kiVorschlagErweiterung": {"message": "O que a extensão faz?"},
+    "kiEingabePlatzhalter": {"message": "Sua pergunta …"},
+    "kiSenden": {"message": "Enviar"},
+    "kiDenkt": {"message": "A IA está pensando …"},
+    "kiLiestHilfe": {"message": "Lendo a ajuda: $1"},
+    "kiKontextTitel": {"message": "A IA vê:"},
+    "kiKontextZugriffAn": {"message": "Acesso a sites concedido"},
+    "kiKontextZugriffAus": {"message": "Acesso a sites não concedido"},
+    "kiKontextFehler": {"message": "última mensagem: $1"},
+    "kiHinweis": {"message": "Suas perguntas vão para a IA da Aionda para serem respondidas. Nada é armazenado. Sua senha e seus dados de acesso nunca são enviados."},
+    "kiSupport": {"message": "Falar com o suporte"},
+    "kiFehlerLimit": {"message": "Hoje não é possível fazer mais perguntas. Tente novamente amanhã."},
+    "kiFehlerBesetzt": {"message": "A IA está ocupada no momento. Tente de novo em instantes."},
+    "kiFehlerAllgemein": {"message": "A IA não está disponível no momento. Tente mais tarde."},
+    "kiAnmeldeFehlerFrage": {"message": "Ao fazer login na extensão aparece: \"$1\". O que posso fazer?"}
 }

@@ -261,5 +261,27 @@
     "safariExtensionDescription": {
         "message": "Create disposable email addresses in one click and protect your real address from spam.",
         "description": "Safari (App Store): höchstens 112 Zeichen"
-    }
+    },
+    "kiFragen": {"message": "Ask AI"},
+    "kiHilfeTitel": {"message": "AI help"},
+    "kiHilfeAbschnitt": {"message": "Help & support"},
+    "kiHilfeAbschnittText": {"message": "Questions about the extension or signing in? The AI reads our help and answers right away."},
+    "kiBegruessung": {"message": "Hi! How can I help you with Aionda Mail?"},
+    "kiVorschlagAnmeldung": {"message": "I can't sign in"},
+    "kiVorschlagAdresse": {"message": "How do I create an address?"},
+    "kiVorschlagErweiterung": {"message": "What can the extension do?"},
+    "kiEingabePlatzhalter": {"message": "Your question …"},
+    "kiSenden": {"message": "Send"},
+    "kiDenkt": {"message": "The AI is thinking …"},
+    "kiLiestHilfe": {"message": "Reading the help: $1"},
+    "kiKontextTitel": {"message": "The AI sees:"},
+    "kiKontextZugriffAn": {"message": "Website access granted"},
+    "kiKontextZugriffAus": {"message": "Website access not granted"},
+    "kiKontextFehler": {"message": "last message: $1"},
+    "kiHinweis": {"message": "Your questions are sent to the Aionda AI to be answered. Nothing is stored. Your password and credentials are never sent."},
+    "kiSupport": {"message": "Contact support"},
+    "kiFehlerLimit": {"message": "No more questions are possible today. Please try again tomorrow."},
+    "kiFehlerBesetzt": {"message": "The AI is busy right now. Please try again in a moment."},
+    "kiFehlerAllgemein": {"message": "The AI can't be reached right now. Please try again later."},
+    "kiAnmeldeFehlerFrage": {"message": "When I sign in to the extension I get: \"$1\". What can I do?"}
 }

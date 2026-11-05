@@ -7,7 +7,54 @@
   function hat(objekt, name) {
     return typeof objekt === "object" && objekt !== null && typeof objekt[name] === "function";
   }
+  async function position(wunsch) {
+    const { width, height } = wunsch;
+    const bezug = wunsch.bezug ?? "zuletzt-fokussiert";
+    if (bezug === "bildschirm") {
+      if (typeof screen === "undefined") {
+        return void 0;
+      }
+      return { left: Math.round((screen.width - width) / 2), top: Math.round((screen.height - height) / 2) };
+    }
+    const fenster = api().windows;
+    const name = bezug === "aktuell" ? "getCurrent" : "getLastFocused";
+    if (!hat(fenster, name)) {
+      return void 0;
+    }
+    try {
+      const f = bezug === "aktuell" ? await fenster.getCurrent() : await fenster.getLastFocused();
+      return {
+        left: Math.max(0, Math.round((f.left ?? 0) + ((f.width ?? width) - width) / 2)),
+        top: Math.max(0, Math.round((f.top ?? 0) + ((f.height ?? height) - height) / 2))
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  async function seiteOeffnen(url, wunsch) {
+    const b = api();
+    if (hat(b.windows, "create")) {
+      try {
+        const pos = await position(wunsch);
+        const fenster = await b.windows.create({
+          "url": url,
+          "type": "popup",
+          "width": wunsch.width,
+          "height": wunsch.height,
+          ...pos
+        });
+        return { alsTab: false, windowId: fenster?.id, tabId: fenster?.tabs?.[0]?.id };
+      } catch (err) {
+        console.warn("[Aionda Mail] Kein eigenes Fenster m\xF6glich, \xF6ffne Tab:", err);
+      }
+    }
+    const tab = await b.tabs.create({ "url": mitTabKennzeichen(url) });
+    return { alsTab: true, windowId: tab?.windowId, tabId: tab?.id };
+  }
   var TAB_KENNZEICHEN = "aiondaTab";
+  function mitTabKennzeichen(url) {
+    return `${url}${url.includes("?") ? "&" : "?"}${TAB_KENNZEICHEN}=1`;
+  }
   function alsTabGeoeffnet() {
     try {
       return new URLSearchParams(window.location.search).get(TAB_KENNZEICHEN) === "1";
@@ -76,6 +123,22 @@
     }
   }
 
+  // trashmail-addon/ts/help/ki-hilfe-konstanten.ts
+  var SPEICHER_LETZTE_MELDUNG = "ki_letzte_meldung";
+  var SPEICHER_VORGABE_FRAGE = "ki_vorgabe_frage";
+
+  // trashmail-addon/ts/help/ki-oeffnen.ts
+  var browser = globalThis.browser ?? chrome;
+  async function kiHilfeOeffnen(frage, letzteMeldung) {
+    if (letzteMeldung !== void 0) {
+      await browser.storage.local.set({ [SPEICHER_LETZTE_MELDUNG]: letzteMeldung.slice(0, 300) });
+    } else {
+      await browser.storage.local.remove(SPEICHER_LETZTE_MELDUNG);
+    }
+    await browser.storage.local.set({ [SPEICHER_VORGABE_FRAGE]: frage ? frage.slice(0, 600) : "" });
+    await seiteOeffnen(browser.runtime.getURL("help/ki-hilfe.html"), { width: 440, height: 660, bezug: "aktuell" });
+  }
+
   // trashmail-addon/ts/public-suffix.ts
   var browserApi = globalThis.browser ?? chrome;
   var resolverPromise = null;
@@ -125,7 +188,7 @@
   var BLOCK_AFTER_NETWORK_ERROR_MS = 15 * 60 * 1e3;
 
   // trashmail-addon/ts/options/welcome.ts
-  var browser = globalThis.browser ?? chrome;
+  var browser2 = globalThis.browser ?? chrome;
   function elById(id) {
     const el = document.getElementById(id);
     if (el === null) {
@@ -237,10 +300,10 @@
     const idx = Math.max(0, score - 1);
     bar.style.width = PW_STRENGTH_WIDTHS[idx];
     bar.style.background = PW_STRENGTH_COLORS[idx];
-    label.textContent = browser.i18n.getMessage(PW_STRENGTH_LABEL_KEYS[idx]);
+    label.textContent = browser2.i18n.getMessage(PW_STRENGTH_LABEL_KEYS[idx]);
     label.style.color = PW_STRENGTH_COLORS[idx];
     passwordInput.setCustomValidity(
-      score >= 2 ? "" : browser.i18n.getMessage("registerPasswordTooWeak")
+      score >= 2 ? "" : browser2.i18n.getMessage("registerPasswordTooWeak")
     );
   }
   function togglePasswordVisibility() {
@@ -263,7 +326,7 @@
     ideas.textContent = "";
     const prefix = document.createElement("span");
     prefix.className = "suggestion-prefix";
-    prefix.textContent = `${browser.i18n.getMessage("registerUsernameIdeas")} `;
+    prefix.textContent = `${browser2.i18n.getMessage("registerUsernameIdeas")} `;
     ideas.appendChild(prefix);
     const seen = /* @__PURE__ */ new Set();
     let guard = 0;
@@ -290,7 +353,7 @@
     reroll.type = "button";
     reroll.className = "suggestion-btn";
     reroll.textContent = "\u21BB";
-    reroll.title = browser.i18n.getMessage("registerUsernameIdeasMore");
+    reroll.title = browser2.i18n.getMessage("registerUsernameIdeasMore");
     reroll.addEventListener("click", renderUsernameIdeas);
     ideas.appendChild(reroll);
     ideas.style.display = "block";
@@ -314,7 +377,7 @@
       usernameInput.setCustomValidity("");
     } else {
       hint.classList.add("invalid");
-      usernameInput.setCustomValidity(browser.i18n.getMessage("registerUsernameRules"));
+      usernameInput.setCustomValidity(browser2.i18n.getMessage("registerUsernameRules"));
       return;
     }
     if (lowered.length >= 3) {
@@ -328,7 +391,7 @@
     const usernameInput = elById("register-username");
     const availability = elById("register-username-availability");
     try {
-      const lang = browser.i18n.getUILanguage().substr(0, 2);
+      const lang = browser2.i18n.getUILanguage().substr(0, 2);
       const response = await fetch(`${API_BASE_URL}/?api=1&cmd=check_username_available&lang=${lang}`, {
         // Keine Webapp-Cookies mitschicken - das Addon arbeitet nur mit session_id.
         credentials: "omit",
@@ -345,14 +408,14 @@
       availability.style.display = "block";
       if (data.available) {
         availability.classList.add("ok");
-        availability.textContent = browser.i18n.getMessage("registerUsernameAvailable");
+        availability.textContent = browser2.i18n.getMessage("registerUsernameAvailable");
         usernameInput.setCustomValidity("");
         fitWindowToContent();
         return;
       }
       availability.classList.add("invalid");
       const message = document.createElement("span");
-      message.textContent = data.error || browser.i18n.getMessage("registerUsernameTaken");
+      message.textContent = data.error || browser2.i18n.getMessage("registerUsernameTaken");
       availability.appendChild(message);
       usernameInput.setCustomValidity(message.textContent ?? "taken");
       const suggestions = data.suggestions ?? [];
@@ -360,7 +423,7 @@
         availability.appendChild(document.createElement("br"));
         const prefix = document.createElement("span");
         prefix.className = "suggestion-prefix";
-        prefix.textContent = `${browser.i18n.getMessage("registerUsernameSuggestion")} `;
+        prefix.textContent = `${browser2.i18n.getMessage("registerUsernameSuggestion")} `;
         availability.appendChild(prefix);
         for (const suggestion of suggestions) {
           const suggestionButton = document.createElement("button");
@@ -385,7 +448,7 @@
     const form = new FormData(e.target);
     if (evaluatePasswordStrength(String(form.get("password"))) < 2) {
       const passwordInput = elById("register-password");
-      passwordInput.setCustomValidity(browser.i18n.getMessage("registerPasswordTooWeak"));
+      passwordInput.setCustomValidity(browser2.i18n.getMessage("registerPasswordTooWeak"));
       passwordInput.reportValidity();
       return;
     }
@@ -409,15 +472,15 @@
     obtainCaptchaSession().then((gameSessionId) => {
       return opaqueClient.registerAccountV2(username, password, gameSessionId);
     }).then(() => {
-      return browser.storage.local.set({ "previous_addresses": {} });
+      return browser2.storage.local.set({ "previous_addresses": {} });
     }).then(() => {
       return opaqueClient.passwordOpaqueLogin(username, password);
     }).then((loginDetails) => {
       return handleLoginSuccess(username, password, loginDetails, false);
     }).then((loginDetails) => {
-      return opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails);
+      return opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser2.storage.sync.set({ "password": token })).then(() => loginDetails);
     }).then((loginDetails) => {
-      return browser.storage.local.set({ "is_opaque_account": true }).then(() => loginDetails);
+      return browser2.storage.local.set({ "is_opaque_account": true }).then(() => loginDetails);
     }).then((loginDetails) => {
       return callAPI({
         "cmd": "add_real_email",
@@ -425,8 +488,8 @@
         "email": realEmail
       }).then(() => {
         return Promise.all([
-          browser.storage.local.set({ "real_emails": [realEmail] }),
-          browser.storage.sync.set({ "default_email": realEmail })
+          browser2.storage.local.set({ "real_emails": [realEmail] }),
+          browser2.storage.sync.set({ "default_email": realEmail })
         ]);
       }).then(() => loginDetails);
     }).then((loginDetails) => {
@@ -443,17 +506,17 @@
   var confirmPollTimer;
   var confirmEmail = "";
   async function currentSessionId() {
-    const local = await browser.storage.local.get(["session_id"]);
+    const local = await browser2.storage.local.get(["session_id"]);
     return local.session_id ?? "";
   }
   async function reAuthWithPat() {
-    const sync = await browser.storage.sync.get(["username", "password"]);
+    const sync = await browser2.storage.sync.get(["username", "password"]);
     if (!sync.username || !sync.password) {
       throw new Error("re-auth unavailable");
     }
     const login2 = await loginWithStoredPat(sync.username, sync.password);
     const sessionId = String(login2["session_id"] ?? "");
-    await browser.storage.local.set({ "session_id": sessionId });
+    await browser2.storage.local.set({ "session_id": sessionId });
     return sessionId;
   }
   var reauthGescheitert = false;
@@ -487,15 +550,15 @@
           clearInterval(resendCooldownTimer);
         }
         resendButton.disabled = false;
-        resendButton.textContent = browser.i18n.getMessage("confirmResend");
+        resendButton.textContent = browser2.i18n.getMessage("confirmResend");
         return;
       }
       resendButton.disabled = true;
       if (remaining >= 60) {
         const mmss = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
-        resendButton.textContent = browser.i18n.getMessage("confirmResendInMinutes", mmss);
+        resendButton.textContent = browser2.i18n.getMessage("confirmResendInMinutes", mmss);
       } else {
-        resendButton.textContent = browser.i18n.getMessage("confirmResendInSeconds", String(remaining));
+        resendButton.textContent = browser2.i18n.getMessage("confirmResendInSeconds", String(remaining));
       }
       remaining--;
     };
@@ -505,7 +568,7 @@
   function showConfirmationPanel(email, _sessionId) {
     confirmEmail = email;
     changePanel("confirm-panel");
-    elById("confirm-sent-to").textContent = browser.i18n.getMessage("confirmSentTo", email);
+    elById("confirm-sent-to").textContent = browser2.i18n.getMessage("confirmSentTo", email);
     startResendCooldown(300);
     const poll = async () => {
       try {
@@ -518,9 +581,9 @@
             clearInterval(confirmPollTimer);
           }
           const confirmedList = data["real_email_list"] ?? [email];
-          await browser.storage.local.set({ "real_emails": confirmedList });
+          await browser2.storage.local.set({ "real_emails": confirmedList });
           elById("confirm-status").classList.add("done");
-          elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmDone");
+          elById("confirm-status-text").textContent = browser2.i18n.getMessage("confirmDone");
           setTimeout(() => {
             currentSessionId().then((sid) => loadDEAAndClose(sid));
           }, 1500);
@@ -540,7 +603,7 @@
     const confirmError = elById("confirm-error");
     confirmError.style.display = "none";
     callWithReauth("resend_confirmation_email", { "email": confirmEmail }).then(() => {
-      elById("confirm-status-text").textContent = browser.i18n.getMessage("confirmResent");
+      elById("confirm-status-text").textContent = browser2.i18n.getMessage("confirmResent");
       startResendCooldown(300);
     }).catch((error) => {
       const remaining = error.remainingSeconds;
@@ -589,7 +652,7 @@
     const isOpaqueAccount = isPAT(password);
     const domainList = loginDetails["domain_name_list"] || [];
     const p1 = Promise.all([
-      browser.storage.local.set({
+      browser2.storage.local.set({
         "domains": Array.isArray(domainList) ? domainList : Object.keys(domainList),
         "real_emails": Object.keys(loginDetails["real_email_list"] || {}),
         "session_id": sessionId,
@@ -598,12 +661,12 @@
       // Erfolgreiche manuelle Anmeldung hebt die Sperre fuer die
       // Hintergrund-Anmeldung auf (session-codes.ts), auch wenn die
       // Zugangsdaten dieselben geblieben sind.
-      browser.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY)
+      browser2.storage.local.remove(BACKGROUND_LOGIN_BLOCK_KEY)
     ]);
     if (needsPAT && sessionId) {
       return createAccessToken(sessionId, getBrowserName()).then((token) => {
         console.log("[Aionda Mail] PAT created successfully");
-        return browser.storage.sync.set({
+        return browser2.storage.sync.set({
           "username": username,
           "password": token
           // Store PAT instead of original password
@@ -614,7 +677,7 @@
         return loginDetails;
       }).catch((patError) => {
         console.warn("[Aionda Mail] PAT creation failed:", patError);
-        return browser.storage.sync.set({
+        return browser2.storage.sync.set({
           "username": username,
           "password": password
         }).then(() => {
@@ -624,7 +687,7 @@
         });
       });
     } else {
-      const p2 = browser.storage.sync.set({
+      const p2 = browser2.storage.sync.set({
         "username": username,
         "password": password
       });
@@ -665,8 +728,8 @@
           }
         }
       }
-      return browser.storage.local.set({ "previous_addresses": currentPrevAddresses }).then(() => {
-        return browser.runtime.sendMessage({ "action": "auth_completed" }).catch(() => void 0);
+      return browser2.storage.local.set({ "previous_addresses": currentPrevAddresses }).then(() => {
+        return browser2.runtime.sendMessage({ "action": "auth_completed" }).catch(() => void 0);
       }).then(() => {
         return eigeneSeiteSchliessen();
       });
@@ -682,6 +745,10 @@
     cancelButton.disabled = true;
     progress.style.display = "inline-block";
     loginError.style.display = "none";
+    const kiKnopf = document.getElementById("login-ki-fragen");
+    if (kiKnopf) {
+      kiKnopf.style.display = "none";
+    }
     const form = new FormData(e.target);
     const username = form.get("username");
     const password = form.get("password");
@@ -705,13 +772,24 @@
     const errorCode = error.errorCode;
     let message = error.message || String(error);
     if (typeof errorCode === "number" && INVALID_CREDENTIALS_ERROR_CODES.includes(errorCode)) {
-      message = browser.i18n.getMessage("loginInvalidCredentials") || message;
+      message = browser2.i18n.getMessage("loginInvalidCredentials") || message;
     }
     loginError.textContent = message;
     loginError.style.display = "block";
     progress.style.display = "none";
     cancelButton.disabled = false;
     loginButton.disabled = false;
+    kiKnopfFuerMeldung(message);
+  }
+  function kiKnopfFuerMeldung(meldung) {
+    const knopf = document.getElementById("login-ki-fragen");
+    if (!knopf) {
+      return;
+    }
+    knopf.style.display = "inline-block";
+    knopf.onclick = () => {
+      void kiHilfeOeffnen(browser2.i18n.getMessage("kiAnmeldeFehlerFrage", [meldung]) || meldung, meldung);
+    };
   }
   function checkAuthMethodAndLogin(username, password, loginButton, cancelButton, progress, loginError) {
     let opaqueCheckPromise;
@@ -772,7 +850,7 @@
       return;
     }
     const opaqueClient = addonOpaqueClient;
-    const nachAnmeldung = (anmeldung) => handleLoginSuccess(username, password, anmeldung, false).then((loginDetails) => opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails)).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"]));
+    const nachAnmeldung = (anmeldung) => handleLoginSuccess(username, password, anmeldung, false).then((loginDetails) => opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser2.storage.sync.set({ "password": token })).then(() => loginDetails)).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"]));
     opaqueClient.passwordOpaqueLogin(username, password).then(nachAnmeldung).catch((error) => {
       if (error.requires_2fa) {
         const pending = typeof error.pendingSessionId === "string" ? error.pendingSessionId : "";
@@ -826,6 +904,7 @@
       progress.style.display = "none";
       cancelButton.disabled = false;
       loginButton.disabled = false;
+      kiKnopfFuerMeldung(error.message || String(error));
     });
   }
   var pending2faSessionId = "";
@@ -846,7 +925,7 @@
     errorBox.style.display = "none";
     const invalid = recoveryMode ? code.length === 0 : !/^\d{6}$/.test(code);
     if (invalid) {
-      errorBox.textContent = browser.i18n.getMessage("error2FAInvalidCode");
+      errorBox.textContent = browser2.i18n.getMessage("error2FAInvalidCode");
       errorBox.style.display = "block";
       return;
     }
@@ -871,7 +950,7 @@
       loginProgress.style.display = "none";
     }
     if (typeof addonOpaqueClient === "undefined") {
-      browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
+      browser2.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
       return;
     }
     let panel = document.getElementById("twofa-panel");
@@ -880,23 +959,23 @@
       panel.id = "twofa-panel";
       panel.className = "panel";
       panel.innerHTML = `
-            <h1>${browser.i18n.getMessage("title2FA")}</h1>
-            <p class="hint" id="twofa-info">${browser.i18n.getMessage("info2FA")}</p>
+            <h1>${browser2.i18n.getMessage("title2FA")}</h1>
+            <p class="hint" id="twofa-info">${browser2.i18n.getMessage("info2FA")}</p>
             <div>
                 <input type="text" id="twofa-code" inputmode="numeric" autocomplete="one-time-code"
-                       maxlength="19" placeholder="${browser.i18n.getMessage("twofaCodePlaceholder")}">
+                       maxlength="19" placeholder="${browser2.i18n.getMessage("twofaCodePlaceholder")}">
             </div>
             <div id="twofa-trust-row">
                 <input type="checkbox" id="twofa-trust">
-                <label for="twofa-trust">${browser.i18n.getMessage("twofaTrustDevice")}</label>
+                <label for="twofa-trust">${browser2.i18n.getMessage("twofaTrustDevice")}</label>
             </div>
             <p class="error" id="twofa-error" style="display:none"></p>
             <div class="buttons">
                 <span id="twofa-progress" class="confirm-spinner" style="display:none"></span>
-                <button type="button" id="twofa-submit" class="btn-primary">${browser.i18n.getMessage("buttonLogin")}</button>
+                <button type="button" id="twofa-submit" class="btn-primary">${browser2.i18n.getMessage("buttonLogin")}</button>
             </div>
-            <p class="field-hint"><a href="#" id="twofa-recovery-toggle">${browser.i18n.getMessage("twofaUseRecovery")}</a></p>
-            <p class="field-hint"><a href="#" id="twofa-website">${browser.i18n.getMessage("twofaWebsiteFallback")}</a></p>
+            <p class="field-hint"><a href="#" id="twofa-recovery-toggle">${browser2.i18n.getMessage("twofaUseRecovery")}</a></p>
+            <p class="field-hint"><a href="#" id="twofa-website">${browser2.i18n.getMessage("twofaWebsiteFallback")}</a></p>
         `;
       const loginPanel = elById("login-panel");
       loginPanel.parentNode.insertBefore(panel, loginPanel.nextSibling);
@@ -908,11 +987,11 @@
     const toggle = elById("twofa-recovery-toggle");
     const errorBox = elById("twofa-error");
     const applyMode = () => {
-      info.textContent = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryInfo" : "info2FA");
-      input.placeholder = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryPlaceholder" : "twofaCodePlaceholder");
+      info.textContent = browser2.i18n.getMessage(recoveryMode ? "twofaRecoveryInfo" : "info2FA");
+      input.placeholder = browser2.i18n.getMessage(recoveryMode ? "twofaRecoveryPlaceholder" : "twofaCodePlaceholder");
       input.setAttribute("inputmode", recoveryMode ? "text" : "numeric");
       trustRow.style.display = recoveryMode || pending2faSessionId !== "" ? "none" : "flex";
-      toggle.textContent = browser.i18n.getMessage(recoveryMode ? "twofaUseAuthenticator" : "twofaUseRecovery");
+      toggle.textContent = browser2.i18n.getMessage(recoveryMode ? "twofaUseAuthenticator" : "twofaUseRecovery");
       input.value = "";
       errorBox.style.display = "none";
       input.focus();
@@ -931,7 +1010,7 @@
     };
     elById("twofa-website").onclick = (ev) => {
       ev.preventDefault();
-      browser.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
+      browser2.tabs.create({ url: `${API_BASE_URL}/?cmd=manager` });
     };
     changePanel("twofa-panel");
     applyMode();
@@ -954,7 +1033,7 @@
     };
     callAPI(data).then(() => {
       lostError.className = "success";
-      lostError.innerHTML = browser.i18n.getMessage(
+      lostError.innerHTML = browser2.i18n.getMessage(
         "lostPasswordSuccess",
         form.get("email")
       );

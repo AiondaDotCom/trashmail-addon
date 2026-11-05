@@ -448,3 +448,18 @@ form div.buttons {
 #twofa-panel .field-hint a:hover {
     text-decoration: underline;
 }
+
+/* #329f963f „KI fragen" unter einer Fehlermeldung */
+.link-button {
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    margin-top: 4px;
+    color: #0a66c2;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+}
+@media (prefers-color-scheme: dark) {
+    .link-button { color: #64b5f6; }
+}
