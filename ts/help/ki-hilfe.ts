@@ -27,7 +27,7 @@ const HILFE_ZEICHEN = 8000;
  * Grenzen des Servers (AiPublicAssistantService::pruefeNachrichten), in
  * UTF-8-Bytes wie dort gezählt; jeweils mit etwas Abstand.
  */
-export const GRENZEN = { nachrichten: 16, frageBytes: 1900, werkzeugBytes: 8800, gesamtBytes: 38000 } as const;
+export const GRENZEN = { nachrichten: 16, frageBytes: 1900, werkzeugBytes: 8800, gesamtBytes: 38000, aufrufeJeZug: 4 } as const;
 /** Ältere Frage/Antwort-Paare, die als Gesprächsgedächtnis mitgehen. */
 const MAX_VERLAUF_NACHRICHTEN = 6;
 
@@ -60,6 +60,18 @@ export function werkzeugNachricht(id: string, thema: string, text: string, maxBy
         inhalt = utf8Kuerzen(inhalt, bytes(inhalt) - 64);
     }
     return { role: "tool", tool_call_id: id, content: JSON.stringify({ topic: thema, content: inhalt }) };
+}
+
+/** Höchstens GRENZEN.aufrufeJeZug read_help-Aufrufe je Zug, Dubletten fallen weg (wie der Server). */
+export function aufrufeBegrenzen(aufrufe: Werkzeugaufruf[]): Werkzeugaufruf[] {
+    const gesehen = new Set<string>();
+    const aus: Werkzeugaufruf[] = [];
+    for (const a of aufrufe) {
+        if (aus.length >= GRENZEN.aufrufeJeZug || gesehen.has(a.function.arguments)) {continue;}
+        gesehen.add(a.function.arguments);
+        aus.push(a);
+    }
+    return aus;
 }
 
 /** Bytes wie der Server: Inhalt + Werkzeug-Kennungen + Aufrufargumente. */
@@ -221,10 +233,12 @@ async function main(): Promise<void> {
         const t = text.trim();
         if (t === "" || senden.disabled) {return;}
         document.getElementById("vorschlaege")?.remove();
-        zeige("blase du", t);
+        // Die Blase zeigt, was die KI wirklich bekommt (lange Fragen werden gekürzt).
+        const gesendet = utf8Kuerzen(t, GRENZEN.frageBytes);
+        zeige("blase du", gesendet === t ? t : `${gesendet} …`);
         // Die laufende Runde wird erst bei einer Antwort in den Verlauf übernommen -
         // ein Fehler mitten in einer Leserunde hinterlässt so keinen halben Verlauf.
-        const runde: Nachricht[] = [{ role: "user", content: utf8Kuerzen(t, GRENZEN.frageBytes) }];
+        const runde: Nachricht[] = [{ role: "user", content: gesendet }];
         eingabe.value = "";
         senden.disabled = true;
         const denkt = zeige("denkt", msg("kiDenkt"));
@@ -244,8 +258,9 @@ async function main(): Promise<void> {
                     verlauf.push(runde[0]!, { role: "assistant", content: daten.content ?? "" });
                     return;
                 }
-                runde.push({ role: "assistant", content: daten.content ?? "", tool_calls: daten.tool_calls });
-                for (const aufruf of daten.tool_calls) {
+                const aufrufe = aufrufeBegrenzen(daten.tool_calls);
+                runde.push({ role: "assistant", content: daten.content ?? "", tool_calls: aufrufe });
+                for (const aufruf of aufrufe) {
                     const thema = String((JSON.parse(aufruf.function.arguments) as { topic?: string }).topic ?? "");
                     let inhalt = { titel: thema, text: "" };
                     if (/^[a-z-]+$/.test(thema)) {

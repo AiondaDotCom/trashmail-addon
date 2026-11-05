@@ -1770,7 +1770,7 @@
   var HILFE_SPRACHEN = ["de", "en", "es", "fr"];
   var MAX_RUNDEN = 3;
   var HILFE_ZEICHEN = 8e3;
-  var GRENZEN = { nachrichten: 16, frageBytes: 1900, werkzeugBytes: 8800, gesamtBytes: 38e3 };
+  var GRENZEN = { nachrichten: 16, frageBytes: 1900, werkzeugBytes: 8800, gesamtBytes: 38e3, aufrufeJeZug: 4 };
   var MAX_VERLAUF_NACHRICHTEN = 6;
   var kodierer = new TextEncoder();
   var bytes = (s) => kodierer.encode(s).length;
@@ -1797,6 +1797,18 @@
       inhalt = utf8Kuerzen(inhalt, bytes(inhalt) - 64);
     }
     return { role: "tool", tool_call_id: id, content: JSON.stringify({ topic: thema, content: inhalt }) };
+  }
+  function aufrufeBegrenzen(aufrufe) {
+    const gesehen = /* @__PURE__ */ new Set();
+    const aus = [];
+    for (const a of aufrufe) {
+      if (aus.length >= GRENZEN.aufrufeJeZug || gesehen.has(a.function.arguments)) {
+        continue;
+      }
+      gesehen.add(a.function.arguments);
+      aus.push(a);
+    }
+    return aus;
   }
   function serverBytes(nachrichten) {
     let summe = 0;
@@ -1945,8 +1957,9 @@
         return;
       }
       document.getElementById("vorschlaege")?.remove();
-      zeige("blase du", t);
-      const runde = [{ role: "user", content: utf8Kuerzen(t, GRENZEN.frageBytes) }];
+      const gesendet = utf8Kuerzen(t, GRENZEN.frageBytes);
+      zeige("blase du", gesendet === t ? t : `${gesendet} \u2026`);
+      const runde = [{ role: "user", content: gesendet }];
       eingabe.value = "";
       senden.disabled = true;
       const denkt = zeige("denkt", msg("kiDenkt"));
@@ -1971,8 +1984,9 @@
             verlauf.push(runde[0], { role: "assistant", content: daten.content ?? "" });
             return;
           }
-          runde.push({ role: "assistant", content: daten.content ?? "", tool_calls: daten.tool_calls });
-          for (const aufruf of daten.tool_calls) {
+          const aufrufe = aufrufeBegrenzen(daten.tool_calls);
+          runde.push({ role: "assistant", content: daten.content ?? "", tool_calls: aufrufe });
+          for (const aufruf of aufrufe) {
             const thema = String(JSON.parse(aufruf.function.arguments).topic ?? "");
             let inhalt = { titel: thema, text: "" };
             if (/^[a-z-]+$/.test(thema)) {

@@ -10,6 +10,10 @@ npm ci            # installs exactly the versions in package-lock.json
 npm run build     # esbuild ts/... --bundle --format=iife --target=es2020 --outdir=. --outbase=ts
 ```
 
+Recent npm versions may report that esbuild's `postinstall` script was not approved;
+the build works without it (the platform binary comes from esbuild's optional
+dependencies, e.g. `@esbuild/darwin-arm64`).
+
 This rebuilds `api.js`, `guardian.js`, `background.js`, `content-script.js`,
 `translate.js`, `popup/popup.js`, `popup/guardian-info.js`, `options/options.js`,
 `options/welcome.js`, `create-address/create-address.js`,

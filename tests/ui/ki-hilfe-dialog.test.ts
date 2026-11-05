@@ -30,6 +30,24 @@ const aufruf = (id: string, thema: string) => ({ id, type: "function", function:
 const leserunde = (...a: ReturnType<typeof aufruf>[]) => ({ success: true, data: { content: "", tool_calls: a } });
 const antwort = (text: string) => ({ success: true, data: { content: text } });
 
+/**
+ * Eigenes Lineal, nachgebaut aus AiPublicAssistantService::pruefeNachrichten
+ * (strlen = UTF-8-Bytes): Inhalt + tool_call_id + je Aufruf id + arguments.
+ * Bewusst NICHT ki.serverBytes - sonst misst der Prüfling sich selbst (Abnahme 05.11.2026).
+ */
+function bytesWieServer(nachrichten: Gesendet[]): number {
+    const enc = new TextEncoder();
+    let summe = 0;
+    for (const m of nachrichten) {
+        summe += enc.encode(m.content).length;
+        if (typeof m.tool_call_id === "string") {summe += enc.encode(m.tool_call_id).length;}
+        for (const c of (m.tool_calls ?? []) as Array<{ id: string; function: { arguments: string } }>) {
+            summe += enc.encode(c.id).length + enc.encode(c.function.arguments).length;
+        }
+    }
+    return summe;
+}
+
 async function stelle(text: string): Promise<void> {
     (document.getElementById("eingabe") as HTMLTextAreaElement).value = text;
     document.getElementById("formular")!.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
@@ -65,7 +83,7 @@ describe("Dialog KI fragen", () => {
         const enc = new TextEncoder();
         for (const nachrichten of anfragen) {
             expect(nachrichten.length).toBeLessThanOrEqual(16);
-            expect(ki.serverBytes(nachrichten as never)).toBeLessThanOrEqual(38000);
+            expect(bytesWieServer(nachrichten)).toBeLessThanOrEqual(40000);
             for (const m of nachrichten) {
                 if (m.role === "user") {expect(enc.encode(m.content).length).toBeLessThanOrEqual(2000);}
                 if (m.role === "tool") {expect(enc.encode(m.content).length).toBeLessThanOrEqual(9000);}
@@ -76,6 +94,40 @@ describe("Dialog KI fragen", () => {
         expect(werkzeug).toHaveLength(4);
         for (const w of werkzeug) {expect((JSON.parse(w.content) as { content: string }).content.length).toBeGreaterThan(3000);}
         expect(document.getElementById("verlauf")!.textContent).toContain("Antwort 1");
+    });
+
+    it("WAECHTER: viele Aufrufe nach langem Gespräch - höchstens 16 Nachrichten, 4 Themen je Zug", async () => {
+        // Kurze Hilfeseiten: hier soll die Nachrichtenzahl greifen, nicht die Byte-Grenze.
+        vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, text: async () => "<h2>Thema</h2><p>kurz</p>" })));
+        for (const f of ["Frage 1", "Frage 2", "Frage 3"]) {await stelle(f);}
+        const sechs = ["logging", "logging", "addresses", "security", "mailbox", "deliverability"].map((t, i) => aufruf(`k${i}`, t));
+        const zweite = ["plus-membership", "getting-started", "aliases", "domains", "logging", "x"].map((t, i) => aufruf(`m${i}`, t));
+        senden
+            .mockImplementationOnce(async (_c: string, p: { messages: Gesendet[] }) => { anfragen.push(structuredClone(p.messages)); return leserunde(...sechs); })
+            .mockImplementationOnce(async (_c: string, p: { messages: Gesendet[] }) => { anfragen.push(structuredClone(p.messages)); return leserunde(...zweite); })
+            .mockImplementationOnce(async (_c: string, p: { messages: Gesendet[] }) => { anfragen.push(structuredClone(p.messages)); return antwort("Antwort 4"); });
+        await stelle("Frage 4");
+
+        const letzte = anfragen.at(-1)!;
+        for (const n of anfragen) {
+            expect(n.length).toBeLessThanOrEqual(16);
+            expect(bytesWieServer(n)).toBeLessThanOrEqual(40000);
+        }
+        // Client-Lineal = Server-Lineal, Byte für Byte (der 2-KB-Abstand würde Abweichungen sonst verdecken).
+        for (const n of anfragen) {expect(ki.serverBytes(n as never)).toBe(bytesWieServer(n));}
+        expect(letzte.filter((m) => m.role === "tool")).toHaveLength(8);
+        expect(letzte.filter((m) => m.role === "tool").map((m) => m.tool_call_id).slice(0, 4)).toEqual(["k0", "k2", "k3", "k4"]);
+        // 3 alte Paare + 1 + 2x(1+4) = 17: das älteste Paar muss weichen.
+        expect(letzte.length).toBe(15);
+        expect(letzte[0]).toEqual({ role: "user", content: "Frage 2" });
+        expect(document.getElementById("verlauf")!.textContent).toContain("Antwort 4");
+    });
+
+    it("lange Frage: die Blase zeigt, was gesendet wird", async () => {
+        await stelle("ü".repeat(1200));
+        expect(anfragen.at(-1)!.at(-1)!.content).toBe("ü".repeat(950));
+        expect([...document.querySelectorAll("#verlauf .blase.du")].at(-1)!.textContent).toBe(`${"ü".repeat(950)} …`);
+        expect(document.getElementById("eingabe")!.getAttribute("maxlength")).toBe("1900");
     });
 
     it("WAECHTER: Folgefrage schickt nur Frage und Antwort mit, keine alten Hilfetexte", async () => {
