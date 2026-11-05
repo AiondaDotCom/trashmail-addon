@@ -216,8 +216,9 @@ class AddonOpaqueClient {
         // #48779b5c Mit bekannter Konto-Sitzung OHNE Cookie: Eine Anfrage mit
         // credentials:"include" scheitert in Firefox ohne Host-Berechtigung
         // schon an der CORS-Vorabanfrage (der Server antwortet mit
-        // Access-Control-Allow-Origin: *). Nur der alte 2FA-Weg ohne
-        // Sitzungskennung (Server vor #48779b5c) braucht noch das Cookie.
+        // Access-Control-Allow-Origin: *). Ohne Kennung (2FA gegen einen Server
+        // vor src #294) traegt das Cookie - welcome.ts meldet sich dafuer
+        // vorher eigens MIT Cookie an; ohne Host-Berechtigung geht das nicht.
         const credentialsMode = sessionId ? "omit" : "include";
 
         const baseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://mail.aionda.com';
@@ -335,8 +336,8 @@ class AddonOpaqueClient {
      * #48779b5c Mit Sitzungskennung geht die 2fa_pending-Sitzung in der
      * Kopfzeile X-TrashMail-Session, OHNE Cookie (sonst scheitert Firefox ohne
      * Host-Berechtigung an der CORS-Vorabanfrage, und Safari schickt das Cookie
-     * ohnehin nicht). Ohne Kennung (Server vor #48779b5c liefert sie nicht)
-     * bleibt der alte Weg ueber das Cookie.
+     * ohnehin nicht). Ohne Kennung (Server vor src #294) geht das Cookie mit;
+     * das traegt nur, wenn welcome.ts sich vorher MIT Cookie angemeldet hat.
      * @private
      */
     async _completePending2fa(cmd, body, pendingSessionId = '') {

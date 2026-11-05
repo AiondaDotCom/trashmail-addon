@@ -777,7 +777,20 @@
       opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails)
     )).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"])).catch((error) => {
       if (error.requires_2fa) {
-        show2FAInput(username, password, typeof error.pendingSessionId === "string" ? error.pendingSessionId : "");
+        const pending = typeof error.pendingSessionId === "string" ? error.pendingSessionId : "";
+        if (pending) {
+          show2FAInput(username, password, pending);
+          return;
+        }
+        opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true }).then(() => {
+          throw Object.assign(new Error("2FA required"), { requires_2fa: true });
+        }).catch((zweiter) => {
+          if (zweiter.requires_2fa) {
+            show2FAInput(username, password, "");
+            return;
+          }
+          showLoginError(zweiter, loginError, progress, cancelButton, loginButton);
+        });
         return;
       }
       showLoginError(error, loginError, progress, cancelButton, loginButton);
@@ -902,7 +915,7 @@
       info.textContent = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryInfo" : "info2FA");
       input.placeholder = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryPlaceholder" : "twofaCodePlaceholder");
       input.setAttribute("inputmode", recoveryMode ? "text" : "numeric");
-      trustRow.style.display = recoveryMode ? "none" : "flex";
+      trustRow.style.display = recoveryMode || pending2faSessionId !== "" ? "none" : "flex";
       toggle.textContent = browser.i18n.getMessage(recoveryMode ? "twofaUseAuthenticator" : "twofaUseRecovery");
       input.value = "";
       errorBox.style.display = "none";

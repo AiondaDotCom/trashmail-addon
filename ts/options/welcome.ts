@@ -901,7 +901,25 @@ function loginWithOpaquePassword(username: string, password: string, loginButton
         .then((loginDetails) => loadDEAAndClose(loginDetails["session_id"] as string))
         .catch((error: AppError) => {
             if (error.requires_2fa) {
-                show2FAInput(username, password, typeof error.pendingSessionId === "string" ? error.pendingSessionId : "");
+                const pending = typeof error.pendingSessionId === "string" ? error.pendingSessionId : "";
+                if (pending) {
+                    show2FAInput(username, password, pending);
+                    return;
+                }
+                // #48779b5c Server ohne session_id im 2FA-Fall (vor src #294):
+                // Die schwebende Sitzung der cookielosen Anmeldung erreicht hier
+                // niemand mehr. Einmal MIT Cookie neu anmelden, damit der Browser
+                // die 2FA-Sitzung haelt - der alte Weg, der mit Host-Berechtigung
+                // (Chrome, Firefox mit Freigabe) funktionierte.
+                opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true })
+                    .then(() => { throw Object.assign(new Error("2FA required"), { requires_2fa: true }); })
+                    .catch((zweiter: AppError) => {
+                        if (zweiter.requires_2fa) {
+                            show2FAInput(username, password, "");
+                            return;
+                        }
+                        showLoginError(zweiter, loginError, progress, cancelButton, loginButton);
+                    });
                 return;
             }
             showLoginError(error, loginError, progress, cancelButton, loginButton);
@@ -1091,7 +1109,10 @@ function show2FAInput(username: string, _password: string, pendingSessionId = ""
         info.textContent = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryInfo" : "info2FA");
         input.placeholder = browser.i18n.getMessage(recoveryMode ? "twofaRecoveryPlaceholder" : "twofaCodePlaceholder");
         input.setAttribute("inputmode", recoveryMode ? "text" : "numeric");
-        trustRow.style.display = recoveryMode ? "none" : "flex";
+        // #48779b5c Ohne Cookie (schwebende Sitzung per Kopfzeile) kann der
+        // Browser das Vertrauens-Cookie tm_trusted_device nicht speichern -
+        // die Option waere ein leeres Versprechen.
+        trustRow.style.display = recoveryMode || pending2faSessionId !== "" ? "none" : "flex";
         toggle.textContent = browser.i18n.getMessage(recoveryMode ? "twofaUseAuthenticator" : "twofaUseRecovery");
         input.value = "";
         errorBox.style.display = "none";
