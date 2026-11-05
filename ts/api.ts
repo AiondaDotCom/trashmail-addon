@@ -500,6 +500,15 @@ async function loginWithStoredPat(username: string, token: string, options: PatL
 }
 
 /**
+ * true, wenn fetch die Anfrage gar nicht zustande gebracht hat (Netz weg,
+ * CORS-Sperre). Nur dann verwirft fetch mit einem TypeError; Fehler, die der
+ * Server meldet, sind gewoehnliche Error-Objekte aus unserem Code.
+ */
+function isBlockedRequest(error: unknown): boolean {
+    return error instanceof TypeError;
+}
+
+/**
  * Oeffnet den Web-Adressmanager als eingeloggten Tab.
  *
  * Etabliert die Website-Session per POST-Login MIT Browser-Cookies
@@ -521,10 +530,24 @@ async function openAddressManagerAuthenticated(): Promise<void> {
 
     const baseUrl = await getApiBaseUrl();
 
-    if (isPAT(password)) {
-        await loginWithStoredPat(username, password, { establishBrowserSession: true });
-    } else {
-        await classicLoginRequest(username, password, { establishBrowserSession: true });
+    try {
+        if (isPAT(password)) {
+            await loginWithStoredPat(username, password, { establishBrowserSession: true });
+        } else {
+            await classicLoginRequest(username, password, { establishBrowserSession: true });
+        }
+    } catch (error) {
+        // #48779b5c fetch verwirft mit TypeError, wenn die Anfrage den Server
+        // nicht erreicht oder der Browser sie sperrt: Firefox ohne
+        // Host-Berechtigung laesst den Cookie-Login an der CORS-Vorabanfrage
+        // scheitern (Server: Access-Control-Allow-Origin *). Dann den Manager
+        // trotzdem oeffnen - dort gilt eine bestehende Webseiten-Sitzung, sonst
+        // die Anmeldeseite - statt mit einer Fehlermeldung stehen zu bleiben.
+        // Lehnt der SERVER ab (Token widerrufen ...), bleibt es beim Fehler.
+        if (!isBlockedRequest(error)) {
+            throw error;
+        }
+        console.warn("[API] Cookie login for the manager was blocked, opening it without:", (error as Error).message);
     }
 
     await browser.tabs.create({ "url": `${baseUrl}/?cmd=manager&lang=${lang}` });

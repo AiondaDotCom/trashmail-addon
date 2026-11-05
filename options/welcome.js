@@ -411,7 +411,7 @@
     }).then(() => {
       return browser.storage.local.set({ "previous_addresses": {} });
     }).then(() => {
-      return opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true });
+      return opaqueClient.passwordOpaqueLogin(username, password);
     }).then((loginDetails) => {
       return handleLoginSuccess(username, password, loginDetails, false);
     }).then((loginDetails) => {
@@ -772,12 +772,12 @@
       return;
     }
     const opaqueClient = addonOpaqueClient;
-    opaqueClient.passwordOpaqueLogin(username, password, { establishBrowserSession: true }).then((loginDetails) => handleLoginSuccess(username, password, loginDetails, false)).then((loginDetails) => (
+    opaqueClient.passwordOpaqueLogin(username, password).then((loginDetails) => handleLoginSuccess(username, password, loginDetails, false)).then((loginDetails) => (
       // OPAQUE-PAT anlegen und statt des Passworts hinterlegen
       opaqueClient.createAccessTokenOpaque(String(loginDetails["session_id"]), getBrowserName()).then((token) => browser.storage.sync.set({ "password": token })).then(() => loginDetails)
     )).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"])).catch((error) => {
       if (error.requires_2fa) {
-        show2FAInput(username, password);
+        show2FAInput(username, password, typeof error.pendingSessionId === "string" ? error.pendingSessionId : "");
         return;
       }
       showLoginError(error, loginError, progress, cancelButton, loginButton);
@@ -819,9 +819,10 @@
       loginButton.disabled = false;
     });
   }
+  var pending2faSessionId = "";
   function finish2faLogin(username) {
     let pat = "";
-    return addonOpaqueClient.createAccessTokenOpaque("", getBrowserName()).then((token) => {
+    return addonOpaqueClient.createAccessTokenOpaque(pending2faSessionId, getBrowserName()).then((token) => {
       pat = token;
       return addonOpaqueClient.patOpaqueLogin(username, token);
     }).then((loginDetails) => handleLoginSuccess(username, pat, loginDetails, false)).then((loginDetails) => loadDEAAndClose(loginDetails["session_id"]));
@@ -842,7 +843,7 @@
     }
     submitButton.disabled = true;
     progress.style.display = "inline-block";
-    const verify = recoveryMode ? addonOpaqueClient.useRecoveryCode(code) : addonOpaqueClient.verifyTotpLogin(code, trust.checked);
+    const verify = recoveryMode ? addonOpaqueClient.useRecoveryCode(code, pending2faSessionId) : addonOpaqueClient.verifyTotpLogin(code, trust.checked, pending2faSessionId);
     verify.then(() => finish2faLogin(username)).catch((error) => {
       progress.style.display = "none";
       submitButton.disabled = false;
@@ -851,7 +852,8 @@
       input.select();
     });
   }
-  function show2FAInput(username, _password) {
+  function show2FAInput(username, _password, pendingSessionId = "") {
+    pending2faSessionId = pendingSessionId;
     const loginProgress = document.getElementById("progress-login");
     if (loginProgress) {
       loginProgress.style.display = "none";

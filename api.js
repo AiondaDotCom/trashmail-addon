@@ -304,6 +304,9 @@
       }
     }
   }
+  function isBlockedRequest(error) {
+    return error instanceof TypeError;
+  }
   async function openAddressManagerAuthenticated() {
     const lang = browser.i18n.getUILanguage().substr(0, 2);
     const sync = await browser.storage.sync.get(["username", "password"]);
@@ -313,10 +316,17 @@
       throw new Error(browser.i18n.getMessage("errorSessionExpired") || 'Your session has expired. Please use "Switch login" to log in again.');
     }
     const baseUrl = await getApiBaseUrl();
-    if (isPAT(password)) {
-      await loginWithStoredPat(username, password, { establishBrowserSession: true });
-    } else {
-      await classicLoginRequest(username, password, { establishBrowserSession: true });
+    try {
+      if (isPAT(password)) {
+        await loginWithStoredPat(username, password, { establishBrowserSession: true });
+      } else {
+        await classicLoginRequest(username, password, { establishBrowserSession: true });
+      }
+    } catch (error) {
+      if (!isBlockedRequest(error)) {
+        throw error;
+      }
+      console.warn("[API] Cookie login for the manager was blocked, opening it without:", error.message);
     }
     await browser.tabs.create({ "url": `${baseUrl}/?cmd=manager&lang=${lang}` });
   }

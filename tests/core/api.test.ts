@@ -324,6 +324,38 @@ describe('loginWithStoredPat', () => {
     });
 });
 
+describe('openAddressManagerAuthenticated (#48779b5c)', () => {
+    const oeffnen = () => (globalThis as unknown as { openAddressManagerAuthenticated: () => Promise<void> }).openAddressManagerAuthenticated;
+    const managerTabs = () => mock.tabs.list.filter((t) => String((t as { url?: string }).url).includes('cmd=manager'));
+
+    beforeEach(() => {
+        mock.tabs.list.length = 0;
+        mock.storage.sync.data.set('username', 'andrew');
+        mock.storage.sync.data.set('password', 'klassischesPasswort');
+    });
+
+    it('vom Browser gesperrter Cookie-Login (fetch-TypeError, Firefox ohne Host-Berechtigung): Manager oeffnet trotzdem', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('public_key.json')) {return fakeResponse('', { ok: false, status: 404 });}
+            throw new TypeError('NetworkError when attempting to fetch resource.');
+        }));
+        await expect(oeffnen()()).resolves.toBeUndefined();
+        expect(managerTabs()).toHaveLength(1);
+    });
+
+    it('lehnt der SERVER ab, bleibt es beim Fehler und es oeffnet sich kein Tab', async () => {
+        stubFetch(fakeResponse({ success: false, error_code: 61, msg: 'Auth failed' }));
+        await expect(oeffnen()()).rejects.toThrow('Auth failed');
+        expect(managerTabs()).toHaveLength(0);
+    });
+
+    it('erfolgreicher Cookie-Login: Manager oeffnet', async () => {
+        stubFetch(fakeResponse({ success: true, data: { session_id: 's' } }));
+        await oeffnen()();
+        expect(managerTabs()).toHaveLength(1);
+    });
+});
+
 /**
  * Wächter: keine Geheimnisse in der Request-URL (Version 6.1.3).
  *
