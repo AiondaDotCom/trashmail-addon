@@ -107,6 +107,11 @@
         statusBox.className = "status-box danger";
         statusIcon.textContent = "\u26A0\uFE0F";
         break;
+      // #c4f175f0: abgeschaltet/inaktiv (vom Popup gemeldet) - grauer Statuspunkt statt leerer Einrückung.
+      case "inactive":
+        statusBox.className = "status-box inactive";
+        statusIcon.textContent = "\u{1F512}";
+        break;
       default:
         statusBox.className = "status-box";
         statusIcon.textContent = "\u{1F512}";

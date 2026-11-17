@@ -38,6 +38,11 @@ document.addEventListener("DOMContentLoaded", () => {
             statusBox.className = 'status-box danger';
             statusIcon.textContent = '⚠️';
             break;
+        // #c4f175f0: abgeschaltet/inaktiv (vom Popup gemeldet) - grauer Statuspunkt statt leerer Einrückung.
+        case 'inactive':
+            statusBox.className = 'status-box inactive';
+            statusIcon.textContent = '🔒';
+            break;
         default:
             statusBox.className = 'status-box';
             statusIcon.textContent = '🔒';
