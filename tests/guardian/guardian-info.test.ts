@@ -81,6 +81,15 @@ describe('guardian-info Statusdarstellung', () => {
         expect(byId('status-icon').textContent).toBe('⚠️');
     });
 
+    // #c4f175f0: Das Popup meldet abgeschaltete/inaktive Zustände als "inactive".
+    // Ohne eigenen Fall blieb der Statuspunkt farblos - sichtbar nur als leere Einrückung.
+    it('rendert INACTIVE mit grauem Statuspunkt', async () => {
+        await render('?status=inactive&text=Aus&detail=In+den+Einstellungen');
+        expect(byId('status-box').className).toBe('status-box inactive');
+        expect(byId('status-icon').textContent).toBe('🔒');
+        expect(byId('status-value').textContent).toBe('Aus - In den Einstellungen');
+    });
+
     it('fällt bei unbekanntem Status auf den Default zurück', async () => {
         await render('?status=whatever&text=Unbekannt');
         expect(byId('status-box').className).toBe('status-box');

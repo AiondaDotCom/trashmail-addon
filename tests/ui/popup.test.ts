@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { installBrowserMock, type BrowserMock } from '../helpers/browser-mock';
 import { loadHtmlBody, stubCommonGlobals, stubWindowNavigation, fireDomReady, tick, resetDocumentListeners } from './_helpers';
@@ -407,3 +409,19 @@ describe('popup.ts', () => {
     });
 });
 
+
+// #c4f175f0: Statuszeile und Detail stehen untereinander. Als <span> lief das
+// Detail in derselben Zeile weiter ("MITM protection disabled Can be enabled …"),
+// sein margin-top blieb wirkungslos.
+describe('popup.html Statusdarstellung', () => {
+    it('setzt Statustext und Detail als eigene Zeilen', () => {
+        const html = fs.readFileSync('trashmail-addon/popup/popup.html', 'utf8');
+        const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
+        expect(css).not.toBe('');
+        document.head.innerHTML = `<style>${css}</style>`;
+        document.body.innerHTML = '<div id="security-status"><span class="status-icon"></span><span class="status-text">A</span><span class="status-detail">B</span></div>';
+        const anzeige = (sel: string): string => getComputedStyle(document.querySelector(sel)!).display;
+        expect(anzeige('.status-text')).toBe('block');
+        expect(anzeige('.status-detail')).toBe('block');
+    });
+});
