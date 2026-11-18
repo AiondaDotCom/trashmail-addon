@@ -6,7 +6,7 @@
     "extensionDescription": {"message": "Temp Mail: Wegwerf-E-Mail-Adressen mit einem Klick erstellen und deine echte Adresse vor Spam schützen. Früher TrashMail.com."},
 
     "optionsSettingsTitle": {"message": "Einstellungen"},
-    "optionsCurrentAccount": {"message": "Jetziger Benutzer"},
+    "optionsCurrentAccount": {"message": "Aktuelles Konto"},
     "optionsForwards": {"message": "Anzahl an Weiterleitungen:"},
     "optionsLifespan": {"message": "Gültigkeitsdauer:"},
     "optionsSwitchLoginButton": {"message": "Benutzer wechseln"},
@@ -14,25 +14,25 @@
     "optionsLogoutButton": {"message": "Abmelden"},
     "optionsNotLoggedIn": {"message": "Nicht angemeldet"},
     "optionsLoginButton": {"message": "Anmelden"},
-    "optionsRealAddress": {"message": "Ihre E-Mail-Adresse:"},
+    "optionsRealAddress": {"message": "Deine echte E-Mail-Adresse:"},
     "optionsAddressPrefix": {"message": "E-Mail-Adress-Präfix:"},
-    "optionsRandomLength": {"message": "Länge vom Zufalls-Decknamen:"},
-    "optionsDomain": {"message": "E-Mail-Adress-Domainname:"},
+    "optionsRandomLength": {"message": "Länge des Zufallsnamens:"},
+    "optionsDomain": {"message": "Domain der E-Mail-Adresse:"},
     "optionsMasquerade": {"message": "Antwort-Maskierung"},
     "optionsNotifyExpired": {"message": "Automatische Benachrichtigung, wenn Adresse abgelaufen ist"},
-    "optionsSendURL": {"message": "Sende URL an Aionda Mail Server"},
-    "optionsSendURLTooltip": {"message": "Sendet aktuelle URL zum Aionda-Mail-Server beim erstellen einer wegwerfbaren E-Mail-Adresse."},
+    "optionsSendURL": {"message": "URL an den Aionda-Mail-Server senden"},
+    "optionsSendURLTooltip": {"message": "Sendet beim Erstellen einer Wegwerfadresse die aktuelle URL an den Aionda-Mail-Server."},
     "optionsPlusInfo": {"message": "* benötigt Aionda Mail Plus"},
 
-    "optionsContactTitle": {"message": "Kontaktieren Sie uns"},
+    "optionsContactTitle": {"message": "Kontakt"},
     "optionsContact": {
-        "message": "Bitte senden Sie Fehler und Erweiterungswünsche an $MAILTO$",
+        "message": "Bitte schick Fehler und Verbesserungswünsche an $MAILTO$",
         "placeholders": {
             "mailto": {"content": "<a href='mailto:support@aionda.com?subject=Aionda%20Mail'>support@aionda.com</a>"}
         }
     },
 
-    "welcomeTitle": {"message": "Willkommen zum Aionda Mail Add-On"},
+    "welcomeTitle": {"message": "Willkommen beim Aionda Mail Add-On"},
     "welcomeRegisterTitle": {"message": "Konto erstellen"},
     "confirmResendInMinutes": {"message": "Erneut senden in $1 Min."},
     "confirmResendInSeconds": {"message": "Erneut senden in $1 Sek."},
@@ -45,31 +45,31 @@
     "confirmSkip": {"message": "Später bestätigen"},
     "registerUsernameIdeas": {"message": "Vorschläge:"},
     "registerUsernameIdeasMore": {"message": "Neue Vorschläge"},
-    "registerIntro": {"message": "Benutzerkennung wählen, Passwort setzen, echte E-Mail-Adresse angeben - fertig. Du bist danach direkt angemeldet."},
+    "registerIntro": {"message": "Benutzernamen wählen, Passwort setzen, echte E-Mail-Adresse angeben – fertig. Du bist danach direkt angemeldet."},
     "registerShowPassword": {"message": "Passwort anzeigen"},
     "registerPwCritLen8": {"message": "Mindestens 8 Zeichen"},
     "registerPwCritLen12": {"message": "12+ Zeichen (empfohlen)"},
-    "registerPwCritCase": {"message": "Gross- und Kleinbuchstaben"},
+    "registerPwCritCase": {"message": "Groß- und Kleinbuchstaben"},
     "registerPwCritDigit": {"message": "Mindestens eine Zahl"},
     "registerPwCritSpecial": {"message": "Sonderzeichen (!?#...)"},
     "registerUsernameAvailable": {"message": "✓ Verfügbar"},
-    "registerUsernameTaken": {"message": "Diese Benutzerkennung ist bereits vergeben."},
+    "registerUsernameTaken": {"message": "Dieser Benutzername ist bereits vergeben."},
     "registerUsernameSuggestion": {"message": "Wie wäre es mit:"},
     "registerPwWeak": {"message": "Schwach"},
     "registerPwOk": {"message": "Ok"},
     "registerPwGood": {"message": "Gut"},
     "registerPwStrong": {"message": "Stark"},
-    "registerPasswordTooWeak": {"message": "Passwort zu schwach: mindestens 8 Zeichen; mehr Länge, Gross-/Kleinschreibung, Zahlen und Sonderzeichen erhöhen die Stärke."},
+    "registerPasswordTooWeak": {"message": "Passwort zu schwach: mindestens 8 Zeichen; mehr Länge, Groß-/Kleinschreibung, Zahlen und Sonderzeichen erhöhen die Stärke."},
     "registerUsernameRules": {"message": "3-30 Zeichen: nur Kleinbuchstaben, Zahlen, Punkte und Bindestriche (nicht am Anfang/Ende, nicht doppelt)."},
     "registerEmail": {"message": "Echte E-Mail-Adresse"},
     "registerEmailInfo": {"message": "An diese Adresse werden deine Wegwerf-Adressen weitergeleitet. Du erhältst eine Bestätigungs-E-Mail."},
     "buttonRegister": {"message": "Konto erstellen"},
-    "welcomeInfo": {"message": "Um wegwerfbare E-Mail-Adressen zu erstellen benötigen Sie eine Aionda-Mail-Benutzerkennung. Mit dieser Benutzerkennung können Sie das Add-On auf mehreren Computern und Browsern nutzen."},
+    "welcomeInfo": {"message": "Um Wegwerfadressen zu erstellen, brauchst du ein Aionda-Mail-Konto. Mit diesem Konto kannst du das Add-On auf mehreren Computern und Browsern nutzen."},
     "welcomeLostPassword": {"message": "Passwort verloren?"},
-    "loginInvalidCredentials": {"message": "Benutzerkennung oder Passwort ist falsch."},
-    "lostPasswordInfo": {"message": "Wenn das Passwort verloren wurde, dann muss das Passwort erneut gesetzt werden. Bitte geben Sie Ihre echte E-Mail-Adresse ein die Ihrer Benutzerkennung zugewiesen ist."},
+    "loginInvalidCredentials": {"message": "Benutzername oder Passwort ist falsch."},
+    "lostPasswordInfo": {"message": "Wenn du dein Passwort verloren hast, musst du es neu setzen. Gib dazu die echte E-Mail-Adresse ein, die deinem Konto zugeordnet ist."},
     "lostPasswordSuccess": {
-        "message": "$PBEGIN$Ein Passwort-Reset Link wurde an Ihre E-Mail-Adresse '$EMAIL$' geschickt.$PEND$$PBEGIN$Bitte überprüfen Sie Ihr E-Mail-Postfach über einen erhaltenen Passwort-Reset Link.$PEND$",
+        "message": "$PBEGIN$Ein Link zum Zurücksetzen des Passworts wurde an deine E-Mail-Adresse '$EMAIL$' geschickt.$PEND$$PBEGIN$Bitte sieh in deinem Postfach nach diesem Link.$PEND$",
         "placeholders": {
             "email": {"content": "$1"},
             "pbegin": {"content": "<p>"},
@@ -77,8 +77,8 @@
         }
     },
 
-    "createTitle": {"message": "Wegwerfbare E-Mail Adresse erstellen"},
-    "createNewAddress": {"message": "Wegwerfbare E-Mail-Adresse:"},
+    "createTitle": {"message": "Wegwerfadresse erstellen"},
+    "createNewAddress": {"message": "Neue Wegwerfadresse:"},
 
 
     "popupCreateAddress": {"message": "Adresse für diese Seite"},
@@ -91,19 +91,19 @@
     "addressCopied": {"message": "Kopiert"},
 
 
-    "buttonCancel": {"message": "Abbruch"},
+    "buttonCancel": {"message": "Abbrechen"},
     "buttonLogin": {"message": "Anmelden"},
-    "buttonToLogin": {"message": "Benutzerkennung und Passwort eingeben"},
+    "buttonToLogin": {"message": "Benutzername und Passwort eingeben"},
     "buttonSave": {"message": "Speichern"},
-    "buttonToRegister": {"message": "Neue Benutzerkennung registrieren"},
+    "buttonToRegister": {"message": "Neues Konto registrieren"},
     "buttonReset": {"message": "Standard-Einstellungen wiederherstellen"},
     "buttonResetPassword": {"message": "Passwort zurücksetzen"},
-    "buttonAddressManager": {"message": "Aionda-Mail-Address-Manager"},
-    "buttonAddressManagerShort": {"message": "Address-Manager"},
+    "buttonAddressManager": {"message": "Aionda-Mail-Adress-Manager"},
+    "buttonAddressManagerShort": {"message": "Adress-Manager"},
     "buttonSettings": {"message": "Einstellungen"},
-    "buttonCreateAddress": {"message": "Erstelle Adresse"},
+    "buttonCreateAddress": {"message": "Adresse erstellen"},
 
-    "menuPasteAddress": {"message": "Wegwerfbare Adresse einfügen"},
+    "menuPasteAddress": {"message": "Wegwerfadresse einfügen"},
     "menuPastePrevious": {
         "message": "'$EMAIL$' einfügen",
         "placeholders": {
@@ -111,12 +111,12 @@
         }
     },
 
-    "username": {"message": "Benutzerkennung"},
+    "username": {"message": "Benutzername"},
     "password": {"message": "Passwort"},
     "passwordOrPat": {"message": "Passwort / Personal Access Token"},
     "email": {"message": "E-Mail"},
     "saved": {"message": "Gespeichert"},
-    "undo": {"message": "Widerrufen"},
+    "undo": {"message": "Rückgängig"},
 
     "optionsInternalMailbox": {"message": "Im internen Postfach speichern"},
     "optionsInternalMailboxTooltip": {"message": "E-Mails im Aionda-Mail-Vault speichern statt weiterzuleiten"},
@@ -150,19 +150,19 @@
         }
     },
     "unlimited": {
-        "message": "unendlich$PLUS$",
+        "message": "unbegrenzt$PLUS$",
         "placeholders": {
             "plus": {"content": "$1", "example": "*"}
         }
     },
 
     "title2FA": {"message": "Zwei-Faktor-Authentifizierung"},
-    "info2FA": {"message": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein."},
+    "info2FA": {"message": "Gib den 6-stelligen Code aus deiner Authenticator-App ein."},
     "buttonVerify": {"message": "Bestätigen"},
-    "error2FAInvalidCode": {"message": "Bitte geben Sie einen 6-stelligen Code ein."},
+    "error2FAInvalidCode": {"message": "Bitte gib einen 6-stelligen Code ein."},
 
     "error2FARequired": {
-        "message": "$STRONG$Zwei-Faktor-Authentifizierung erforderlich$STRONGEND$$BR$$BR$Ihr Konto hat 2FA aktiviert. Um die Browser-Erweiterung zu nutzen, müssen Sie ein Personal Access Token erstellen:$BR$$BR$1. Klicken Sie auf den Button unten$BR$2. Gehen Sie zu $STRONG$Konto → Personal Access Tokens$STRONGEND$$BR$3. Erstellen Sie ein neues Token und kopieren Sie es$BR$4. Der $STRONG$Benutzername bleibt gleich$STRONGEND$, nur das Token als \"Passwort\" einfügen$BR$$BR$$BUTTON$",
+        "message": "$STRONG$Zwei-Faktor-Authentifizierung erforderlich$STRONGEND$$BR$$BR$Dein Konto hat 2FA aktiviert. Um die Browser-Erweiterung zu nutzen, brauchst du ein Personal Access Token:$BR$$BR$1. Klicke auf den Knopf unten$BR$2. Geh zu $STRONG$Konto → Personal Access Tokens$STRONGEND$$BR$3. Erstelle ein neues Token und kopiere es$BR$4. Der $STRONG$Benutzername bleibt gleich$STRONGEND$, nur das Token als „Passwort“ einfügen$BR$$BR$$BUTTON$",
         "placeholders": {
             "strong": {"content": "<strong>"},
             "strongend": {"content": "</strong>"},
