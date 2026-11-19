@@ -1,4 +1,5 @@
 {
+    "invalidPersonalAccessToken": {"message": "Token de Acceso Personal no válido"},
     "errorSessionExpired": {"message": "Tu sesión ha caducado. Abre las opciones de la extensión e inicia sesión de nuevo."},
     "errorGenericServer": {"message": "El servidor devolvió un error. Abre las opciones de la extensión e inicia sesión de nuevo."},
     "errorAddressNotPasted": {"message": "La dirección $ADDRESS$ se ha creado, pero no se pudo insertar en el formulario. Cópiala a mano.", "placeholders": {"address": {"content": "$1"}}},

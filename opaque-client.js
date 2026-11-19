@@ -139,7 +139,8 @@ class AddonOpaqueClient {
 
         // finishLogin returns null if token is incorrect
         if (!loginResult || !loginResult.finishLoginRequest) {
-            const error = new Error('Invalid Personal Access Token');
+            // #41438414: in der UI-Sprache, wie die Servermeldung (TOKEN_INVALID_PAT)
+            const error = new Error(browser.i18n.getMessage('invalidPersonalAccessToken') || 'Invalid Personal Access Token');
             error.errorCode = 3;
             throw error;
         }

@@ -1,4 +1,5 @@
 {
+    "invalidPersonalAccessToken": {"message": "Invalid Personal Access Token"},
     "errorSessionExpired": {"message": "Your session has expired. Please open the extension options and log in again."},
     "errorGenericServer": {"message": "The server returned an error. Please open the extension options and log in again."},
     "errorAddressNotPasted": {"message": "The address $ADDRESS$ was created, but could not be inserted into the form. Please copy it manually.", "placeholders": {"address": {"content": "$1"}}},
