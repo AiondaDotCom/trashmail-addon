@@ -2,6 +2,7 @@
 
 import { eigeneSeiteSchliessen, fensterAnpassen } from "../fenster";
 import { getOrgDomainResolver } from "../public-suffix";
+import { refreshRealEmails, updateEmailSelect } from "../real-emails";
 import { isSessionRejected } from "../session-codes";
 
 // Compatibility layer for browser and chrome
@@ -245,6 +246,22 @@ const loginDetails: Promise<TmApiResponse> = Promise.all([p1, p2]).then((result:
     });
 });
 
+// #0e21f82b: Vor dem Erstellen auf die Aktualisierung warten, damit weder
+// eine entfernte Zieladresse noch eine inzwischen erneuerte Sitzung benutzt wird.
+const refreshedLogin = loginDetails.then(async (login) => {
+    try {
+        const refreshed = await refreshRealEmails(login.session_id);
+        if (refreshed) {
+            updateEmailSelect(elById<HTMLSelectElement>("email"), refreshed);
+            return { ...login, session_id: refreshed.sessionId };
+        }
+    } catch (error) {
+        console.warn("[Aionda Mail] Address refresh failed:", error);
+    }
+    return login;
+});
+void refreshedLogin.catch(() => undefined);
+
 // loginDetails wird erst beim Absenden (createAddress) abgewartet und dort
 // angezeigt. Bis dahin darf eine Ablehnung (z. B. PAT-Konto ohne Sitzung,
 // erneute Anmeldung gescheitert) nicht als "Unhandled Rejection" auflaufen:
@@ -277,7 +294,7 @@ async function createAddress(e: Event) {
     const createButton = elById<HTMLButtonElement>("btn-create");
     const progress = elById("progress");
     const error = elById("error_msg");
-    const form = new FormData(e.target as HTMLFormElement);
+
 
     createButton.disabled = true;
     progress.style.display = "block";
@@ -285,7 +302,8 @@ async function createAddress(e: Event) {
 
     try {
         // Login-Daten abrufen
-        const login = await loginDetails;
+        const login = await refreshedLogin;
+        const form = new FormData(e.target as HTMLFormElement);
 
         const data: { cmd: string; session_id: unknown } = {
             "cmd": "create_dea",

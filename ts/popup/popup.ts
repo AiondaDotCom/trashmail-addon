@@ -2,6 +2,7 @@
 
 import { seiteOeffnen } from "../fenster";
 import { kiHilfeOeffnen } from "../help/ki-oeffnen";
+import { refreshRealEmails } from "../real-emails";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -349,6 +350,7 @@ async function updateLoginStateUI() {
     }
 }
 updateLoginStateUI();
+void refreshRealEmails().catch((error: unknown) => console.warn("[Aionda Mail] Address refresh failed:", error));
 
 elById("btn-address-manager").addEventListener("click", addressManager);
 elById("btn-create-address").addEventListener("click", () => { void createAddressForPage(); });

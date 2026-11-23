@@ -2,6 +2,7 @@
 
 import { beimSchliessen, seiteOeffnen } from "../fenster";
 import { kiHilfeOeffnen } from "../help/ki-oeffnen";
+import { refreshRealEmails, updateEmailSelect } from "../real-emails";
 
 // Compatibility layer for browser and chrome
 const browser: typeof chrome = (globalThis as { browser?: typeof chrome }).browser ?? chrome;
@@ -139,7 +140,10 @@ function restoreOptions() {
 
     const p1 = browser.storage.sync.get();
     const p2 = browser.storage.local.get(["real_emails", "domains"]);
-    Promise.all([p1, p2]).then(setCurrentOptions);
+    Promise.all([p1, p2]).then(setCurrentOptions).then(async () => {
+        const refreshed = await refreshRealEmails();
+        if (refreshed) { updateEmailSelect(elById<HTMLSelectElement>("default_email"), refreshed); }
+    }).catch((error: unknown) => console.warn("[Aionda Mail] Address refresh failed:", error));
 
     // Display the saved message after a page reload.
     if (sessionStorage !== null && sessionStorage.getItem("reset")) {
