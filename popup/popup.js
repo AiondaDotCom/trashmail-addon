@@ -72,6 +72,66 @@
     await seiteOeffnen(browser.runtime.getURL("help/ki-hilfe.html"), { width: 440, height: 660, bezug: "aktuell" });
   }
 
+  // trashmail-addon/ts/session-codes.ts
+  var ERROR_CODE_NOT_LOGGED_IN = 2;
+  var ERROR_CODE_AUTHENTICATION_ERROR = 61;
+  var SESSION_REJECTED_CODES = [ERROR_CODE_NOT_LOGGED_IN, ERROR_CODE_AUTHENTICATION_ERROR];
+  function isSessionRejected(error) {
+    const code = error?.errorCode;
+    return typeof code === "number" && SESSION_REJECTED_CODES.includes(code);
+  }
+  var BLOCK_AFTER_SERVER_REJECTION_MS = 6 * 60 * 60 * 1e3;
+  var BLOCK_AFTER_NETWORK_ERROR_MS = 15 * 60 * 1e3;
+
+  // trashmail-addon/ts/real-emails.ts
+  async function refreshRealEmails(sessionId) {
+    const browser3 = globalThis.browser ?? chrome;
+    const sync = await browser3.storage.sync.get(["username", "password"]);
+    if (!sync.username) {
+      return void 0;
+    }
+    const local = await browser3.storage.local.get("session_id");
+    let session = sessionId ?? local.session_id;
+    const login = async () => {
+      if (typeof sync.username !== "string" || typeof sync.password !== "string" || !sync.password) {
+        throw new Error("Please sign in again in the extension settings.");
+      }
+      const response2 = isPAT(sync.password) ? await loginWithStoredPat(sync.username, sync.password) : await callAPI({ cmd: "login", "fe-login-user": sync.username, "fe-login-pass": sync.password });
+      if (typeof response2.session_id !== "string" || !response2.session_id) {
+        throw new Error("The server did not return a session.");
+      }
+      return response2.session_id;
+    };
+    if (!session) {
+      session = await login();
+    }
+    let response;
+    try {
+      response = await callAPI({ cmd: "list_real_emails", session_id: session });
+    } catch (error) {
+      if (!isSessionRejected(error)) {
+        throw error;
+      }
+      session = await login();
+      response = await callAPI({ cmd: "list_real_emails", session_id: session });
+    }
+    const raw = response.data?.real_email_list ?? response.real_email_list;
+    if (!Array.isArray(raw) || !raw.every((email) => typeof email === "string")) {
+      throw new Error("The server returned an invalid email address list.");
+    }
+    const current = await browser3.storage.sync.get(["username", "password", "default_email"]);
+    if (current.username !== sync.username || current.password !== sync.password) {
+      return void 0;
+    }
+    const preferred = typeof current.default_email === "string" ? current.default_email : "vault";
+    const defaultEmail = preferred === "vault" || raw.includes(preferred) ? preferred : "vault";
+    await browser3.storage.local.set({ real_emails: raw, session_id: session });
+    if (defaultEmail !== preferred) {
+      await browser3.storage.sync.set({ default_email: defaultEmail });
+    }
+    return { emails: raw, defaultEmail, sessionId: session };
+  }
+
   // trashmail-addon/ts/popup/popup.ts
   var browser2 = globalThis.browser ?? chrome;
   function elById(id) {
@@ -307,6 +367,7 @@
     }
   }
   updateLoginStateUI();
+  void refreshRealEmails().catch((error) => console.warn("[Aionda Mail] Address refresh failed:", error));
   elById("btn-address-manager").addEventListener("click", addressManager);
   elById("btn-create-address").addEventListener("click", () => {
     void createAddressForPage();

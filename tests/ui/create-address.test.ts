@@ -240,6 +240,7 @@ describe('create-address.ts', () => {
             // Erster create_dea-Call scheitert mit Code 25 (anonymer Fallback),
             // der zweite (nach Re-Auth) klappt.
             globals.callAPI
+                .mockResolvedValueOnce({ data: { real_email_list: ['r@e.com'] } })
                 .mockRejectedValueOnce(Object.assign(new Error('nicht registriert'), { errorCode: 25 }))
                 .mockResolvedValueOnce({});
             await bootWithSession();
@@ -263,6 +264,7 @@ describe('create-address.ts', () => {
 
             // Vault-DEA ohne gueltige Session -> Server-Guard liefert Code 2.
             globals.callAPI
+                .mockResolvedValueOnce({ data: { real_email_list: ['r@e.com'] } })
                 .mockRejectedValueOnce(Object.assign(new Error('login required'), { errorCode: 2 }))
                 .mockResolvedValueOnce({});
             await bootWithSession();
